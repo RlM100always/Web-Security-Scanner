@@ -1,4 +1,5 @@
 import json
+import hashlib
 import re
 import secrets
 import time
@@ -850,10 +851,20 @@ def create_blueprint():
         f=repo().findings(scan_id);comp=repo().comparison(scan_id);target=repo().get_target(s['target_id'],ident['organization_id'])
         context={'assets':repo().assets(scan_id),'asset_comparison':repo().asset_comparison(scan_id),'standards_summary':repo().standards_summary(scan_id),
                  'policy':repo().scan_policy(scan_id),'target':target or {},'zap':repo().latest_zap_import(scan_id)}
-        if fmt=='json':return Response(as_json(s,f,comp,context),mimetype='application/json',headers={'Content-Disposition':f'attachment; filename=sentinelscope-{scan_id}.json'})
-        if fmt=='html':return Response(as_html(s,f,comp,context),mimetype='text/html',headers={'Content-Disposition':f'inline; filename=sentinelscope-{scan_id}.html'})
-        if fmt=='pdf':return Response(as_pdf(s,f,comp,context),mimetype='application/pdf',headers={'Content-Disposition':f'attachment; filename=sentinelscope-{scan_id}.pdf'})
-        return {'error':'Unsupported format'},404
+        if fmt not in {'json','html','pdf'}:return {'error':'Unsupported format'},404
+        if fmt=='json':body=as_json(s,f,comp,context);mimetype='application/json';disposition='attachment'
+        elif fmt=='html':body=as_html(s,f,comp,context);mimetype='text/html';disposition='inline'
+        else:body=as_pdf(s,f,comp,context);mimetype='application/pdf';disposition='attachment'
+        raw=body if isinstance(body,(bytes,bytearray)) else str(body).encode('utf-8')
+        digest=hashlib.sha256(raw).hexdigest()
+        repo().record_report_export(ident['organization_id'],scan_id,fmt,ident['user_id'],digest,len(raw))
+        audit('REPORT_EXPORTED','scan',scan_id,{'format':fmt,'sha256':digest,'size_bytes':len(raw)})
+        return Response(body,mimetype=mimetype,headers={'Content-Disposition':f'{disposition}; filename=sentinelscope-{scan_id}.{fmt}','X-SentinelScope-SHA256':digest})
+
+    @bp.get('/reports/history')
+    @require_auth
+    def report_history():
+        ident=current_identity();return jsonify(repo().list_report_exports(ident['organization_id'],min(int(request.args.get('limit',200)),1000)))
 
     # Enterprise access reviews
     @bp.route('/access-reviews',methods=['GET','POST'])
