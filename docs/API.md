@@ -186,3 +186,51 @@ Preferences are stored per user **and per workspace**. Supported channels curren
 - `GET /api/v1/team/:user_id/activity`
 
 Workspace Admin/Owner users can review member-scoped audit activity together with membership security posture exposed by `GET /api/v1/team`, including email-verification state, MFA state and last-login timestamp.
+
+
+## Enterprise integrations and access governance
+
+### Signed outbound webhooks
+
+Workspace Admin or Owner:
+
+- `GET /api/v1/integrations/webhooks`
+- `POST /api/v1/integrations/webhooks`
+- `PATCH /api/v1/integrations/webhooks/:endpoint_id`
+- `DELETE /api/v1/integrations/webhooks/:endpoint_id`
+- `GET /api/v1/integrations/webhooks/deliveries`
+- `POST /api/v1/integrations/webhooks/:endpoint_id/test`
+- `POST /api/v1/integrations/webhooks/deliveries/:delivery_id/retry`
+
+Supported event families include scan completion/failure, finding lifecycle updates, remediation verification requests, risk acceptance, recurring-assessment changes and access-review completion.
+
+Webhook requests include:
+
+- `X-SentinelScope-Event`
+- `X-SentinelScope-Delivery`
+- `X-SentinelScope-Signature: sha256=<HMAC>`
+
+Endpoint URLs are validated when configured and revalidated again before delivery. Redirects are not followed. Delivery state and response metadata are persisted and retryable.
+
+### Workspace access certification
+
+Workspace Admin or Owner:
+
+- `GET|POST /api/v1/access-reviews`
+- `GET /api/v1/access-reviews/:review_id`
+- `PATCH /api/v1/access-reviews/:review_id/items/:item_id`
+- `POST /api/v1/access-reviews/:review_id/complete`
+
+Reviews snapshot current workspace membership. Every member must receive an APPROVE or REVOKE decision before completion. Workspace Owner access cannot be revoked by this workflow. Applied revocations disable workspace membership and revoke active sessions for that workspace.
+
+### Report export provenance
+
+- `GET /api/v1/reports/history`
+
+Every PDF, HTML or JSON report export records actor, scan, format, byte size, timestamp and SHA-256 digest. Report responses also include `X-SentinelScope-SHA256`.
+
+### Public service health
+
+- `GET /health`
+
+The endpoint exposes only public-safe service, database-engine and queue-engine status. Detailed workers, jobs, audit records and security telemetry remain authenticated.
