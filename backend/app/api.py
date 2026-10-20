@@ -842,6 +842,11 @@ def create_blueprint():
         items=parse_zap_json(data);comparison=compare_with_scanner(repo().findings(scan_id),items)
         saved=repo().save_zap_import(scan_id,filename,items,comparison,ident['user_id']);audit('ZAP_IMPORTED','scan',scan_id,comparison['summary']);return saved,201
 
+    @bp.get('/portfolio/escalations')
+    @require_auth
+    def portfolio_escalations():
+        ident=current_identity();return jsonify(repo().list_finding_escalations(ident['organization_id'],min(int(request.args.get('limit',200)),1000)))
+
     # Reports / audit
     @bp.get('/scans/<scan_id>/report.<fmt>')
     @require_auth
