@@ -304,6 +304,13 @@ class Repository:
     def revoke_other_sessions(self,user_id,current_session_id):
         with self.conn() as c:c.execute("update sessions set revoked_at=? where user_id=? and id<>? and revoked_at is null",(self.now(),user_id,current_session_id))
 
+    def revoke_all_api_keys_for_user(self,user_id,reason=None):
+        now=self.now()
+        with self.conn() as c:
+            cur=c.execute("update api_keys set revoked_at=? where user_id=? and revoked_at is null",(now,user_id))
+            return cur.rowcount
+
+
     def revoke_session(self,session_id):
         with self.conn() as c:c.execute("update sessions set revoked_at=? where id=?",(self.now(),session_id))
     def list_memberships_for_user(self,user_id):
