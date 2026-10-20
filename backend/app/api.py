@@ -477,6 +477,19 @@ def create_blueprint():
         if usage['active']>=concurrent:return {'error':'Concurrent scan limit reached','limit':concurrent,'usage':usage},429
         policy=repo().get_project_policy(t['project_id'])
         override=d.get('policy') if isinstance(d.get('policy'),dict) else {}
+        try:
+            if 'max_pages' in override:override['max_pages']=max(1,min(int(override['max_pages']),200))
+            if 'max_depth' in override:override['max_depth']=max(0,min(int(override['max_depth']),5))
+            if 'request_delay_ms' in override:override['request_delay_ms']=max(0,min(int(override['request_delay_ms']),5000))
+            for key in ['include_paths','exclude_paths']:
+                if key in override:
+                    if not isinstance(override[key],list):return {'error':key+' must be an array'},400
+                    override[key]=[str(x)[:200] for x in override[key]][:30]
+                    for pattern in override[key]:re.compile(pattern)
+            if 'disabled_checks' in override:
+                if not isinstance(override['disabled_checks'],list):return {'error':'disabled_checks must be an array'},400
+                override['disabled_checks']=[str(x)[:120] for x in override['disabled_checks']][:100]
+        except (ValueError,TypeError,re.error) as e:return {'error':'Invalid per-scan policy: '+str(e)},400
         for key in ['max_pages','max_depth','request_delay_ms','include_paths','exclude_paths','disabled_checks']:
             if key in override:policy[key]=override[key]
         s=repo().create_scan(t['id'],t['url'],profile,ident['user_id'],policy);job=repo().enqueue_job('scan',{'scan_id':s['id'],'target_id':t['id']})
