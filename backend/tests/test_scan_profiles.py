@@ -129,6 +129,9 @@ def test_due_schedule_never_silently_falls_back_from_inactive_named_profile():
             {"max_pages":10,"max_depth":1,"request_delay_ms":500,"include_paths":[],"exclude_paths":[],"disabled_checks":[]},
             True,owner["user_id"])
         schedule=r.create_schedule(t["id"],"standard",60,owner["user_id"],"Daily Safe",True,profile["id"])
+        r.create_scan_profile(p["id"],"Fallback","Keeps project configuration valid","quick",
+            {"max_pages":1,"max_depth":0,"request_delay_ms":100,"include_paths":[],"exclude_paths":[],"disabled_checks":[]},
+            False,owner["user_id"])
         r.update_scan_profile(profile["id"],p["id"],{"active":False,"change_note":"Test drift guard"},owner["user_id"])
         with r.conn() as db:db.execute("update schedules set next_run_at=? where id=?",("2000-01-01T00:00:00+00:00",schedule["id"]))
         before=len(r.list_scans(100,owner["organization_id"]))
