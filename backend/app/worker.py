@@ -15,6 +15,8 @@ class ScanCancelled(Exception): pass
 def process_scan(repo, config, payload):
     scan=repo.get_scan(payload["scan_id"])
     if not scan: raise ValueError("Scan does not exist")
+    if scan.get('status')=='COMPLETED':return "COMPLETED"
+    if scan.get('status')=='CANCELLED':return "CANCELLED"
     target=repo.get_target(scan["target_id"])
     if not target: raise ValueError("Target does not exist")
     if repo.scan_cancel_requested(scan['id']):
@@ -81,6 +83,8 @@ def process_scan(repo, config, payload):
 def process_webhook(repo, config, payload):
     delivery=repo.get_webhook_delivery(payload["delivery_id"])
     if not delivery: raise ValueError("Webhook delivery does not exist")
+    if delivery.get("status")=="DELIVERED":return "DELIVERED"
+    if delivery.get("status")=="CANCELLED":return "CANCELLED"
     if not delivery.get("endpoint_active"):
         repo.mark_webhook_delivery_cancelled(delivery["id"],"Webhook endpoint was paused before delivery")
         return "CANCELLED"
