@@ -1046,7 +1046,9 @@ class Repository:
         with self.conn() as c:
             r=c.execute("select attempts,max_attempts from jobs where id=?",(id,)).fetchone()
             status='QUEUED' if retry and r and r['attempts']<r['max_attempts'] else 'FAILED'
-            run_after=(datetime.now(timezone.utc)+timedelta(seconds=15)).isoformat()
+            attempts=int(r['attempts']) if r else 1
+            delay_seconds=min(900,15*(2**max(0,attempts-1)))
+            run_after=(datetime.now(timezone.utc)+timedelta(seconds=delay_seconds)).isoformat()
             c.execute("update jobs set status=?,run_after=?,last_error=?,locked_by=null,locked_at=null,completed_at=? where id=?",(status,run_after,error[:1000],None if status=='QUEUED' else self.now(),id))
     def queue_stats(self):
         with self.conn() as c:return {r['status']:r['n'] for r in c.execute("select status,count(*) n from jobs group by status")}
