@@ -3,10 +3,35 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    ports: ["5000:5000"]
     environment:
-      - SCANNER_ALLOW_PRIVATE=0
+      DATABASE_PATH: /data/scanner.sqlite3
+      SESSION_COOKIE_SECURE: "0"
+      SCANNER_ALLOW_PRIVATE: "0"
+    volumes:
+      - scanner_data:/data
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    command: ["python","backend/worker.py"]
+    environment:
+      DATABASE_PATH: /data/scanner.sqlite3
+      SCANNER_ALLOW_PRIVATE: "0"
+    volumes:
+      - scanner_data:/data
+    depends_on:
+      - api
+    restart: unless-stopped
+
   web:
     build: ./frontend
-    ports: ["8080:80"]
-    depends_on: [api]
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  scanner_data:
