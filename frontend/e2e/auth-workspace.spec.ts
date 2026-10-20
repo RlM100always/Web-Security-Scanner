@@ -16,6 +16,6 @@ test('signup opens authenticated workspace and creates a project',async({page})=
   await page.getByRole('button',{name:'New project'}).click();
   await page.getByLabel('Project name').fill('E2E Web Estate');
   await page.getByLabel('Description').fill('Browser integration test');
-  await page.getByRole('button',{name:'Create',exact:true}).click();
+  await page.getByRole('button',{name:'Create project',exact:true}).click();
   await expect(page.getByText('E2E Web Estate')).toBeVisible();
 });
