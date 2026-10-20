@@ -150,6 +150,7 @@ def test_project_archive_and_verified_email_are_enforced_by_api():
         blocked=client.post("/api/v1/scans",json={"target_id":target["id"],"profile":"quick"},headers=headers)
         assert blocked.status_code==403
         app.extensions["repo"].set_email_verified(uid,True)
+        app.extensions["repo"].save_target_preflight(target["id"],signup.get_json()["user"]["organization_id"],uid,"quick",{"status":"READY","checks":[]})
         allowed=client.post("/api/v1/scans",json={"target_id":target["id"],"profile":"quick"},headers=headers)
         assert allowed.status_code==202
 
