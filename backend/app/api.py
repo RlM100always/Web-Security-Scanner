@@ -143,15 +143,11 @@ def create_blueprint():
     def forgot_password():
         d=request.get_json(force=True) or {};email=(d.get('email') or '').strip().lower()
         user=repo().get_user_by_email(email)
-        dev_link=None
         if user and user.get('active'):
             raw=secrets.token_urlsafe(40)
             repo().create_auth_token(user['id'],'password_reset',token_hash(raw),current_app.config['PASSWORD_RESET_TTL_MINUTES'])
-            delivery,link=send_token_email(user,'password_reset',raw,'Reset your SentinelScope password','reset-password')
-            if delivery.get('mode')=='outbox':dev_link=link
-        payload={'ok':True,'message':'If the account exists, reset instructions have been sent.'}
-        if dev_link:payload['development_reset_link']=dev_link
-        return payload
+            send_token_email(user,'password_reset',raw,'Reset your SentinelScope password','reset-password')
+        return {'ok':True,'message':'If the account exists, reset instructions have been sent.'}
 
     @bp.post('/auth/reset-password')
     def reset_password():
