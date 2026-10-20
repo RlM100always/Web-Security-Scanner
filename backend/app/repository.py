@@ -1437,7 +1437,7 @@ class Repository:
           left join scan_profiles sp on sp.id=s.scan_profile_id
           where p.organization_id=? order by s.created_at desc""",(org_id,))]
     def get_schedule(self,schedule_id,org_id=None):
-        q="""select s.*,t.url target_url,t.name target_name,t.verified target_verified,t.project_id,
+        q="""select s.*,t.url target_url,t.name target_name,t.verified target_verified,t.authorized target_authorized,t.project_id,
           p.name project_name,p.status project_status,p.organization_id,sp.name scan_profile_name,sp.version scan_profile_version,sp.active scan_profile_active
           from schedules s join targets t on t.id=s.target_id join projects p on p.id=t.project_id
           left join scan_profiles sp on sp.id=s.scan_profile_id where s.id=?""";args=[schedule_id]
@@ -1524,12 +1524,13 @@ class Repository:
         s=self.get_schedule(schedule_id,org_id)
         if not s:return None
         if s.get('project_status')=='archived':raise ValueError("Archived projects cannot run recurring assessments")
-        if s.get('profile')=='lab' and not s.get('target_verified'):raise ValueError("Lab profile requires verified ownership")
+        if not s.get('target_authorized'):raise ValueError("Target authorization is no longer active")
         named=self.get_scan_profile(s.get('scan_profile_id')) if s.get('scan_profile_id') else None
         if s.get('scan_profile_id') and (not named or not named.get('active')):
             raise ValueError("This schedule is bound to an inactive or missing scan profile; rebind the schedule before running it")
         policy=named['policy'] if named else self.get_project_policy(s['project_id'])
         mode=named['scan_mode'] if named else s['profile']
+        if mode=='lab' and not s.get('target_verified'):raise ValueError("Lab profile requires verified ownership")
         scan=self.create_scan(s['target_id'],s['target_url'],mode,user_id,policy,named['id'] if named else None)
         self.enqueue_job('scan',{'scan_id':scan['id'],'target_id':s['target_id'],'schedule_id':schedule_id})
         self.create_schedule_run(schedule_id,scan['id'])
@@ -1539,27 +1540,43 @@ class Repository:
     def enqueue_due_schedules(self):
         now=self.now()
         with self.conn() as c:rows=[dict(r) for r in c.execute("select * from schedules where enabled=1 and next_run_at<=?",(now,))]
+        processed=0
         for s in rows:
             t=self.get_target(s['target_id'])
-            if not t:continue
-            named=self.get_scan_profile(s.get('scan_profile_id')) if s.get('scan_profile_id') else None
-            if s.get('scan_profile_id') and (not named or not named.get('active')):
-                nxt=(datetime.now(timezone.utc)+timedelta(minutes=s['interval_minutes'])).isoformat()
-                message="Schedule blocked: bound scan profile is inactive or missing"
-                with self.conn() as c:c.execute("update schedules set next_run_at=?,failure_count=failure_count+1,last_error=? where id=?",(nxt,message,s['id']))
-                if s.get('created_by'):
-                    org_id=self.target_organization(t['id'])
-                    self.add_notification(org_id,s['created_by'],'schedule_failure','Recurring assessment blocked',message,{'schedule_id':s['id'],'scan_profile_id':s.get('scan_profile_id')})
+            interval=max(60,int(s['interval_minutes']))
+            nxt=(datetime.now(timezone.utc)+timedelta(minutes=interval)).isoformat()
+            if not t:
+                with self.conn() as c:c.execute("update schedules set enabled=0,last_error=? where id=?",("Schedule disabled: target no longer exists",s['id']))
                 continue
-            policy=named['policy'] if named else self.get_project_policy(t['project_id'])
+            org_id=self.target_organization(t['id'])
+            project=self.get_project(t['project_id'],org_id) if org_id else None
+            named=self.get_scan_profile(s.get('scan_profile_id')) if s.get('scan_profile_id') else None
             mode=named['scan_mode'] if named else s['profile']
+            block=None
+            if not org_id or not project:block="Schedule blocked: workspace or project is unavailable"
+            elif project.get('status')=='archived':block="Schedule blocked: project is archived"
+            elif not t.get('authorized'):block="Schedule blocked: target authorization is not active"
+            elif s.get('scan_profile_id') and (not named or not named.get('active')):block="Schedule blocked: bound scan profile is inactive or missing"
+            elif mode=='lab' and not t.get('verified'):block="Schedule blocked: Lab mode requires verified ownership"
+            else:
+                usage=self.organization_scan_usage(org_id)
+                quota=max(1,int(self.system_setting('scan_quota_per_day',100)))
+                concurrent=max(1,int(self.system_setting('max_concurrent_scans_per_org',3)))
+                if usage['last_24h']>=quota:block=f"Schedule deferred: daily workspace scan quota ({quota}) reached"
+                elif usage['active']>=concurrent:block=f"Schedule deferred: concurrent workspace scan limit ({concurrent}) reached"
+            if block:
+                with self.conn() as c:c.execute("update schedules set next_run_at=?,failure_count=failure_count+1,last_error=? where id=?",(nxt,block,s['id']))
+                if s.get('created_by') and org_id:
+                    self.add_notification(org_id,s['created_by'],'schedule_failure','Recurring assessment blocked',block,{'schedule_id':s['id'],'scan_profile_id':s.get('scan_profile_id')})
+                processed+=1;continue
+            policy=named['policy'] if named else self.get_project_policy(t['project_id'])
             scan=self.create_scan(t['id'],t['url'],mode,s['created_by'],policy,named['id'] if named else None)
             self.enqueue_job('scan',{'scan_id':scan['id'],'target_id':t['id'],'schedule_id':s['id']})
             self.create_schedule_run(s['id'],scan['id'])
-            nxt=(datetime.now(timezone.utc)+timedelta(minutes=s['interval_minutes'])).isoformat()
             with self.conn() as c:c.execute("update schedules set next_run_at=?,last_run_at=?,last_scan_id=?,run_count=run_count+1,last_error=null where id=?",(nxt,self.now(),scan['id'],s['id']))
-        return len(rows)
-    # ZAP / audit
+            processed+=1
+        return processed
+
     def save_zap_import(self,scan_id,filename,items,comparison,created_by):
         x={'id':self._id(),'scan_id':scan_id,'filename':filename,'items_json':json.dumps(items),'comparison_json':json.dumps(comparison),'created_by':created_by,'created_at':self.now()}
         with self.conn() as c:c.execute("insert into zap_imports values(?,?,?,?,?,?,?)",tuple(x.values()))
