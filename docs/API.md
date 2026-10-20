@@ -31,6 +31,15 @@ All authenticated mutation endpoints use the HttpOnly session cookie plus `X-CSR
 
 Target metadata includes business criticality, environment, tags, accountable `owner_user_id` and operational notes.
 
+## Target preflight
+
+- `GET /api/v1/targets/:id/preflight` — latest and recent diagnostic history
+- `POST /api/v1/targets/:id/preflight` — run a bounded non-destructive setup diagnostic for `quick`, `standard` or `lab`
+
+Preflight validates the target safety policy, DNS, HTTP reachability, safe redirects, assessable content, HTTPS/TLS evidence, selected-profile eligibility and the bounded response budget. HTTP 401/403/429/503 conditions are surfaced as warnings rather than bypassed. Lab remains blocked until ownership verification succeeds.
+
+Manual scan creation reuses a compatible recent preflight or runs one server-side before queueing. A `BLOCKED` result prevents queue creation.
+
 ## Ownership verification
 - `POST /api/v1/targets/:id/verification`
 - `POST /api/v1/verifications/:id/check`
