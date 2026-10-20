@@ -234,3 +234,10 @@ Every PDF, HTML or JSON report export records actor, scan, format, byte size, ti
 - `GET /health`
 
 The endpoint exposes only public-safe service, database-engine and queue-engine status. Detailed workers, jobs, audit records and security telemetry remain authenticated.
+
+
+### SLA escalation operations
+
+- `GET /api/v1/portfolio/escalations`
+
+The worker evaluates overdue active issues and creates daily-deduplicated escalation evidence. In-app/email delivery respects user preferences. Signed webhook subscribers may receive `finding.overdue`.
