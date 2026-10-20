@@ -244,3 +244,28 @@ def test_workspace_scan_cancel_and_rerun_preserve_policy_and_scope():
         assert rerun_body["rerun_of"]==scan["id"]
         policy=app.extensions["repo"].scan_policy(rerun_body["id"])
         assert policy["max_pages"]==7 and policy["max_depth"]==1 and policy["request_delay_ms"]==250
+
+
+def test_exposure_map_is_real_and_workspace_scoped():
+    with tempfile.TemporaryDirectory() as d:
+        app=build(os.path.join(d,"exposure.sqlite3"));owner_client=app.test_client();other_client=app.test_client()
+        signup=owner_client.post("/api/v1/auth/signup",json={"name":"Owner","email":"owner@example.com","password":"correct-horse-battery","organization_name":"Acme"})
+        ident=signup.get_json()["user"];repo=app.extensions["repo"]
+        p=repo.create_project("Customer Portal","",ident["organization_id"],ident["user_id"])
+        t=repo.create_target(p["id"],"https://example.com/","Portal",True,True,ident["user_id"],"critical","production",["customer-facing"])
+        repo.update_target_metadata(t["id"],ident["organization_id"],{"owner_user_id":ident["user_id"]})
+        s=repo.create_scan(t["id"],t["url"],"standard",ident["user_id"],{})
+        repo.add_assets(s["id"],t["id"],[Asset("https://example.com/account","html",200,"text/html","Account",1,1200,"https://example.com/",{})])
+        repo.add_findings(s["id"],[issue()]);repo.sync_finding_states(s["id"])
+        response=owner_client.get("/api/v1/exposure-map")
+        assert response.status_code==200
+        data=response.get_json()
+        assert data["summary"]["projects"]==1 and data["summary"]["targets"]==1
+        assert data["summary"]["assets"]==1 and data["summary"]["active_issues"]==1
+        assert any(n["type"]=="issue" and n["risk_score"]>=80 for n in data["nodes"])
+        assert any(e["type"]=="has_issue" for e in data["edges"])
+
+        other=other_client.post("/api/v1/auth/signup",json={"name":"Other","email":"other@example.com","password":"correct-horse-battery","organization_name":"Other"})
+        assert other.status_code==201
+        isolated=other_client.get("/api/v1/exposure-map").get_json()
+        assert isolated["summary"]["targets"]==0 and isolated["summary"]["active_issues"]==0
