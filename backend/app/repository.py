@@ -122,7 +122,7 @@ class Repository:
         with self.conn() as c:
             c.execute("""insert into users(id,email,name,password_hash,active,email_verified,failed_logins,locked_until,last_login_at,created_at,mfa_enabled,mfa_secret)
             values(?,?,?,?,1,0,0,null,null,?,0,null)""",(uid,email.lower(),name,password_hash,now))
-            c.execute("insert into organizations values(?,?,?)",(oid,org_name,now))
+            c.execute("insert into organizations(id,name,created_at,active) values(?,?,?,1)",(oid,org_name,now))
             c.execute("insert into memberships values(?,?,?,?,?)",(mid,oid,uid,"owner",now))
         return {"user_id":uid,"organization_id":oid}
     def create_bootstrap_owner(self,email,name,password_hash):
