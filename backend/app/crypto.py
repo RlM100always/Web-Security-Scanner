@@ -24,3 +24,25 @@ def verify_password(password: str, stored: str) -> bool:
 
 def token_hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
+
+
+def encrypt_secret(value: str, key: str | None) -> str:
+    if not value:
+        return value
+    if not key:
+        return "plain$"+value
+    from cryptography.fernet import Fernet
+    token=Fernet(key.encode()).encrypt(value.encode()).decode()
+    return "fernet$"+token
+
+def decrypt_secret(value: str | None, key: str | None) -> str:
+    if not value:
+        return ""
+    if value.startswith("fernet$"):
+        if not key:
+            raise ValueError("APP_ENCRYPTION_KEY is required to decrypt protected secrets")
+        from cryptography.fernet import Fernet
+        return Fernet(key.encode()).decrypt(value.split("$",1)[1].encode()).decode()
+    if value.startswith("plain$"):
+        return value.split("$",1)[1]
+    return value
