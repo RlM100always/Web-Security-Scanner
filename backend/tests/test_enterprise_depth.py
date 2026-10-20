@@ -271,3 +271,54 @@ def test_exposure_map_is_real_and_workspace_scoped():
         assert other.status_code==201
         isolated=other_client.get("/api/v1/exposure-map").get_json()
         assert isolated["summary"]["targets"]==0 and isolated["summary"]["active_issues"]==0
+
+
+def test_stale_recovery_resolves_already_completed_domain_operations():
+    with tempfile.TemporaryDirectory() as d:
+        r=Repository(os.path.join(d,"terminal-recovery.sqlite3"));r.init_schema()
+        owner=r.create_signup("owner@example.com","Owner",hash_password("correct-horse-battery"),"Acme")
+        p=r.create_project("Production","",owner["organization_id"],owner["user_id"])
+        t=r.create_target(p["id"],"https://example.com/","Portal",True,True,owner["user_id"])
+
+        scan=r.create_scan(t["id"],t["url"],"quick",owner["user_id"],{})
+        job=r.enqueue_job("scan",{"scan_id":scan["id"],"target_id":t["id"]})
+        claimed=r.claim_job("dead-worker:123");assert claimed["id"]==job["id"]
+        stale=(datetime.now(timezone.utc)-timedelta(minutes=30)).isoformat()
+        r.update_scan(scan["id"],status="COMPLETED",stage="COMPLETED",progress=100,completed_at=r.now())
+        with r.conn() as conn:conn.execute("update jobs set locked_at=? where id=?",(stale,job["id"]))
+        result=r.recover_stale_jobs(10)
+        assert job["id"] in result["resolved"]
+        stored=next(x for x in r.admin_list_jobs() if x["id"]==job["id"])
+        assert stored["status"]=="COMPLETED"
+
+        endpoint=r.create_webhook_endpoint(owner["organization_id"],"SOC","https://example.com/hooks","ciphertext",["scan.completed"],owner["user_id"])
+        delivery=r.create_webhook_delivery(endpoint["id"],"scan.completed",{"event":"scan.completed","data":{}})
+        webhook_job=r.enqueue_job("webhook",{"delivery_id":delivery["id"]},max_attempts=5)
+        claimed=r.claim_job("dead-worker:124");assert claimed["id"]==webhook_job["id"]
+        r.mark_webhook_delivery_success(delivery["id"],204,"")
+        with r.conn() as conn:conn.execute("update jobs set locked_at=? where id=?",(stale,webhook_job["id"]))
+        result=r.recover_stale_jobs(10)
+        assert webhook_job["id"] in result["resolved"]
+        stored=next(x for x in r.admin_list_jobs() if x["id"]==webhook_job["id"])
+        assert stored["status"]=="COMPLETED"
+
+def test_exhausted_stale_scheduled_scan_finalizes_schedule_history():
+    with tempfile.TemporaryDirectory() as d:
+        r=Repository(os.path.join(d,"schedule-stale.sqlite3"));r.init_schema()
+        owner=r.create_signup("owner@example.com","Owner",hash_password("correct-horse-battery"),"Acme")
+        p=r.create_project("Production","",owner["organization_id"],owner["user_id"])
+        t=r.create_target(p["id"],"https://example.com/","Portal",True,True,owner["user_id"])
+        schedule=r.create_schedule(t["id"],"standard",1440,owner["user_id"],"Daily",True)
+        scan=r.run_schedule_now(schedule["id"],owner["organization_id"],owner["user_id"])
+        job=next(x for x in r.admin_list_jobs() if x["payload"].get("scan_id")==scan["id"])
+        claimed=r.claim_job("dead-worker:125");assert claimed["id"]==job["id"]
+        stale=(datetime.now(timezone.utc)-timedelta(minutes=30)).isoformat()
+        with r.conn() as conn:
+            conn.execute("update jobs set locked_at=?,attempts=max_attempts where id=?",(stale,job["id"]))
+            conn.execute("update scans set status='SCANNING',stage='SCANNING',progress=50 where id=?",(scan["id"],))
+        result=r.recover_stale_jobs(10)
+        assert job["id"] in result["failed"]
+        history=r.schedule_history(schedule["id"],owner["organization_id"])
+        assert history[0]["status"]=="FAILED" and history[0]["completed_at"]
+        notifications=r.list_notifications(owner["organization_id"],owner["user_id"])
+        assert any(n["type"]=="schedule_failure" and n["meta"].get("scan_id")==scan["id"] for n in notifications)
