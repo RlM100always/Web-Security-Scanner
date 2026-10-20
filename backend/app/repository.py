@@ -179,6 +179,16 @@ class Repository:
             self._ensure_column(c,"organizations","active","integer not null default 1")
             self._ensure_column(c,"scans","cancel_requested","integer not null default 0")
             self._ensure_column(c,"scans","policy_json","text")
+            self._ensure_column(c,"report_exports","target_url_snapshot","text")
+            self._ensure_column(c,"report_exports","score_snapshot","integer")
+            self._ensure_column(c,"report_exports","profile_snapshot","text")
+            self._ensure_column(c,"report_exports","scan_completed_at_snapshot","text")
+            c.execute("""update report_exports set
+              target_url_snapshot=coalesce(target_url_snapshot,(select target_url from scans where scans.id=report_exports.scan_id)),
+              score_snapshot=coalesce(score_snapshot,(select score from scans where scans.id=report_exports.scan_id)),
+              profile_snapshot=coalesce(profile_snapshot,(select profile from scans where scans.id=report_exports.scan_id)),
+              scan_completed_at_snapshot=coalesce(scan_completed_at_snapshot,(select completed_at from scans where scans.id=report_exports.scan_id))
+              where target_url_snapshot is null or profile_snapshot is null or scan_completed_at_snapshot is null""")
             self._ensure_column(c,"scans","scan_profile_id","text")
             self._ensure_column(c,"scans","scan_profile_name","text")
             self._ensure_column(c,"scans","scan_profile_version","integer")
@@ -1686,15 +1696,29 @@ class Repository:
 
     # report export evidence ledger
     def record_report_export(self,org_id,scan_id,fmt,user_id,sha256,size_bytes):
+        scan=self.get_scan(scan_id,org_id)
+        if not scan:raise ValueError("Scan not found for report export")
         row={'id':self._id(),'organization_id':org_id,'scan_id':scan_id,'format':fmt.upper(),'user_id':user_id,
-             'sha256':sha256,'size_bytes':int(size_bytes),'created_at':self.now()}
-        with self.conn() as c:c.execute("insert into report_exports values(?,?,?,?,?,?,?,?)",tuple(row.values()))
+             'sha256':sha256,'size_bytes':int(size_bytes),'created_at':self.now(),
+             'target_url_snapshot':scan.get('target_url'),'score_snapshot':scan.get('score'),
+             'profile_snapshot':scan.get('profile'),'scan_completed_at_snapshot':scan.get('completed_at')}
+        with self.conn() as c:c.execute("""insert into report_exports(
+          id,organization_id,scan_id,format,user_id,sha256,size_bytes,created_at,
+          target_url_snapshot,score_snapshot,profile_snapshot,scan_completed_at_snapshot)
+          values(?,?,?,?,?,?,?,?,?,?,?,?)""",
+          (row['id'],row['organization_id'],row['scan_id'],row['format'],row['user_id'],row['sha256'],row['size_bytes'],row['created_at'],
+           row['target_url_snapshot'],row['score_snapshot'],row['profile_snapshot'],row['scan_completed_at_snapshot']))
         return row
 
     def list_report_exports(self,org_id,limit=200):
         with self.conn() as c:
-            return [dict(r) for r in c.execute("""select e.*,u.name user_name,u.email user_email,s.target_url,s.score,s.profile
-              from report_exports e join users u on u.id=e.user_id join scans s on s.id=e.scan_id
+            return [dict(r) for r in c.execute("""select e.*,
+              coalesce(u.name,'Former user') user_name,coalesce(u.email,'') user_email,
+              coalesce(s.target_url,e.target_url_snapshot) target_url,
+              coalesce(s.score,e.score_snapshot) score,
+              coalesce(s.profile,e.profile_snapshot) profile,
+              coalesce(s.completed_at,e.scan_completed_at_snapshot) scan_completed_at
+              from report_exports e left join users u on u.id=e.user_id left join scans s on s.id=e.scan_id
               where e.organization_id=? order by e.created_at desc limit ?""",(org_id,limit))]
 
     # enterprise access certification
