@@ -185,3 +185,44 @@ See:
 - `docs/SCANNER_CHECKS.md`
 - `docs/EVALUATION.md`
 - `docs/DEPLOYMENT.md`
+
+## Dedicated system administration
+
+SentinelScope has a separate global control center at:
+
+```text
+/admin
+```
+
+Workspace `Owner/Admin` permissions do not automatically grant system-administrator access. Bootstrap system administrators explicitly:
+
+```env
+SYSTEM_ADMIN_EMAILS=admin@example.com
+```
+
+An existing user can also be promoted from the operator CLI:
+
+```bash
+python backend/manage.py promote-admin admin@example.com
+python backend/manage.py list-admins
+```
+
+The system-admin control center includes:
+
+- global platform overview and health metrics
+- all users, verification/MFA state and account enable/disable
+- grant/revoke system-admin access with last-admin protection
+- all workspaces with suspend/reactivate controls
+- all scans with cooperative cancellation
+- persistent SQLite job queue: retry, cancel and cleanup
+- worker heartbeat and online/offline visibility
+- recent login attempts and locked-user security events
+- global audit trail
+- public-registration and maintenance-mode controls
+- platform name, maintenance message and admin banner settings
+- global in-app broadcast notifications
+- SMTP diagnostic email
+- platform SQLite backup creation/download
+- runtime, database and Prometheus-style metrics
+
+System-admin access is checked by the API, not only hidden in the interface.
