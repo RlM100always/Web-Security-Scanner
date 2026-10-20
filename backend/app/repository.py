@@ -119,6 +119,17 @@ class Repository:
             where s.token_hash=? and s.revoked_at is null and s.expires_at>? and u.active=1""",(token_hash,now)).fetchone()
             if r:c.execute("update sessions set last_seen_at=? where id=?",(now,r["session_id"]))
         return dict(r) if r else None
+    def update_user_password(self,user_id,password_hash):
+        with self.conn() as c:c.execute("update users set password_hash=? where id=?",(password_hash,user_id))
+
+    def list_sessions(self,user_id):
+        with self.conn() as c:
+            return [dict(r) for r in c.execute("""select id,created_at,last_seen_at,user_agent,ip,expires_at,revoked_at
+            from sessions where user_id=? order by created_at desc""",(user_id,))]
+
+    def revoke_other_sessions(self,user_id,current_session_id):
+        with self.conn() as c:c.execute("update sessions set revoked_at=? where user_id=? and id<>? and revoked_at is null",(self.now(),user_id,current_session_id))
+
     def revoke_session(self,session_id):
         with self.conn() as c:c.execute("update sessions set revoked_at=? where id=?",(self.now(),session_id))
     def list_memberships_for_user(self,user_id):
@@ -184,6 +195,22 @@ class Repository:
         with self.conn() as c:r=c.execute(q,args).fetchone()
         if not r:return None
         x=dict(r);x['authorized']=bool(x['authorized']);x['verified']=bool(x['verified']);return x
+    def delete_target(self,target_id,org_id):
+        with self.conn() as c:
+            row=c.execute("""select t.id from targets t join projects p on p.id=t.project_id
+            where t.id=? and p.organization_id=?""",(target_id,org_id)).fetchone()
+            if not row:return False
+            scan_ids=[r[0] for r in c.execute("select id from scans where target_id=?",(target_id,))]
+            for sid in scan_ids:
+                c.execute("delete from findings where scan_id=?",(sid,))
+                c.execute("delete from scan_events where scan_id=?",(sid,))
+                c.execute("delete from zap_imports where scan_id=?",(sid,))
+                c.execute("delete from scans where id=?",(sid,))
+            c.execute("delete from schedules where target_id=?",(target_id,))
+            c.execute("delete from target_verifications where target_id=?",(target_id,))
+            c.execute("delete from targets where id=?",(target_id,))
+        return True
+
     def set_target_verified(self,target_id,verified=True):
         with self.conn() as c:c.execute("update targets set verified=? where id=?",(int(verified),target_id))
     # verification
@@ -268,6 +295,22 @@ class Repository:
         return x
     def list_schedules(self,org_id):
         with self.conn() as c:return [dict(r) for r in c.execute("""select s.* from schedules s join targets t on t.id=s.target_id join projects p on p.id=t.project_id where p.organization_id=? order by s.created_at desc""",(org_id,))]
+    def set_schedule_enabled(self,schedule_id,org_id,enabled):
+        with self.conn() as c:
+            row=c.execute("""select s.id from schedules s join targets t on t.id=s.target_id join projects p on p.id=t.project_id
+            where s.id=? and p.organization_id=?""",(schedule_id,org_id)).fetchone()
+            if not row:return False
+            c.execute("update schedules set enabled=? where id=?",(int(enabled),schedule_id))
+        return True
+
+    def delete_schedule(self,schedule_id,org_id):
+        with self.conn() as c:
+            row=c.execute("""select s.id from schedules s join targets t on t.id=s.target_id join projects p on p.id=t.project_id
+            where s.id=? and p.organization_id=?""",(schedule_id,org_id)).fetchone()
+            if not row:return False
+            c.execute("delete from schedules where id=?",(schedule_id,))
+        return True
+
     def enqueue_due_schedules(self):
         now=self.now()
         with self.conn() as c:rows=[dict(r) for r in c.execute("select * from schedules where enabled=1 and next_run_at<=?",(now,))]
