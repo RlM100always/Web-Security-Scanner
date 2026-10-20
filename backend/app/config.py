@@ -17,6 +17,7 @@ class Config:
     MAX_ZAP_UPLOAD_BYTES=int(os.getenv("MAX_ZAP_UPLOAD_BYTES","5000000"))
     MAX_BACKUP_UPLOAD_BYTES=int(os.getenv("MAX_BACKUP_UPLOAD_BYTES",str(512*1024*1024)))
     TRUST_PROXY_HEADERS=os.getenv("TRUST_PROXY_HEADERS","0")=="1"
+    TRUST_PROXY_HOPS=max(1,int(os.getenv("TRUST_PROXY_HOPS","1")))
 
     EMAIL_FROM=os.getenv("EMAIL_FROM","SentinelScope <no-reply@localhost>")
     SMTP_HOST=os.getenv("SMTP_HOST","")
