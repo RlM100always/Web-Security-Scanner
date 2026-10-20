@@ -823,6 +823,24 @@ class Repository:
         return x
     def list_schedules(self,org_id):
         with self.conn() as c:return [dict(r) for r in c.execute("""select s.* from schedules s join targets t on t.id=s.target_id join projects p on p.id=t.project_id where p.organization_id=? order by s.created_at desc""",(org_id,))]
+    def update_schedule(self,schedule_id,org_id,updates):
+        allowed={'enabled','profile','interval_minutes','name','notify_on_failure'}
+        sets=[];vals=[]
+        with self.conn() as c:
+            row=c.execute("""select s.id from schedules s join targets t on t.id=s.target_id join projects p on p.id=t.project_id
+              where s.id=? and p.organization_id=?""",(schedule_id,org_id)).fetchone()
+            if not row:return None
+            for k,v in updates.items():
+                if k not in allowed:continue
+                if k in {'enabled','notify_on_failure'}:v=int(bool(v))
+                sets.append(k+"=?");vals.append(v)
+            if 'interval_minutes' in updates:
+                sets.append("next_run_at=?");vals.append((datetime.now(timezone.utc)+timedelta(minutes=int(updates['interval_minutes']))).isoformat())
+            if sets:
+                vals.append(schedule_id);c.execute("update schedules set "+",".join(sets)+" where id=?",vals)
+            out=c.execute("select * from schedules where id=?",(schedule_id,)).fetchone()
+        return dict(out) if out else None
+
     def set_schedule_enabled(self,schedule_id,org_id,enabled):
         with self.conn() as c:
             row=c.execute("""select s.id from schedules s join targets t on t.id=s.target_id join projects p on p.id=t.project_id
