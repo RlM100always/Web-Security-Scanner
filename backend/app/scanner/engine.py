@@ -3,7 +3,7 @@ from urllib.parse import urlsplit
 from bs4 import BeautifulSoup
 from .http_client import SafeHttpClient
 from .crawler import crawl
-from .checks import run_page_checks,run_transport_checks,SEV_WEIGHT,mk
+from .checks import run_page_checks,run_transport_checks,run_origin_checks,SEV_WEIGHT,mk
 from .models import ScanResult,Asset
 from ..security.targets import validate_target
 
@@ -30,7 +30,9 @@ def _asset(url,resp,depth,source):
         except Exception:pass
     return Asset(url=url,kind=kind,status_code=getattr(resp,"status_code",None),content_type=ctype,title=title,depth=depth,
                  size_bytes=len(getattr(resp,"content",b"") or b""),source_url=source,
-                 metadata={"server":resp.headers.get("Server"),"cache_control":resp.headers.get("Cache-Control")})
+                 metadata={"server":resp.headers.get("Server"),"cache_control":resp.headers.get("Cache-Control"),
+                           "redirects":getattr(resp,"_sentinel_redirects",[]),"truncated":getattr(resp,"_sentinel_truncated",False),
+                           "elapsed_ms":getattr(resp,"_sentinel_elapsed_ms",None)})
 
 def normalize_policy(profile,policy=None):
     base=dict(PROFILE_DEFAULTS.get(profile,PROFILE_DEFAULTS["standard"]))
@@ -48,7 +50,9 @@ def run_scan(target,profile="standard",allow_private=False,progress=None,policy=
     policy=normalize_policy(profile,policy)
     client=SafeHttpClient(allow_private=allow_private)
     findings=[];assets=[];emit("VALIDATING_TARGET",5,"Target validated")
-    findings.extend(run_transport_checks(target,client));emit("DISCOVERING",18,"Transport checks complete")
+    findings.extend(run_transport_checks(target,client));emit("DISCOVERING",15,"Transport checks complete")
+    if profile!="quick":findings.extend(run_origin_checks(target,client))
+    emit("DISCOVERING",22,"Origin-level configuration checks complete")
     pages=crawl(target,client,policy["max_pages"],policy["max_depth"],policy["include_paths"],policy["exclude_paths"],policy["request_delay_ms"])
     emit("SCANNING",30,f"Discovered {len(pages)} in-scope asset(s)")
     if not pages:
