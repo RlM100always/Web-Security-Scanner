@@ -356,14 +356,7 @@ class Repository:
         q="select * from projects";args=[]
         if org_id:q+=" where organization_id=?";args=[org_id]
         q+=" order by created_at desc"
-        with self.conn() as c:rows=[dict(r) for r in c.execute(q,args)]
-        for r in rows:
-            if 'authorized' in r:r['authorized']=bool(r['authorized'])
-            if 'verified' in r:r['verified']=bool(r['verified'])
-            if 'tags_json' in r:
-                try:r['tags']=json.loads(r.pop('tags_json') or '[]')
-                except Exception:r['tags']=[]
-        return rows
+        with self.conn() as c:return [dict(r) for r in c.execute(q,args)]
     def get_project(self,id,org_id=None):
         q="select * from projects where id=?";args=[id]
         if org_id:q+=" and organization_id=?";args.append(org_id)
@@ -403,7 +396,10 @@ class Repository:
         if org_id:q+=" and p.organization_id=?";args.append(org_id)
         q+=" order by t.created_at desc"
         with self.conn() as c:out=[dict(r) for r in c.execute(q,args)]
-        for x in out:x['authorized']=bool(x['authorized']);x['verified']=bool(x['verified'])
+        for x in out:
+            x['authorized']=bool(x['authorized']);x['verified']=bool(x['verified'])
+            try:x['tags']=json.loads(x.pop('tags_json') or '[]')
+            except Exception:x['tags']=[]
         return out
     def get_target(self,id,org_id=None):
         q="select t.* from targets t join projects p on p.id=t.project_id where t.id=?";args=[id]
