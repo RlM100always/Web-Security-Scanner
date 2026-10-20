@@ -8,6 +8,7 @@ import requests
 from .scanner.engine import run_scan
 from .mailer import send_email
 from .crypto import decrypt_secret
+from .security.targets import validate_target
 
 class ScanCancelled(Exception): pass
 
@@ -81,8 +82,9 @@ def process_webhook(repo, config, payload):
     try:
         secret=decrypt_secret(delivery.get("secret_ciphertext") or "",getattr(config,"APP_ENCRYPTION_KEY",""))
         signature=hmac.new(secret.encode(),raw,hashlib.sha256).hexdigest()
+        safe_url=validate_target(delivery["url"],getattr(config,"SCANNER_ALLOW_PRIVATE",False))
         response=requests.post(
-            delivery["url"],data=raw,timeout=10,allow_redirects=False,
+            safe_url,data=raw,timeout=10,allow_redirects=False,
             headers={
               "Content-Type":"application/json",
               "User-Agent":"SentinelScope-Webhooks/1.0",
