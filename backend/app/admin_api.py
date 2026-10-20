@@ -112,6 +112,14 @@ def create_admin_blueprint():
         if not repo().admin_cancel_job(job_id):return {"error":"Only queued jobs can be cancelled"},409
         audit("SYSTEM_JOB_CANCELLED","job",job_id);return {"ok":True}
 
+    @bp.post("/jobs/recover-stale")
+    @require_system_admin
+    def jobs_recover_stale():
+        d=request.get_json(silent=True) or {};minutes=max(1,min(int(d.get("stale_minutes",10)),1440))
+        result=repo().recover_stale_jobs(minutes)
+        audit("SYSTEM_STALE_JOBS_RECOVERED","job",None,{"stale_minutes":minutes,**{k:len(v) if isinstance(v,list) else v for k,v in result.items()}})
+        return {"ok":True,**result}
+
     @bp.delete("/jobs/completed")
     @require_system_admin
     def jobs_purge():
