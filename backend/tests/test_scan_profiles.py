@@ -164,3 +164,19 @@ def test_schedule_rebind_clears_configuration_drift_error():
         r.update_schedule(s["id"],owner["organization_id"],{"scan_profile_id":p2["id"],"profile":"standard"})
         current=r.get_schedule(s["id"],owner["organization_id"])
         assert current["last_error"] is None
+
+
+def test_profile_active_invariant():
+    with tempfile.TemporaryDirectory() as d:
+        r,owner,p,t=setup(os.path.join(d,'active-profile.sqlite3'))
+        first=r.ensure_default_scan_profile(p['id'],owner['user_id'])
+        raised=False
+        try:
+            r.update_scan_profile(first['id'],p['id'],{'active':False},owner['user_id'])
+        except ValueError:
+            raised=True
+        assert raised is True
+        second=r.create_scan_profile(p['id'],'Secondary','Fallback','quick',{'max_pages':1,'max_depth':0,'request_delay_ms':100,'include_paths':[],'exclude_paths':[],'disabled_checks':[]},False,owner['user_id'])
+        changed=r.update_scan_profile(first['id'],p['id'],{'active':False},owner['user_id'])
+        assert changed['active'] is False
+        assert r.get_scan_profile(second['id'])['is_default'] is True
