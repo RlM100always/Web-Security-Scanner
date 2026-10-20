@@ -79,7 +79,7 @@ export default function App(){
 
       {nav==='Scans'&&<section className="content"><Panel title="Scan history"><ScanTable scans={scans} onOpen={async(s:any)=>{setSelected(await api('/scans/'+s.id));setNav('Findings')}}/></Panel></section>}
 
-      {nav==='Findings'&&<section className="content">{selected?<ScanDetails scan={selected} onZap={()=>setModal('zap:'+selected.id)}/>:<Empty icon={<Radar/>} title="Select a scan" text="Open any scan from Scan history to view evidence, remediation, standards mapping and comparison."/ >}</section>}
+      {nav==='Findings'&&<section className="content">{selected?<ScanDetails scan={selected} onZap={()=>setModal('zap:'+selected.id)}/>:<Empty icon={<Radar/>} title="Select a scan" text="Open any scan from Scan history to view evidence, remediation, standards mapping and comparison."/>}</section>}
 
       {nav==='Reports'&&<section className="content"><Panel title="Report center"><p className="muted sectionPad">Download audit-ready PDF, browser-friendly HTML or machine-readable JSON reports.</p><ScanTable scans={scans.filter(s=>s.status==='COMPLETED')} onOpen={async(s:any)=>{setSelected(await api('/scans/'+s.id));setNav('Findings')}}/></Panel></section>}
 
