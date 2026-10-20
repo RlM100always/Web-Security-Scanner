@@ -382,7 +382,9 @@ def create_blueprint():
         d=request.get_json(force=True) or {};name=(d.get('name') or '').strip()
         if not name:return {'error':'Project name is required'},400
         tags=[str(x).strip()[:48] for x in d.get('tags',[]) if str(x).strip()][:20] if isinstance(d.get('tags'),list) else []
-        p=repo().create_project(name,d.get('description',''),ident['organization_id'],ident['user_id'],tags);audit('PROJECT_CREATED','project',p['id'],{'name':name,'tags':tags});return p,201
+        p=repo().create_project(name,d.get('description',''),ident['organization_id'],ident['user_id'],tags)
+        repo().ensure_default_scan_profile(p['id'],ident['user_id'])
+        audit('PROJECT_CREATED','project',p['id'],{'name':name,'tags':tags});return p,201
 
     @bp.patch('/projects/<project_id>')
     @require_role('analyst')
@@ -435,6 +437,86 @@ def create_blueprint():
         saved=repo().set_project_policy(project_id,policy,ident['user_id'])
         audit('PROJECT_SCAN_POLICY_UPDATED','project',project_id,saved);return saved
 
+    @bp.route('/projects/<project_id>/scan-profiles',methods=['GET','POST'])
+    @require_auth
+    def project_scan_profiles(project_id):
+        ident=current_identity();project=repo().get_project(project_id,ident['organization_id'])
+        if not project:return {'error':'Project not found'},404
+        if request.method=='GET':
+            profiles=repo().list_scan_profiles(project_id)
+            if not profiles and ROLES.get(ident['role'],0)>=ROLES['analyst']:
+                profiles=[repo().ensure_default_scan_profile(project_id,ident['user_id'])]
+            return jsonify(profiles)
+        if ROLES.get(ident['role'],0)<ROLES['analyst']:return {'error':'Analyst role required'},403
+        if project.get('status')=='archived':return {'error':'Archived projects cannot create scan profiles'},409
+        d=request.get_json(force=True) or {};name=(d.get('name') or '').strip()[:160]
+        if not name:return {'error':'Profile name is required'},400
+        mode=d.get('scan_mode','standard')
+        if mode not in {'quick','standard','lab'}:return {'error':'Invalid scan mode'},400
+        policy=d.get('policy') if isinstance(d.get('policy'),dict) else repo().get_project_policy(project_id)
+        try:
+            policy={
+              'max_pages':max(1,min(int(policy.get('max_pages',20)),200)),
+              'max_depth':max(0,min(int(policy.get('max_depth',2)),5)),
+              'request_delay_ms':max(0,min(int(policy.get('request_delay_ms',100)),5000)),
+              'include_paths':[str(x)[:200] for x in policy.get('include_paths',[])][:30],
+              'exclude_paths':[str(x)[:200] for x in policy.get('exclude_paths',[])][:30],
+              'disabled_checks':[str(x)[:120] for x in policy.get('disabled_checks',[])][:100],
+            }
+            for pattern in policy['include_paths']+policy['exclude_paths']:re.compile(pattern)
+        except Exception as e:return {'error':'Invalid scan profile policy: '+str(e)},400
+        row=repo().create_scan_profile(project_id,name,str(d.get('description') or '')[:1000],mode,policy,bool(d.get('is_default')),ident['user_id'])
+        audit('SCAN_PROFILE_CREATED','scan_profile',row['id'],{'project_id':project_id,'name':name,'version':row['version']})
+        return row,201
+
+    @bp.patch('/projects/<project_id>/scan-profiles/<profile_id>')
+    @require_role('analyst')
+    def project_scan_profile_update(project_id,profile_id):
+        ident=current_identity();project=repo().get_project(project_id,ident['organization_id'])
+        if not project:return {'error':'Project not found'},404
+        if project.get('status')=='archived':return {'error':'Archived projects cannot modify scan profiles'},409
+        current=repo().get_scan_profile(profile_id)
+        if not current or current['project_id']!=project_id:return {'error':'Scan profile not found'},404
+        d=request.get_json(force=True) or {};updates={}
+        for key in ['name','description','scan_mode','is_default','active']:
+            if key in d:updates[key]=d[key]
+        if 'scan_mode' in updates and updates['scan_mode'] not in {'quick','standard','lab'}:return {'error':'Invalid scan mode'},400
+        if 'policy' in d:
+            p=d.get('policy') or {}
+            try:
+                updates['policy']={
+                  'max_pages':max(1,min(int(p.get('max_pages',20)),200)),
+                  'max_depth':max(0,min(int(p.get('max_depth',2)),5)),
+                  'request_delay_ms':max(0,min(int(p.get('request_delay_ms',100)),5000)),
+                  'include_paths':[str(x)[:200] for x in p.get('include_paths',[])][:30],
+                  'exclude_paths':[str(x)[:200] for x in p.get('exclude_paths',[])][:30],
+                  'disabled_checks':[str(x)[:120] for x in p.get('disabled_checks',[])][:100],
+                }
+                for pattern in updates['policy']['include_paths']+updates['policy']['exclude_paths']:re.compile(pattern)
+            except Exception as e:return {'error':'Invalid scan profile policy: '+str(e)},400
+        row=repo().update_scan_profile(profile_id,project_id,updates,ident['user_id'])
+        audit('SCAN_PROFILE_UPDATED','scan_profile',profile_id,{'project_id':project_id,'version':row['version'] if row else None})
+        return row or ({'error':'Scan profile not found'},404)
+
+    @bp.post('/projects/<project_id>/scan-profiles/<profile_id>/clone')
+    @require_role('analyst')
+    def project_scan_profile_clone(project_id,profile_id):
+        ident=current_identity();project=repo().get_project(project_id,ident['organization_id'])
+        if not project:return {'error':'Project not found'},404
+        row=repo().clone_scan_profile(profile_id,project_id,ident['user_id'])
+        if not row:return {'error':'Scan profile not found'},404
+        audit('SCAN_PROFILE_CLONED','scan_profile',row['id'],{'source_profile_id':profile_id,'project_id':project_id});return row,201
+
+    @bp.delete('/projects/<project_id>/scan-profiles/<profile_id>')
+    @require_role('analyst')
+    def project_scan_profile_delete(project_id,profile_id):
+        ident=current_identity();project=repo().get_project(project_id,ident['organization_id'])
+        if not project:return {'error':'Project not found'},404
+        profiles=repo().list_scan_profiles(project_id)
+        if len([x for x in profiles if x['active']])<=1:return {'error':'At least one active scan profile must remain'},409
+        if not repo().delete_scan_profile(profile_id,project_id):return {'error':'Scan profile not found'},404
+        audit('SCAN_PROFILE_DELETED','scan_profile',profile_id,{'project_id':project_id});return {'ok':True}
+
     # Targets
     @bp.route('/targets',methods=['GET','POST'])
     @require_auth
@@ -449,7 +531,11 @@ def create_blueprint():
         if project.get('status')=='archived':return {'error':'Archived projects cannot accept new targets'},409
         try:url=validate_target(d.get('url'),current_app.config['SCANNER_ALLOW_PRIVATE'])
         except TargetValidationError as e:return {'error':str(e)},400
-        t=repo().create_target(project['id'],url,d.get('name') or url,True,False,ident['user_id'],d.get('criticality','medium'),d.get('environment','production'),d.get('tags') if isinstance(d.get('tags'),list) else []);audit('TARGET_CREATED','target',t['id'],{'url':url,'criticality':t.get('criticality'),'environment':t.get('environment')});return t,201
+        t=repo().create_target(project['id'],url,d.get('name') or url,True,False,ident['user_id'],d.get('criticality','medium'),d.get('environment','production'),d.get('tags') if isinstance(d.get('tags'),list) else [])
+        owner=d.get('owner_user_id')
+        if owner and owner not in {m['id'] for m in repo().list_members(ident['organization_id'])}:return {'error':'Target owner must be an active workspace member'},400
+        t=repo().update_target_metadata(t['id'],ident['organization_id'],{'owner_user_id':owner or ident['user_id'],'notes':str(d.get('notes') or '')[:4000]})
+        audit('TARGET_CREATED','target',t['id'],{'url':url,'criticality':t.get('criticality'),'environment':t.get('environment'),'owner_user_id':t.get('owner_user_id')});return t,201
 
     @bp.patch('/targets/<target_id>')
     @require_role('analyst')
@@ -466,9 +552,14 @@ def create_blueprint():
             updates['environment']=d['environment']
         if 'tags' in d:
             if not isinstance(d['tags'],list):return {'error':'tags must be an array'},400
-            updates['tags_json']=json.dumps([str(x).strip()[:48] for x in d['tags'] if str(x).strip()][:20])
-        if updates:repo().update_target(target_id,ident['organization_id'],updates)
-        audit('TARGET_METADATA_UPDATED','target',target_id,updates);return repo().get_target(target_id,ident['organization_id'])
+            updates['tags']=[str(x).strip()[:48] for x in d['tags'] if str(x).strip()][:20]
+        if 'owner_user_id' in d:
+            owner=d.get('owner_user_id')
+            if owner and owner not in {m['id'] for m in repo().list_members(ident['organization_id'])}:return {'error':'Target owner must be an active workspace member'},400
+            updates['owner_user_id']=owner or None
+        if 'notes' in d:updates['notes']=str(d.get('notes') or '')[:4000]
+        saved=repo().update_target_metadata(target_id,ident['organization_id'],updates) if updates else t
+        audit('TARGET_METADATA_UPDATED','target',target_id,updates);return saved
 
     @bp.delete('/targets/<target_id>')
     @require_role('admin')
@@ -517,7 +608,11 @@ def create_blueprint():
         project=repo().get_project(t['project_id'],ident['organization_id'])
         if project and project.get('status')=='archived':return {'error':'Archived projects cannot queue assessments'},409
         if not t.get('authorized'):return {'error':'Target is not authorized'},403
-        profile=d.get('profile','standard')
+        named_profile=None
+        if d.get('scan_profile_id'):
+            named_profile=repo().get_scan_profile(d.get('scan_profile_id'))
+            if not named_profile or named_profile['project_id']!=t['project_id'] or not named_profile.get('active'):return {'error':'Active scan profile not found for this project'},404
+        profile=named_profile['scan_mode'] if named_profile else d.get('profile','standard')
         if profile not in {'quick','standard','lab'}:return {'error':'Invalid profile'},400
         if profile=='lab' and not t.get('verified'):return {'error':'Lab profile requires verified ownership'},403
         if ident.get('auth_method')=='api_key' and 'scan' not in set(ident.get('api_scopes') or []) and 'admin' not in set(ident.get('api_scopes') or []):
@@ -527,7 +622,7 @@ def create_blueprint():
         concurrent=max(1,int(repo().system_setting('max_concurrent_scans_per_org',3)))
         if usage['last_24h']>=quota:return {'error':'Daily scan quota reached','quota':quota,'usage':usage},429
         if usage['active']>=concurrent:return {'error':'Concurrent scan limit reached','limit':concurrent,'usage':usage},429
-        policy=repo().get_project_policy(t['project_id'])
+        policy=dict(named_profile['policy']) if named_profile else repo().get_project_policy(t['project_id'])
         override=d.get('policy') if isinstance(d.get('policy'),dict) else {}
         try:
             if 'max_pages' in override:override['max_pages']=max(1,min(int(override['max_pages']),200))
@@ -544,8 +639,8 @@ def create_blueprint():
         except (ValueError,TypeError,re.error) as e:return {'error':'Invalid per-scan policy: '+str(e)},400
         for key in ['max_pages','max_depth','request_delay_ms','include_paths','exclude_paths','disabled_checks']:
             if key in override:policy[key]=override[key]
-        s=repo().create_scan(t['id'],t['url'],profile,ident['user_id'],policy);job=repo().enqueue_job('scan',{'scan_id':s['id'],'target_id':t['id']})
-        audit('SCAN_QUEUED','scan',s['id'],{'profile':profile,'job_id':job['id'],'policy':policy});s['job_id']=job['id'];s['usage']=usage;return s,202
+        s=repo().create_scan(t['id'],t['url'],profile,ident['user_id'],policy,named_profile['id'] if named_profile else None);job=repo().enqueue_job('scan',{'scan_id':s['id'],'target_id':t['id']})
+        audit('SCAN_QUEUED','scan',s['id'],{'profile':profile,'scan_profile_id':named_profile['id'] if named_profile else None,'scan_profile_version':named_profile['version'] if named_profile else None,'job_id':job['id'],'policy':policy});s['job_id']=job['id'];s['usage']=usage;return s,202
 
     @bp.get('/scans/<scan_id>')
     @require_auth
@@ -768,10 +863,15 @@ def create_blueprint():
         if not t:return {'error':'Target not found'},404
         interval=int(d.get('interval_minutes') or 1440)
         if interval<60:return {'error':'Minimum recurring interval is 60 minutes'},400
-        profile=d.get('profile','standard')
+        named_profile=None
+        if d.get('scan_profile_id'):
+            named_profile=repo().get_scan_profile(d.get('scan_profile_id'))
+            if not named_profile or named_profile['project_id']!=t['project_id'] or not named_profile.get('active'):return {'error':'Active scan profile not found for this target project'},404
+        profile=named_profile['scan_mode'] if named_profile else d.get('profile','standard')
         if profile not in {'quick','standard','lab'}:return {'error':'Invalid profile'},400
         if profile=='lab' and not t.get('verified'):return {'error':'Lab profile requires verified ownership'},403
-        s=repo().create_schedule(t['id'],profile,interval,ident['user_id'],d.get('name'),d.get('notify_on_failure',True));audit('SCHEDULE_CREATED','schedule',s['id'],{'interval_minutes':interval,'name':s.get('name')});return s,201
+        s=repo().create_schedule(t['id'],profile,interval,ident['user_id'],d.get('name'),d.get('notify_on_failure',True),named_profile['id'] if named_profile else None)
+        audit('SCHEDULE_CREATED','schedule',s['id'],{'interval_minutes':interval,'name':s.get('name'),'scan_profile_id':named_profile['id'] if named_profile else None});return s,201
 
     @bp.patch('/schedules/<schedule_id>')
     @require_role('analyst')
@@ -784,6 +884,15 @@ def create_blueprint():
             interval=int(d.get('interval_minutes') or 0)
             if interval<60 or interval>525600:return {'error':'Schedule interval must be between 60 minutes and one year'},400
             updates['interval_minutes']=interval
+        if 'scan_profile_id' in d:
+            existing=repo().get_schedule(schedule_id,ident['organization_id'])
+            if not existing:return {'error':'Schedule not found'},404
+            profile_id=d.get('scan_profile_id') or None
+            if profile_id:
+                named=repo().get_scan_profile(profile_id)
+                if not named or named['project_id']!=existing['project_id'] or not named.get('active'):return {'error':'Active scan profile not found for this schedule'},404
+                updates['scan_profile_id']=profile_id;updates['profile']=named['scan_mode']
+            else:updates['scan_profile_id']=None
         if 'profile' in d:
             if d['profile'] not in {'quick','standard','lab'}:return {'error':'Invalid profile'},400
             if d['profile']=='lab':
