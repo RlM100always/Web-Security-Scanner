@@ -14,7 +14,7 @@ export default function PublicSite({path='/'}:{path?:string}){
       <div className="publicActions"><a className="textLink" href="/login">Sign in</a><a className="publicPrimary" href="/signup">Start workspace <ArrowRight/></a><button className="publicMenu" onClick={()=>setOpen(!open)} aria-label="Toggle navigation">{open?<X/>:<Menu/>}</button></div>
     </header>
     {page==='home'?<Home/>:page==='status'?<StatusPage/>:<StaticPage page={page}/>}
-    <footer className="publicFooter"><div><a className="publicBrand" href="/"><span><ShieldCheck/></span><div><b>SentinelScope</b><small>Authorised, non-destructive assessment</small></div></a><p>Designed for explainable web-security assessment, remediation tracking and repeatable evidence.</p></div><div className="footerGrid"><div><b>Platform</b><a href="/product">Product</a><a href="/features">Features</a><a href="/workflow">Workflow</a><a href="/solutions">Solutions</a></div><div><b>Enterprise</b><a href="/enterprise">Enterprise controls</a><a href="/integrations">Integrations</a><a href="/reports">Reporting</a><a href="/deployment">Deployment model</a></div><div><b>Developers</b><a href="/developers">Developer platform</a><a href="/api">API access</a><a href="/architecture">Architecture</a><a href="/scanner-checks">Scanner checks</a></div><div><b>Trust</b><a href="/trust">Trust center</a><a href="/status">Platform status</a><a href="/security">Security model</a><a href="/responsible-use">Responsible use</a><a href="/standards">Standards</a></div><div><b>Workspace</b><a href="/login">Sign in</a><a href="/signup">Create account</a></div></div><small className="footerNote">Use only against systems you own or are explicitly authorised to assess. SentinelScope intentionally avoids destructive exploitation, credential attacks and denial-of-service behaviour.</small></footer>
+    <footer className="publicFooter"><div><a className="publicBrand" href="/"><span><ShieldCheck/></span><div><b>SentinelScope</b><small>Authorised, non-destructive assessment</small></div></a><p>Designed for explainable web-security assessment, remediation tracking and repeatable evidence.</p></div><div className="footerGrid"><div><b>Platform</b><a href="/product">Product</a><a href="/asset-inventory">Asset inventory</a><a href="/scan-profiles">Scan profiles</a><a href="/vulnerability-management">Issue management</a><a href="/continuous-monitoring">Continuous monitoring</a></div><div><b>Enterprise</b><a href="/enterprise">Enterprise controls</a><a href="/governance">Governance</a><a href="/integrations">Integrations</a><a href="/reports">Reporting</a><a href="/deployment">Deployment model</a></div><div><b>Learn</b><a href="/getting-started">Getting started</a><a href="/workflow">Workflow</a><a href="/methodology">Methodology</a><a href="/standards">Standards</a><a href="/research">Research</a></div><div><b>Developers</b><a href="/developers">Developer platform</a><a href="/api">API access</a><a href="/architecture">Architecture</a><a href="/scanner-checks">Scanner checks</a></div><div><b>Trust</b><a href="/trust">Trust center</a><a href="/status">Platform status</a><a href="/security">Security model</a><a href="/responsible-use">Responsible use</a><a href="/standards">Standards</a></div><div><b>Workspace</b><a href="/login">Sign in</a><a href="/signup">Create account</a></div></div><small className="footerNote">Use only against systems you own or are explicitly authorised to assess. SentinelScope intentionally avoids destructive exploitation, credential attacks and denial-of-service behaviour.</small></footer>
   </div>
 }
 
@@ -34,7 +34,7 @@ function Home(){
     <section className="publicSection tinted"><SectionHead eyebrow="SECURITY OPERATIONS" title="Built for the workflows teams actually repeat." text="Portfolio views reduce the need to open individual scans just to understand current risk."/><div className="featureGrid">{[
       ['Portfolio issue inbox','Persistent issues across targets with lifecycle state, assignment, due dates and remediation verification.',TriangleAlert],
       ['Asset inventory & drift','Latest discovered assets with status, metadata, provenance and added/removed/changed baselines.',Globe2],
-      ['Project scan policies','Reusable scope, depth, pacing, include/exclude patterns and per-check controls.',ServerCog],
+      ['Versioned scan profiles','Reusable named configurations standardise scope, depth, pacing and checks across manual and recurring assessments while preserving immutable per-scan provenance.',ServerCog],
       ['Evidence-rich scan history','Score, checks, assets, standards mapping, scan diff and ZAP comparison stay linked.',History],
       ['Workspace governance','Role-based access, invitations, sessions, MFA, API keys, audit events and quotas.',Users],
       ['System operations','Worker health, persistent queue, backups, retention, security events and platform controls.',Activity]
@@ -52,7 +52,7 @@ function ProductPreview(){
 function StaticPage({page}:{page:string}){
   const pages:any={
     product:{eyebrow:'PLATFORM',title:'One workflow from authorised target to verified remediation.',intro:'SentinelScope combines asset discovery, bounded web assessment, issue lifecycle management, reporting and operational governance in a single security workspace.',sections:[
-      ['Assess with policy, not guesswork','Project policies control crawl depth, page limits, request pacing, path scope and individual checks. Every scan keeps the policy snapshot used to produce its evidence.',Radar],
+      ['Assess with governed profiles','Project baselines and named versioned scan profiles control crawl depth, page limits, request pacing, path scope and checks. Every scan keeps immutable profile and policy provenance.',Radar],
       ['Manage findings beyond one scan','Stable fingerprints create a continuing finding record with owner, due date, status, risk reason, comments, occurrence count and detection history.',Workflow],
       ['Understand your web estate','The asset inventory shows the latest discovered surface for every target and highlights drift between completed scans.',Globe2],
       ['Operate the platform','Persistent jobs, worker heartbeat, schedules, backups, audit events, quotas, retention and system administration support repeatable operation.',ServerCog]
@@ -64,6 +64,48 @@ function StaticPage({page}:{page:string}){
       ['Evidence & reporting','Severity, confidence, evidence, impact, remediation, standards mapping, PDF/HTML/JSON reports and ZAP comparison.',FileText],
       ['Automation','Persistent SQLite queue, separate worker, SSE live progress, recurring scans, scoped expiring API keys and machine-readable exports.',Braces],
       ['Security operations','Global issue inbox, asset inventory, lifecycle triage, remediation verification, audit trail, notifications and system-admin controls.',Activity]
+    ]},
+    'asset-inventory':{eyebrow:'ATTACK SURFACE CONTEXT',title:'Know what was actually discovered, who owns it and what changed.',intro:'SentinelScope persists same-origin discovery as a working asset inventory rather than discarding crawler output after each scan.',sections:[
+      ['Persistent discovered assets','URLs, source page, depth, response status, content type, title, size, timing, redirect evidence and truncation state remain attached to scan evidence.',Globe2],
+      ['Business context','Targets carry environment, criticality, tags, accountable owner and operational notes so technical evidence can be prioritised with real context.',Users],
+      ['Drift between baselines','Successive scans identify added, removed and meaningfully changed assets while suppressing trivial response-size noise.',GitCompareArrows],
+      ['Historical provenance','Asset drill-down preserves first seen, last seen, scan score and change history without pretending crawler discovery is full internet attack-surface discovery.',History]
+    ]},
+    'scan-profiles':{eyebrow:'ASSESSMENT GOVERNANCE',title:'Reusable, versioned scan profiles without losing historical truth.',intro:'Teams should configure recurring assessment behaviour once and reuse it. SentinelScope keeps profiles editable for future work while every scan records immutable execution provenance.',sections:[
+      ['Named reusable profiles','Create Production Baseline, Release Gate, Low-impact Daily or Verified Lab configurations inside each project.',SlidersHorizontal],
+      ['Bounded configuration','Profiles control mode, maximum pages, crawl depth, pacing, include/exclude path patterns and disabled checks within platform safety caps.',ServerCog],
+      ['Version-aware execution','Editing a profile creates the next version for future runs. Completed scans retain the profile name/version and exact policy snapshot that produced their evidence.',History],
+      ['Manual and recurring reuse','The same profile can drive an ad-hoc authorised assessment or a recurring schedule, reducing configuration drift.',CalendarClock]
+    ]},
+    'vulnerability-management':{eyebrow:'ISSUE OPERATIONS',title:'Treat findings as owned security work, not disposable scan output.',intro:'Stable fingerprints connect repeated detections to one lifecycle record with accountability, deadlines, risk decisions and independent re-verification.',sections:[
+      ['Persistent lifecycle','OPEN, ACKNOWLEDGED, IN_PROGRESS, ACCEPTED_RISK, FALSE_POSITIVE and REMEDIATED states survive across individual scans.',Workflow],
+      ['Ownership & SLA','Assignments, severity-aware due dates, overdue escalation and workspace risk policy make backlog responsibility visible.',Users],
+      ['Governed exceptions','Risk acceptance and false-positive decisions require rationale; acceptance can require Owner approval and a future review date.',ShieldCheck],
+      ['Verification loop','After remediation, queue a fresh bounded assessment and record VERIFIED_FIXED or STILL_PRESENT against the same fingerprint.',GitCompareArrows]
+    ]},
+    'continuous-monitoring':{eyebrow:'CONTINUOUS ASSESSMENT',title:'Repeat the same governed assessment and know when its health changes.',intro:'Recurring schedules bind authorised targets to reusable assessment configuration and keep durable execution history rather than acting like anonymous cron jobs.',sections:[
+      ['Named schedules','Set the target, reusable scan profile, cadence and failure-notification preference with pause/resume controls.',CalendarClock],
+      ['Execution health','Track next/last run, run count, failure count, worker state and persisted run history from the workspace.',Activity],
+      ['Durable queue','SQLite-backed jobs survive API restarts, use bounded retry/backoff and stale-lease recovery, and remain visible to administrators.',Database],
+      ['Operational alerts','Scheduled failures, overdue findings and signed webhook events can move important changes into the team workflow.',Webhook]
+    ]},
+    governance:{eyebrow:'SECURITY GOVERNANCE',title:'Separate workspace decisions, platform administration and evidence ownership.',intro:'Enterprise control is more than RBAC. SentinelScope keeps membership, access review, risk acceptance, audit, evidence export and system administration as explicit workflows.',sections:[
+      ['Workspace roles','Owner, Admin, Analyst and Viewer permissions are API-enforced and isolated per workspace.',LockKeyhole],
+      ['Access certification','Snapshot membership, review keep/revoke decisions, protect the Owner role and invalidate sessions when access is revoked.',Users],
+      ['Evidence governance','Audit events, finding activity, report-export hashes, risk rationale and verification history preserve who changed what and when.',History],
+      ['Platform separation','System administration remains a separate privilege for workers, jobs, global users/workspaces, backups, maintenance and security telemetry.',ServerCog]
+    ]},
+    'getting-started':{eyebrow:'GETTING STARTED',title:'Go from empty workspace to a trustworthy first baseline.',intro:'The product includes a readiness journey that derives progress from real persisted state, so new teams always know the next safe step.',sections:[
+      ['1. Secure the account','Verify email, configure MFA when appropriate and review active sessions.',LockKeyhole],
+      ['2. Establish scope','Create an active project, add the exact authorised HTTP(S) target and attach owner, environment, criticality and notes.',FolderKanban],
+      ['3. Govern execution','Use the project baseline or create a named scan profile, then verify ownership before any Lab-mode workflow.',SlidersHorizontal],
+      ['4. Create evidence','Run the first assessment, review discovered assets and issues, assign remediation and schedule repeatable follow-up.',Radar]
+    ]},
+    methodology:{eyebrow:'METHODOLOGY',title:'What the scanner measures, how it gathers evidence and where automation stops.',intro:'SentinelScope is deliberately transparent about safe HTTP/TLS observations, heuristics, confidence and limitations so results can be evaluated instead of treated as oracle output.',sections:[
+      ['Transport & browser controls','Inspect TLS/certificate evidence, HTTPS/HSTS, headers, cookies, mixed content and related browser-facing configuration.',ShieldCheck],
+      ['Bounded application observation','Same-origin crawling, forms, CORS behaviour, advertised methods, disclosure signals and security.txt are assessed without destructive payload execution.',Radar],
+      ['Evidence & confidence','Each check records status, severity, confidence, URL, evidence, impact, remediation and standards mapping where justified.',FileText],
+      ['Known limits','Business logic, complex authorization, architecture, human process and source-only weaknesses still require manual security review.',BookOpen]
     ]},
     security:{eyebrow:'SECURITY MODEL',title:'Safe-by-default behaviour is part of the product boundary.',intro:'SentinelScope is intended for authorised, non-destructive assessment. The scanner constrains what it can reach and what it will do.',sections:[
       ['SSRF and scope controls','URL validation blocks loopback, private, link-local, reserved and metadata destinations by default; redirect destinations are revalidated and crawling remains same-origin.',ShieldCheck],
