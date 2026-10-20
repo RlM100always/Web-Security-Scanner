@@ -24,7 +24,7 @@ export default function App(){
   const[user,setUser]=useState<User|null>(null),[authLoading,setAuthLoading]=useState(true),[authMode,setAuthMode]=useState<'login'|'signup'|'forgot'>('login'),[workspaces,setWorkspaces]=useState<any[]>([]);
   const[nav,setNav]=useState('Dashboard'),[mobile,setMobile]=useState(false),[dash,setDash]=useState<any>(null),[projects,setProjects]=useState<Project[]>([]);
   const[targets,setTargets]=useState<Target[]>([]),[scans,setScans]=useState<Scan[]>([]),[team,setTeam]=useState<any[]>([]),[schedules,setSchedules]=useState<any[]>([]);
-  const[audit,setAudit]=useState<any[]>([]),[sessions,setSessions]=useState<any[]>([]),[notifications,setNotifications]=useState<any[]>([]),[backups,setBackups]=useState<any[]>([]),[apiKeys,setApiKeys]=useState<any[]>([]),[selected,setSelected]=useState<any>(null),[modal,setModal]=useState<string|null>(null),[err,setErr]=useState(''),[toast,setToast]=useState('');
+  const[audit,setAudit]=useState<any[]>([]),[sessions,setSessions]=useState<any[]>([]),[notifications,setNotifications]=useState<any[]>([]),[backups,setBackups]=useState<any[]>([]),[apiKeys,setApiKeys]=useState<any[]>([]),[issues,setIssues]=useState<any[]>([]),[issueSummary,setIssueSummary]=useState<any>({}),[assets,setAssets]=useState<any[]>([]),[assetSummary,setAssetSummary]=useState<any>({}),[selected,setSelected]=useState<any>(null),[modal,setModal]=useState<string|null>(null),[err,setErr]=useState(''),[toast,setToast]=useState(''),[cmdOpen,setCmdOpen]=useState(false),[theme,setTheme]=useState<'light'|'dark'>(()=>(localStorage.getItem('sentinel-theme') as 'light'|'dark')||'light');
 
   const loadMe=async()=>{setAuthLoading(true);try{const m=await api('/auth/me');csrf=m.csrf_token;setUser(m.user);setWorkspaces(m.workspaces||[])}catch{setUser(null);setWorkspaces([]);csrf=''}finally{setAuthLoading(false)}};
   const load=async()=>{if(!user)return;try{
@@ -34,12 +34,16 @@ export default function App(){
     try{setSessions(await api('/auth/sessions'))}catch{}
     try{setNotifications(await api('/notifications'))}catch{}
     try{setApiKeys(await api('/api-keys'))}catch{}
+    try{const inbox=await api('/portfolio/issues');setIssues(inbox.items||[]);setIssueSummary(inbox.summary||{})}catch{}
+    try{const inventory=await api('/assets');setAssets(inventory.items||[]);setAssetSummary(inventory.summary||{})}catch{}
     if(user.role==='owner'){try{setBackups(await api('/backups'))}catch{}}
     if(selected){try{setSelected(await api('/scans/'+selected.id))}catch{}}
   }catch(e:any){setErr(e.message)}};
 
   useEffect(()=>{loadMe()},[]);
   useEffect(()=>{if(user)load()},[user?.user_id,user?.organization_id]);
+  useEffect(()=>{document.documentElement.dataset.theme=theme;localStorage.setItem('sentinel-theme',theme)},[theme]);
+  useEffect(()=>{const key=(e:KeyboardEvent)=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();setCmdOpen(v=>!v)}else if(e.key==='Escape')setCmdOpen(false)};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key)},[]);
   useEffect(()=>{if(!selected||!user||!['QUEUED','SCANNING','CREATED'].includes(selected.status))return;
     const es=new EventSource('/api/v1/scans/'+selected.id+'/events',{withCredentials:true} as any);
     const refresh=async()=>{try{const fresh=await api('/scans/'+selected.id);setSelected(fresh);setScans(await api('/scans'))}catch{}};
@@ -61,7 +65,7 @@ export default function App(){
   }
   if(specialPath==='/admin')return user.system_admin?<SystemAdminPanel user={user}/>:<AdminAccessDenied/>;
 
-  const navItems:any[]=[['Dashboard',LayoutDashboard],['Projects',FolderKanban],['Scans',Radar],['Findings',TriangleAlert],['Reports',FileText],['Schedules',CalendarClock],['Team',Users],['Notifications',Bell],...(can(user,'admin')?[['Audit',History]]:[]),['Settings',Settings]];
+  const navItems:any[]=[['Dashboard',LayoutDashboard],['Projects',FolderKanban],['Assets',Boxes],['Scans',Radar],['Issues',TriangleAlert],['Reports',FileText],['Schedules',CalendarClock],['Team',Users],['Notifications',Bell],...(can(user,'admin')?[['Audit',History]]:[]),['Settings',Settings]];
 
   return <div className="app">
     <aside className={mobile?'side open':'side'}>
@@ -71,9 +75,10 @@ export default function App(){
       {user.system_admin?<button className="adminLaunch" onClick={()=>window.location.href='/admin'}><Shield size={18}/> System Admin</button>:null}
       <div className="sideFoot"><span className="safeDot"/> Authorised, non-destructive scans</div>
     </aside>
+    <nav className="mobileDock" aria-label="Mobile workspace navigation">{[['Dashboard',LayoutDashboard],['Assets',Boxes],['Issues',TriangleAlert],['Scans',Radar],['Settings',Settings]].map(([n,I]:any)=><button key={n} className={nav===n?'active':''} onClick={()=>setNav(n)}><I/><span>{n}</span>{n==='Issues'&&issueSummary.total?<em>{Math.min(issueSummary.total,99)}</em>:null}</button>)}</nav>
     <main>
-      <header><button className="menu" onClick={()=>setMobile(true)}><Menu/></button><div><small>SECURITY WORKSPACE</small><h1>{nav}</h1></div>
-        <div className="headerActions"><button className="ghost" onClick={load}><RefreshCw size={16}/> Refresh</button>{can(user,'analyst')&&<button className="primary" onClick={()=>setModal('scan')}><Plus size={17}/> New scan</button>}<button className="avatarBtn" onClick={()=>setNav('Settings')}>{user.name.slice(0,1).toUpperCase()}</button></div>
+      <header className="appHeader"><button className="menu" onClick={()=>setMobile(true)} aria-label="Open navigation"><Menu/></button><div className="headerContext"><small>WORKSPACE</small><div className="breadcrumb"><b>{user.organization_name}</b><ChevronRight/><strong>{nav==='Findings'?'Scan details':nav}</strong></div></div>
+        <div className="headerActions"><button className="commandTrigger" onClick={()=>setCmdOpen(true)}><Search/><span>Search or jump</span><kbd>Ctrl K</kbd></button><button className="iconButton" onClick={()=>setTheme(theme==='light'?'dark':'light')} aria-label="Toggle theme">{theme==='light'?<Moon/>:<Sun/>}</button><button className="ghost refreshButton" onClick={load}><RefreshCw size={16}/><span>Refresh</span></button>{can(user,'analyst')&&<button className="primary newScanButton" onClick={()=>setModal('scan')}><Plus size={17}/><span>New scan</span></button>}<button className="avatarBtn" onClick={()=>setNav('Settings')}>{user.name.slice(0,1).toUpperCase()}</button></div>
       </header>
       {!user.email_verified&&<div className="verifyBanner"><Mail/><span>Your email is not verified.</span><button className="link" onClick={async()=>{const r=await api('/auth/email-verification/request',{method:'POST',body:'{}'});notify(r.sent?'Verification email sent':'Verification link created in development mode')}}>Send verification</button></div>}
       {err&&<div className="error">{err}<button onClick={()=>setErr('')}>×</button></div>}{toast&&<div className="toast">{toast}</div>}
@@ -81,6 +86,7 @@ export default function App(){
       {nav==='Dashboard'&&<section className="content">
         <div className="hero"><div><span className="eyebrow">CURRENT POSTURE</span><h2>{dash?.latest_scan?.score??'—'}<em>/100</em></h2><p>{dash?.latest_scan?'Based on your latest completed authorised assessment.':'Create a project and run an authorised scan to establish your baseline.'}</p></div><div className="heroBadge"><ShieldCheck/><span>Evidence-led<br/><b>security posture</b></span></div></div>
         <div className="metrics"><Card label="Projects" value={dash?.projects??0}/><Card label="Targets" value={dash?.targets??0}/><Card label="Team members" value={dash?.members??0}/><Card label="Scheduled scans" value={dash?.schedules??0}/></div>
+        <div className="portfolioGrid"><Panel title="Priority security actions"><div className="priorityList">{issues.filter((x:any)=>!['REMEDIATED','FALSE_POSITIVE'].includes(x.state)).slice(0,5).map((x:any)=><button key={x.id} onClick={()=>setNav('Issues')}><span className={'riskDot '+(x.state==='OPEN'?'urgent':'')}/><div><b>{x.title}</b><small>{x.project_name} · {x.target_name} · {x.state.replaceAll('_',' ')}</small></div><ChevronRight/></button>)}{!issues.length&&<div className="emptyRow">No persistent issues yet. Run an authorised assessment to establish a baseline.</div>}</div></Panel><Panel title="Portfolio coverage"><div className="coverageGrid"><div><small>ACTIVE ISSUES</small><b>{issueSummary.total??0}</b><span>{issueSummary.overdue??0} overdue</span></div><div><small>DISCOVERED ASSETS</small><b>{assetSummary.total??0}</b><span>{assetSummary.targets??0} targets</span></div><div><small>SCAN USAGE</small><b>{dash?.scan_usage?.last_24h??0}<em>/{dash?.scan_quota_per_day??'—'}</em></b><span>last 24 hours</span></div><div><small>ASSIGNED ISSUES</small><b>{issueSummary.assigned??0}</b><span>with accountable owner</span></div></div></Panel></div>
         <div className="grid2"><Panel title="Recent scans"><ScanTable scans={scans.slice(0,7)} onOpen={async(s:any)=>{setSelected(await api('/scans/'+s.id));setNav('Findings')}}/></Panel><Panel title="Worker queue"><div className="queue">{Object.entries(dash?.queue||{}).map(([k,v]:any)=><div key={k}><span className={'status '+k.toLowerCase()}>{k}</span><b>{v}</b></div>)}{!Object.keys(dash?.queue||{}).length&&<p className="muted">Queue is idle.</p>}</div></Panel></div>
       </section>}
 
@@ -91,6 +97,10 @@ export default function App(){
           {can(user,'analyst')&&<div className="projectActions"><button className="ghost" onClick={()=>setModal('target:'+p.id)}><Plus/> Add target</button><button className="ghost" onClick={()=>setModal('policy:'+p.id)}><Settings/> Scan policy</button></div>}
         </div>)}</div>{!projects.length&&<Empty icon={<FolderKanban/>} title="No projects yet" text="Create your first security project and add an authorised target."/>}
       </section>}
+
+      {nav==='Assets'&&<section className="content"><AssetsWorkspace assets={assets} summary={assetSummary} targets={targets} projects={projects}/></section>}
+
+      {nav==='Issues'&&<section className="content"><IssuesWorkspace issues={issues} summary={issueSummary} team={team} onOpen={async(id:string)=>{const detail=await api('/finding-states/'+id);setModal('issue:'+id);(window as any).__sentinelIssue=detail}} reload={load}/></section>}
 
       {nav==='Scans'&&<section className="content"><Panel title="Scan history"><ScanTable scans={scans} onOpen={async(s:any)=>{setSelected(await api('/scans/'+s.id));setNav('Findings')}}/></Panel></section>}
 
@@ -121,6 +131,8 @@ export default function App(){
     {modal==='mfa'&&<MfaModal enabled={!!user.mfa_enabled} close={()=>setModal(null)} done={async()=>{setModal(null);notify('MFA settings updated');await loadMe()}}/>}
     {modal==='delete-account'&&<DeleteAccountModal close={()=>setModal(null)} done={()=>{csrf='';setUser(null)}}/>}
     {modal==='api-key'&&<ApiKeyModal close={()=>setModal(null)} done={()=>{load()}}/>}
+    {modal?.startsWith('issue:')&&<IssueDetailModal stateId={modal.split(':')[1]} team={team} close={()=>setModal(null)} done={()=>{load()}}/>}
+    {cmdOpen&&<CommandPalette navItems={navItems} projects={projects} targets={targets} issues={issues} close={()=>setCmdOpen(false)} go={(n:string)=>{setNav(n);setCmdOpen(false)}}/>}
   </div>
 }
 
