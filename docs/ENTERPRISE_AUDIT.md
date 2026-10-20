@@ -24,7 +24,7 @@ This document records the current SentinelScope product architecture, the workfl
 | Projects | Editable name/description/tags, active/archive lifecycle, archived-project scan/target enforcement, retained history, safer archive-before-delete workflow |
 | Targets | Explicit authorisation, ownership verification, business criticality, environment, tags, accountable workspace owner, operational notes, metadata editing and SSRF-safe URL validation |
 | Scan policy | Project base policy plus named/versioned reusable scan profiles, default/active lifecycle, clone/update/delete controls, manual/scheduled reuse, per-run bounded overrides, include/exclude regex, disabled checks, pacing/depth/page caps and immutable per-scan profile-name/version/policy provenance |
-| Scan creation | Three-step target/profile/scope/review wizard with target business context, reusable profile library, one-run override preview, immutable execution provenance and explicit final authorisation confirmation |
+| Scan creation | Three-step target/profile/scope/review wizard with target business context, reusable profile library, one-run override preview, persisted target preflight diagnostics, READY/WARN/BLOCKED setup gate, immutable execution provenance and explicit final authorisation confirmation |
 | Scanner | TLS/certificate/protocol/cipher/expiry, HTTPS/HSTS, CSP quality, browser headers, cookies, CORS reflection, forms, mixed content, methods, disclosure, security.txt and same-origin asset discovery |
 | Asset inventory | Persisted URL/status/type/title/depth/size/source/timing/redirect/truncation metadata; portfolio inventory; latest-target view; added/removed/changed baseline analysis; first/last seen and scan-by-scan provenance drilldown |
 | Findings | Stable fingerprint, first/last seen, occurrence count, effective severity, target criticality context, risk score, assignee, SLA due date, comments, scan detection timeline and immutable workflow activity |
@@ -180,3 +180,20 @@ A product-wide interaction audit identified several patterns that were functiona
 ### Visual reference audit
 
 Current AppSec/security product interfaces were reviewed for interaction patterns rather than copied visually. Relevant patterns included condensed grouped navigation, scope context, command search, dark mode, issue/asset drill-down, saved views and configurable analytics. SentinelScope keeps its own evidence-first web-assessment identity and non-destructive scanner boundary.
+
+
+## Target setup preflight
+
+A final workflow audit found that target ownership verification did not answer a different operational question: whether the configured target is actually ready for a representative assessment.
+
+SentinelScope now provides a persisted, bounded preflight before manual assessments. It records:
+- target-safety validation;
+- public DNS resolution;
+- HTTP reachability and status;
+- safe redirect chain;
+- final URL and content type;
+- diagnostic response latency and truncation state;
+- HTTPS/TLS protocol, cipher and certificate-expiry evidence where available;
+- selected-profile eligibility.
+
+Preflight deliberately does not bypass authentication or attempt WAF evasion. A reachable 401/403 is treated as limited visibility, not as permission to circumvent access controls. Results are stored per target/workspace and used as a server-side scan queue gate.
