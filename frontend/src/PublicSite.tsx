@@ -7,6 +7,19 @@ const links=[['Product','/product'],['Solutions','/solutions'],['Enterprise','/e
 export default function PublicSite({path='/'}:{path?:string}){
   const[open,setOpen]=useState(false);
   const page=path.replace(/^\//,'')||'home';
+  useEffect(()=>{const meta:any={
+    home:['SentinelScope — Web Security Assessment Platform','Authorised web-security assessment, asset context, persistent issue management and remediation verification.'],
+    product:['Product | SentinelScope','Explore governed scanning, asset inventory, vulnerability management, reporting and platform operations.'],
+    enterprise:['Enterprise Security Workflows | SentinelScope','Workspace governance, auditability, access reviews, automation, queue operations, backups and retention.'],
+    security:['Security Model | SentinelScope','Understand SentinelScope target authorisation, SSRF protections, account security and non-destructive scanner boundaries.'],
+    standards:['Standards Mapping | SentinelScope','See how SentinelScope maps evidence to relevant OWASP WSTG and OWASP ASVS references without claiming blanket compliance.'],
+    developers:['Developers | SentinelScope','Use scoped API keys, signed webhooks and evidence exports to automate approved SentinelScope workflows.'],
+    'exposure-management':['Exposure Management | SentinelScope','Connect governed projects, authorised targets, discovered assets, persistent security issues and accountable owners.'],
+    'asset-inventory':['Asset Inventory | SentinelScope','Review bounded scanner-discovered assets, business context, provenance and baseline drift.'],
+    'vulnerability-management':['Vulnerability Management | SentinelScope','Prioritise persistent issues, assign ownership, manage risk decisions and verify remediation.'],
+    reports:['Security Reporting | SentinelScope','Generate evidence-rich PDF, HTML and JSON assessment reports with export provenance.'],
+    status:['Platform Status | SentinelScope','Public-safe SentinelScope service availability without exposing sensitive operational telemetry.']
+  };const m=meta[page]||['SentinelScope — '+page.replaceAll('-',' '),'SentinelScope authorised, evidence-first web security assessment platform.'];document.title=m[0];let tag=document.querySelector('meta[name="description"]');if(!tag){tag=document.createElement('meta');tag.setAttribute('name','description');document.head.appendChild(tag)}tag.setAttribute('content',m[1])},[page]);
   return <div className="publicSite">
     <header className="publicNav">
       <a className="publicBrand" href="/"><span><ShieldCheck/></span><div><b>SentinelScope</b><small>Web Security Assessment Platform</small></div></a>
