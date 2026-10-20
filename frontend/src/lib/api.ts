@@ -19,6 +19,6 @@ export async function api(path:string,opts:RequestInit={}){
   return d;
 }
 
-export function csrfHeaders(){
+export function csrfHeaders():Record<string,string>{
   return csrfToken?{'X-CSRF-Token':csrfToken}:{};
 }
