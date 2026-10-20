@@ -226,3 +226,87 @@ The system-admin control center includes:
 - runtime, database and Prometheus-style metrics
 
 System-admin access is checked by the API, not only hidden in the interface.
+
+## Deep assessment workflows
+
+SentinelScope now treats assessment data as a continuing security-management workflow rather than a one-off scan.
+
+### Project scan policy
+Each project stores a real scan policy that is snapshotted into every queued scan:
+- maximum in-scope pages
+- crawl depth
+- request delay/rate pacing
+- include-path regular expressions
+- exclude-path regular expressions
+- individually disabled check IDs
+
+Safety caps are enforced by the scanner even if a client requests larger values.
+
+### Asset inventory and baseline
+Every scan persists discovered in-scope assets with:
+- URL and discovery source
+- crawl depth
+- HTTP status
+- content type
+- page title
+- response size
+- server/cache metadata
+- redirect chain
+- response timing
+- response-truncation evidence
+
+Successive completed scans produce asset drift:
+- added assets
+- removed assets
+- changed status/content type/title/size
+
+### Finding lifecycle
+Findings persist across individual scan runs by target + stable fingerprint. A finding can move through:
+- OPEN
+- ACKNOWLEDGED
+- IN_PROGRESS
+- ACCEPTED_RISK
+- FALSE_POSITIVE
+- REMEDIATED
+
+The lifecycle record also stores:
+- first seen / last seen
+- occurrence count
+- assignee
+- due date
+- severity override
+- risk/triage reason
+- analyst comments
+- detection timeline across scans
+
+When an active finding disappears in a later scan, it is automatically marked REMEDIATED unless it is already in an explicit terminal triage state.
+
+### Remediation verification
+Analysts can request **Verify remediation** on a persistent finding. SentinelScope:
+1. queues a fresh standards-configured scan,
+2. links it to the finding state,
+3. checks the stable fingerprint after completion,
+4. records `VERIFIED_FIXED` or `STILL_PRESENT`,
+5. updates the persistent finding state.
+
+### Standards coverage
+Each result calculates standards-mapping summaries with mapped checks and pass/warning/fail/error counts for references such as OWASP ASVS and OWASP WSTG.
+
+### Scoped API keys
+Users can issue expiring bearer API keys. Raw tokens are displayed only once and stored only as SHA-256 hashes.
+
+Scopes:
+- `read`
+- `scan`
+- `write`
+- system-admin keys may additionally use `admin`
+
+CSRF is required for cookie sessions; bearer keys use scope enforcement instead.
+
+### Quotas and retention
+System administrators can configure:
+- scans per workspace per 24 hours
+- concurrent queued/running scans per workspace
+- completed-scan retention period
+
+Retention removes old scan instances and their per-scan assets/findings/events while preserving continuing security-management state such as current finding lifecycle records.
