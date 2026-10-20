@@ -890,7 +890,7 @@ def create_blueprint():
         except ValueError as e:return {'error':str(e)},409
         if not row:return {'error':'Open access review not found'},404
         audit('ACCESS_REVIEW_COMPLETED','access_review',review_id,{'revoked_members':row['summary']['revoke']})
-        repo().emit_webhook_event(ident['organization_id'],'finding.updated',{'type':'access_review.completed','review_id':review_id,'revoked_members':row['summary']['revoke']})
+        repo().emit_webhook_event(ident['organization_id'],'access_review.completed',{'review_id':review_id,'revoked_members':row['summary']['revoke'],'completed_by':ident['user_id']})
         return row
 
     # Workspace integrations / signed webhooks
