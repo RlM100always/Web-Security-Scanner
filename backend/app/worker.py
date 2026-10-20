@@ -17,7 +17,11 @@ def process_scan(repo, config, payload):
     if not scan: raise ValueError("Scan does not exist")
     target=repo.get_target(scan["target_id"])
     if not target: raise ValueError("Target does not exist")
-    if repo.scan_cancel_requested(scan['id']): raise ScanCancelled("Scan cancellation requested")
+    if repo.scan_cancel_requested(scan['id']):
+        repo.update_scan(scan['id'],status='CANCELLED',stage='CANCELLED',progress=100,completed_at=repo.now(),error=None)
+        repo.finalize_schedule_run(scan['id'],'CANCELLED')
+        repo.add_scan_event(scan['id'],'STATE','CANCELLED',100,'Scan cancelled before execution')
+        return 'CANCELLED'
     repo.update_scan(scan['id'],status='SCANNING',stage='VALIDATING_TARGET',progress=1)
     repo.add_scan_event(scan['id'],'STATE','VALIDATING_TARGET',1,'Worker started scan')
     def progress(stage,pct,msg):
@@ -45,11 +49,12 @@ def process_scan(repo, config, payload):
             if user and (not org_id or repo.notification_enabled(scan['created_by'],org_id,'scan_completed','email')):
                 try:send_email(vars(config),user['email'],'SentinelScope scan completed',f"{target_title}\nSecurity score: {result.score}/100")
                 except Exception:pass
+        return 'COMPLETED'
     except ScanCancelled:
         repo.update_scan(scan['id'],status='CANCELLED',stage='CANCELLED',progress=100,completed_at=repo.now(),error=None)
         repo.finalize_schedule_run(scan['id'],'CANCELLED')
         repo.add_scan_event(scan['id'],'STATE','CANCELLED',100,'Scan cancelled by administrator')
-        return
+        return 'CANCELLED'
     except Exception as e:
         repo.update_scan(scan['id'],status='FAILED',stage='FAILED',progress=100,error=str(e)[:1000],completed_at=repo.now())
         schedule_ctx=repo.schedule_notification_context(scan['id'])
@@ -129,10 +134,13 @@ def process_one(repo, config, worker_id):
         return False
     repo.worker_heartbeat(worker_id,worker_id.split(':')[0],int(worker_id.split(':')[-1]),'BUSY',job['id'])
     try:
-        if job['kind']=='scan':process_scan(repo,config,job['payload'])
-        elif job['kind']=='webhook':process_webhook(repo,config,job['payload'])
+        if job['kind']=='scan':
+            outcome=process_scan(repo,config,job['payload'])
+            if outcome=='CANCELLED':repo.cancel_job(job['id'],'Scan cancelled')
+            else:repo.finish_job(job['id'])
+        elif job['kind']=='webhook':
+            process_webhook(repo,config,job['payload']);repo.finish_job(job['id'])
         else:raise ValueError(f"Unknown job kind: {job['kind']}")
-        repo.finish_job(job['id'])
     except Exception as e:
         repo.fail_job(job['id'],str(e),retry=True)
     finally:
