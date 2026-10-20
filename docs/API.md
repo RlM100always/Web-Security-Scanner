@@ -70,3 +70,31 @@ All authenticated mutation endpoints use the HttpOnly session cookie plus `X-CSR
 - `GET /health`
 
 Lab scans require a verified target. Backup/restore/export are owner-only; metrics require Admin or Owner.
+
+## System administration
+
+All routes below require `system_admin=1` on the authenticated user.
+
+- `GET /api/v1/admin/overview`
+- `GET /api/v1/admin/users`
+- `PATCH /api/v1/admin/users/:user_id`
+- `GET /api/v1/admin/organizations`
+- `PATCH /api/v1/admin/organizations/:organization_id`
+- `GET /api/v1/admin/scans`
+- `POST /api/v1/admin/scans/:scan_id/cancel`
+- `GET /api/v1/admin/jobs`
+- `POST /api/v1/admin/jobs/:job_id/retry`
+- `POST /api/v1/admin/jobs/:job_id/cancel`
+- `DELETE /api/v1/admin/jobs/completed`
+- `GET /api/v1/admin/workers`
+- `GET /api/v1/admin/security-events`
+- `GET /api/v1/admin/audit`
+- `GET /api/v1/admin/settings`
+- `PUT /api/v1/admin/settings`
+- `POST /api/v1/admin/broadcast`
+- `POST /api/v1/admin/email-test`
+- `GET /api/v1/admin/backups`
+- `POST /api/v1/admin/backups`
+- `GET /api/v1/admin/backups/:filename`
+- `GET /api/v1/admin/metrics`
+- `GET /api/v1/admin/metrics/prometheus`
