@@ -74,6 +74,11 @@ class Repository:
             self._ensure_column(c,"projects","created_by","text")
             self._ensure_column(c,"targets","created_by","text")
             self._ensure_column(c,"scans","created_by","text")
+            self._ensure_column(c,"audit_logs","organization_id","text")
+            self._ensure_column(c,"audit_logs","user_id","text")
+            self._ensure_column(c,"audit_logs","resource_type","text")
+            self._ensure_column(c,"audit_logs","resource_id","text")
+            self._ensure_column(c,"audit_logs","ip","text")
             c.execute("create index if not exists idx_projects_org on projects(organization_id)")
             c.execute("create index if not exists idx_jobs_queue on jobs(status,run_after)")
             c.execute("create index if not exists idx_events_scan on scan_events(scan_id,id)")
@@ -332,7 +337,8 @@ class Repository:
         if not r:return None
         d=dict(r);d['items']=json.loads(d.pop('items_json'));d['comparison']=json.loads(d.pop('comparison_json'));return d
     def audit(self,org_id,user_id,event,resource_type=None,resource_id=None,details=None,ip=None):
-        with self.conn() as c:c.execute("insert into audit_logs values(?,?,?,?,?,?,?,?,?)",(self._id(),org_id,user_id,event,resource_type,resource_id,json.dumps(details or {}),ip,self.now()))
+        with self.conn() as c:c.execute("""insert into audit_logs(id,organization_id,user_id,event,resource_type,resource_id,details_json,ip,created_at)
+        values(?,?,?,?,?,?,?,?,?)""",(self._id(),org_id,user_id,event,resource_type,resource_id,json.dumps(details or {}),ip,self.now()))
     def list_audit(self,org_id,limit=200):
         with self.conn() as c:rows=[dict(r) for r in c.execute("select * from audit_logs where organization_id=? order by created_at desc limit ?",(org_id,limit))]
         for r in rows:r['details']=json.loads(r.pop('details_json') or '{}')
