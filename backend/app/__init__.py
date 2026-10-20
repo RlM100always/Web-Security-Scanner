@@ -16,9 +16,13 @@ def create_app(config_object=None):
         hops=max(1,int(app.config.get("TRUST_PROXY_HOPS",1)))
         app.wsgi_app=ProxyFix(app.wsgi_app,x_for=hops,x_proto=hops,x_host=hops,x_port=hops)
 
-    origins=app.config.get('CORS_ORIGINS','*')
+    origins=app.config.get('CORS_ORIGINS','')
     if isinstance(origins,str):
         origins=[x.strip() for x in origins.split(',') if x.strip()]
+    if not origins:
+        raise RuntimeError("CORS_ORIGINS must contain at least one explicit trusted origin")
+    if "*" in origins:
+        raise RuntimeError("Wildcard CORS origins are not permitted with credentialed SentinelScope sessions")
     CORS(app, resources={r"/api/*":{"origins":origins}}, supports_credentials=True)
 
     repo=Repository(app.config["DATABASE_PATH"])
