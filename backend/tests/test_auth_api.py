@@ -102,3 +102,18 @@ def test_invitation_and_tenant_backup_isolation():
         assert export.status_code==200
         payload=export.get_json()
         assert payload["organization"]["id"]==signup.get_json()["user"]["organization_id"]
+
+
+def test_shared_ip_failures_do_not_lock_unrelated_account():
+    with tempfile.TemporaryDirectory() as d:
+        app=build(os.path.join(d,"shared-ip.sqlite3"));app.testing=True
+        owner=app.test_client()
+        signup=owner.post("/api/v1/auth/signup",json={"name":"Owner User","email":"owner@example.com","password":"correct-horse-battery","organization_name":"Acme"})
+        csrf=signup.get_json()["csrf_token"]
+        owner.post("/api/v1/auth/logout",json={},headers={"X-CSRF-Token":csrf})
+        attacker=app.test_client()
+        for i in range(9):
+            res=attacker.post("/api/v1/auth/login",json={"email":f"missing-{i}@example.com","password":"wrong-password"})
+            assert res.status_code==401
+        login=app.test_client().post("/api/v1/auth/login",json={"email":"owner@example.com","password":"correct-horse-battery"})
+        assert login.status_code==200
