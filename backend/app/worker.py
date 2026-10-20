@@ -30,10 +30,10 @@ def process_scan(repo, config, payload):
         repo.finalize_schedule_run(scan['id'],'COMPLETED')
         repo.add_scan_event(scan['id'],'STATE','COMPLETED',100,'Scan completed',{"score":result.score,"checks_run":result.checks_run})
         if scan.get('created_by'):
-            target_title=target.get('name') or target.get('url')
-            repo.add_notification(None,scan['created_by'],'scan_completed','Scan completed',f"{target_title} scored {result.score}/100",{"scan_id":scan['id']})
+            target_title=target.get('name') or target.get('url');org_id=repo.target_organization(target['id'])
+            repo.add_notification(org_id,scan['created_by'],'scan_completed','Scan completed',f"{target_title} scored {result.score}/100",{"scan_id":scan['id']})
             user=repo.get_user_by_id(scan['created_by'])
-            if user:
+            if user and (not org_id or repo.notification_enabled(scan['created_by'],org_id,'scan_completed','email')):
                 try:send_email(vars(config),user['email'],'SentinelScope scan completed',f"{target_title}\nSecurity score: {result.score}/100")
                 except Exception:pass
     except ScanCancelled:
@@ -46,7 +46,12 @@ def process_scan(repo, config, payload):
         repo.finalize_schedule_run(scan['id'],'FAILED')
         repo.add_scan_event(scan['id'],'STATE','FAILED',100,'Scan failed',{"error":str(e)[:1000]})
         if scan.get('created_by'):
-            repo.add_notification(None,scan['created_by'],'scan_failed','Scan failed',str(e)[:300],{"scan_id":scan['id']})
+            org_id=repo.target_organization(target['id'])
+            repo.add_notification(org_id,scan['created_by'],'scan_failed','Scan failed',str(e)[:300],{"scan_id":scan['id']})
+            user=repo.get_user_by_id(scan['created_by'])
+            if user and (not org_id or repo.notification_enabled(scan['created_by'],org_id,'scan_failed','email')):
+                try:send_email(vars(config),user['email'],'SentinelScope scan failed',f"{target.get('name') or target.get('url')}\n\n{str(e)[:500]}")
+                except Exception:pass
         raise
 
 def process_one(repo, config, worker_id):
