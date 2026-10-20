@@ -41,6 +41,7 @@ def create_admin_blueprint():
             "platform":platform.platform(),
             "database":"SQLite WAL",
             "database_path":os.path.basename(repo().path),
+            "secret_encryption":"FERNET" if current_app.config.get("APP_ENCRYPTION_KEY") else "DEVELOPMENT_PLAINTEXT_FALLBACK",
         }
         return data
 
