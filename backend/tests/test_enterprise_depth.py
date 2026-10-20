@@ -199,3 +199,25 @@ def test_stale_worker_lease_recovery_requeues_interrupted_scan():
         recovered=next(x for x in jobs if x["id"]==job["id"])
         assert recovered["status"]=="QUEUED" and recovered["locked_by"] is None
         assert r.get_scan(scan["id"])["stage"]=="RECOVERED"
+
+
+def test_schedule_cannot_bypass_verified_lab_or_archived_project_controls():
+    with tempfile.TemporaryDirectory() as d:
+        app=build(os.path.join(d,"schedule-safety.sqlite3"));client=app.test_client()
+        signup=client.post("/api/v1/auth/signup",json={"name":"Owner","email":"owner@example.com","password":"correct-horse-battery","organization_name":"Acme"})
+        csrf=signup.get_json()["csrf_token"];headers={"X-CSRF-Token":csrf}
+        p=client.post("/api/v1/projects",json={"name":"Production"},headers=headers).get_json()
+        t=client.post("/api/v1/targets",json={"project_id":p["id"],"name":"Portal","url":"https://example.com/","authorized":True},headers=headers).get_json()
+        schedule=client.post("/api/v1/schedules",json={"target_id":t["id"],"profile":"standard","interval_minutes":1440},headers=headers)
+        assert schedule.status_code==201
+        sid=schedule.get_json()["id"]
+
+        lab=client.patch("/api/v1/schedules/"+sid,json={"profile":"lab"},headers=headers)
+        assert lab.status_code==403
+
+        archived=client.patch("/api/v1/projects/"+p["id"],json={"status":"archived"},headers=headers)
+        assert archived.status_code==200
+        run=client.post("/api/v1/schedules/"+sid+"/run-now",json={},headers=headers)
+        edit=client.patch("/api/v1/schedules/"+sid,json={"interval_minutes":10080},headers=headers)
+        assert run.status_code==409
+        assert edit.status_code==409
