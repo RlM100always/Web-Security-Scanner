@@ -37,8 +37,12 @@ def _asset(url,resp,depth,source):
 def normalize_policy(profile,policy=None):
     base=dict(PROFILE_DEFAULTS.get(profile,PROFILE_DEFAULTS["standard"]))
     p=policy or {}
-    base["max_pages"]=max(1,min(int(p.get("max_pages",base["max_pages"])),200))
-    base["max_depth"]=max(0,min(int(p.get("max_depth",base["max_depth"])),5))
+    if profile=="quick":
+        base["max_pages"]=1
+        base["max_depth"]=0
+    else:
+        base["max_pages"]=max(1,min(int(p.get("max_pages",base["max_pages"])),200))
+        base["max_depth"]=max(0,min(int(p.get("max_depth",base["max_depth"])),5))
     base["request_delay_ms"]=max(0,min(int(p.get("request_delay_ms",base["request_delay_ms"])),5000))
     base["include_paths"]=[str(x)[:200] for x in p.get("include_paths",[])][:30]
     base["exclude_paths"]=[str(x)[:200] for x in p.get("exclude_paths",[])][:30]
