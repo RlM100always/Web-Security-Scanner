@@ -81,7 +81,9 @@ def process_scan(repo, config, payload):
 def process_webhook(repo, config, payload):
     delivery=repo.get_webhook_delivery(payload["delivery_id"])
     if not delivery: raise ValueError("Webhook delivery does not exist")
-    if not delivery.get("endpoint_active"): raise ValueError("Webhook endpoint is disabled")
+    if not delivery.get("endpoint_active"):
+        repo.mark_webhook_delivery_cancelled(delivery["id"],"Webhook endpoint was paused before delivery")
+        return "CANCELLED"
     repo.mark_webhook_delivery_running(delivery["id"])
     raw=json.dumps(delivery["payload"],separators=(",",":"),sort_keys=True).encode()
     try:
@@ -112,6 +114,7 @@ def process_webhook(repo, config, payload):
             repo.mark_webhook_delivery_failure(delivery["id"],f"HTTP {response.status_code}",response.status_code,body)
             raise ValueError(f"Webhook endpoint returned HTTP {response.status_code}")
         repo.mark_webhook_delivery_success(delivery["id"],response.status_code,body)
+        return "DELIVERED"
     except Exception as e:
         current=repo.get_webhook_delivery(delivery["id"])
         if current and current.get("status")!="DELIVERED":
@@ -149,7 +152,9 @@ def process_one(repo, config, worker_id):
             if outcome=='CANCELLED':repo.cancel_job(job['id'],'Scan cancelled')
             else:repo.finish_job(job['id'])
         elif job['kind']=='webhook':
-            process_webhook(repo,config,job['payload']);repo.finish_job(job['id'])
+            outcome=process_webhook(repo,config,job['payload'])
+            if outcome=='CANCELLED':repo.cancel_job(job['id'],'Webhook delivery cancelled because endpoint is paused')
+            else:repo.finish_job(job['id'])
         else:raise ValueError(f"Unknown job kind: {job['kind']}")
     except Exception as e:
         repo.fail_job(job['id'],str(e),retry=True)
