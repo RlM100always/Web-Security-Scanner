@@ -86,6 +86,9 @@ class Repository:
             create table if not exists notification_preferences(
               user_id text not null,organization_id text not null,preferences_json text not null,updated_at text not null,
               primary key(user_id,organization_id));
+            create table if not exists onboarding_preferences(
+              user_id text not null,organization_id text not null,dismissed_at text,completed_at text,updated_at text not null,
+              primary key(user_id,organization_id));
             create table if not exists backup_history(
               id text primary key,organization_id text,user_id text,filename text not null,size_bytes integer not null,
               created_at text not null);
@@ -515,6 +518,50 @@ class Repository:
             o=c.execute("select * from organizations where id=?",(org_id,)).fetchone()
             data['organization']=dict(o) if o else None
         return data
+
+    # workspace onboarding / operational readiness
+    def onboarding_state(self,user_id,org_id):
+        with self.conn() as c:
+            user=c.execute("select email_verified from users where id=?",(user_id,)).fetchone()
+            projects=c.execute("select count(*) n from projects where organization_id=? and status='active'",(org_id,)).fetchone()['n']
+            targets=c.execute("""select count(*) n from targets t join projects p on p.id=t.project_id
+              where p.organization_id=? and p.status='active' and t.authorized=1""",(org_id,)).fetchone()['n']
+            owned_targets=c.execute("""select count(*) n from targets t join projects p on p.id=t.project_id
+              where p.organization_id=? and p.status='active' and t.authorized=1 and t.owner_user_id is not null""",(org_id,)).fetchone()['n']
+            verified=c.execute("""select count(*) n from targets t join projects p on p.id=t.project_id
+              where p.organization_id=? and p.status='active' and t.verified=1""",(org_id,)).fetchone()['n']
+            profiles=c.execute("""select count(*) n from scan_profiles sp join projects p on p.id=sp.project_id
+              where p.organization_id=? and p.status='active' and sp.active=1""",(org_id,)).fetchone()['n']
+            scans=c.execute("""select count(*) n from scans s join targets t on t.id=s.target_id join projects p on p.id=t.project_id
+              where p.organization_id=? and s.status='COMPLETED'""",(org_id,)).fetchone()['n']
+            pref=c.execute("select * from onboarding_preferences where user_id=? and organization_id=?",(user_id,org_id)).fetchone()
+        steps=[
+          {'id':'email','title':'Verify your account email','done':bool(user and user['email_verified']),'description':'Protect account recovery and enable stricter workspace controls.'},
+          {'id':'project','title':'Create an active security project','done':projects>0,'description':'Group authorised targets, profiles, schedules and evidence.'},
+          {'id':'target','title':'Add an authorised target','done':targets>0,'description':'Register the exact HTTP(S) origin you are permitted to assess.'},
+          {'id':'owner','title':'Assign accountable target ownership','done':owned_targets>0,'description':'Attach business accountability and operational context to the target.'},
+          {'id':'profile','title':'Establish a reusable scan profile','done':profiles>0,'description':'Standardise bounded scope, pacing and checks across repeat assessments.'},
+          {'id':'baseline','title':'Complete the first assessment baseline','done':scans>0,'description':'Create the first evidence, asset inventory and issue baseline.'},
+        ]
+        done=sum(1 for s in steps if s['done']);percent=round(done*100/len(steps))
+        completed=done==len(steps)
+        if completed and (not pref or not pref['completed_at']):
+            now=self.now()
+            with self.conn() as c:c.execute("""insert into onboarding_preferences(user_id,organization_id,dismissed_at,completed_at,updated_at)
+              values(?,?,null,?,?) on conflict(user_id,organization_id) do update set completed_at=coalesce(onboarding_preferences.completed_at,excluded.completed_at),updated_at=excluded.updated_at""",
+              (user_id,org_id,now,now))
+            completed_at=now
+        else:completed_at=pref['completed_at'] if pref else None
+        return {'steps':steps,'completed_steps':done,'total_steps':len(steps),'percent':percent,'completed':completed,
+                'completed_at':completed_at,'dismissed':bool(pref and pref['dismissed_at']),
+                'lab_ready':verified>0,'counts':{'projects':projects,'targets':targets,'owned_targets':owned_targets,'verified_targets':verified,'scan_profiles':profiles,'completed_scans':scans}}
+
+    def set_onboarding_dismissed(self,user_id,org_id,dismissed=True):
+        now=self.now();value=now if dismissed else None
+        with self.conn() as c:c.execute("""insert into onboarding_preferences(user_id,organization_id,dismissed_at,completed_at,updated_at)
+          values(?,?,?,null,?) on conflict(user_id,organization_id) do update set dismissed_at=excluded.dismissed_at,updated_at=excluded.updated_at""",
+          (user_id,org_id,value,now))
+        return self.onboarding_state(user_id,org_id)
 
     # projects / targets
     def create_project(self,name,description='',organization_id=None,created_by=None,tags=None):
