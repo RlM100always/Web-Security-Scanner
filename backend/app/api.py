@@ -1281,12 +1281,10 @@ def create_blueprint():
         return Response(json.dumps(payload,indent=2),mimetype='application/json',headers={'Content-Disposition':'attachment; filename=sentinelscope-workspace-export.json'})
 
     @bp.get('/metrics')
-    @require_role('admin')
-    def metrics_json():return snapshot(repo())
-
     @bp.get('/metrics/prometheus')
     @require_role('admin')
-    def metrics_text():return Response(prometheus(repo()),mimetype='text/plain')
+    def workspace_metrics_disabled():
+        return {'error':'Platform-wide operational metrics require System Administrator access. Use /api/v1/admin/metrics.'},403
 
     @bp.get('/audit')
     @require_role('admin')
