@@ -416,20 +416,36 @@ class Repository:
             return cur.rowcount>0
 
     def deactivate_member(self,org_id,user_id,active):
+        now=self.now()
         with self.conn() as c:
-            owner=c.execute("select role from memberships where organization_id=? and user_id=?",(org_id,user_id)).fetchone()
-            if not owner:return False
-            if owner['role']=='owner' and not active:return False
+            member=c.execute("select role from memberships where organization_id=? and user_id=?",(org_id,user_id)).fetchone()
+            if not member:return False
+            if member['role']=='owner' and not active:return False
             c.execute("update memberships set active=? where organization_id=? and user_id=?",(int(active),org_id,user_id))
-            if not active:c.execute("update sessions set revoked_at=? where organization_id=? and user_id=? and revoked_at is null",(self.now(),org_id,user_id))
+            if not active:
+                c.execute("update sessions set revoked_at=? where organization_id=? and user_id=? and revoked_at is null",(now,org_id,user_id))
+                c.execute("update api_keys set revoked_at=? where organization_id=? and user_id=? and revoked_at is null",(now,org_id,user_id))
+                c.execute("""update finding_states set assignee_user_id=null,updated_at=? where assignee_user_id=? and target_id in(
+                  select t.id from targets t join projects p on p.id=t.project_id where p.organization_id=?)""",(now,user_id,org_id))
+                c.execute("""update targets set owner_user_id=null where owner_user_id=? and project_id in(
+                  select id from projects where organization_id=?)""",(user_id,org_id))
         return True
 
     def remove_member(self,org_id,user_id):
+        now=self.now()
         with self.conn() as c:
             row=c.execute("select role from memberships where organization_id=? and user_id=?",(org_id,user_id)).fetchone()
             if not row or row['role']=='owner':return False
+            c.execute("update sessions set revoked_at=? where organization_id=? and user_id=? and revoked_at is null",(now,org_id,user_id))
+            c.execute("update api_keys set revoked_at=? where organization_id=? and user_id=? and revoked_at is null",(now,org_id,user_id))
+            c.execute("""update finding_states set assignee_user_id=null,updated_at=? where assignee_user_id=? and target_id in(
+              select t.id from targets t join projects p on p.id=t.project_id where p.organization_id=?)""",(now,user_id,org_id))
+            c.execute("""update targets set owner_user_id=null where owner_user_id=? and project_id in(
+              select id from projects where organization_id=?)""",(user_id,org_id))
+            c.execute("delete from notification_preferences where organization_id=? and user_id=?",(org_id,user_id))
+            c.execute("delete from onboarding_preferences where organization_id=? and user_id=?",(org_id,user_id))
+            c.execute("delete from issue_saved_views where organization_id=? and user_id=?",(org_id,user_id))
             c.execute("delete from memberships where organization_id=? and user_id=?",(org_id,user_id))
-            c.execute("update sessions set revoked_at=? where organization_id=? and user_id=? and revoked_at is null",(self.now(),org_id,user_id))
         return True
 
     def get_notification_preferences(self,user_id,org_id):
@@ -612,24 +628,44 @@ class Repository:
         with self.conn() as c:
             p=c.execute("select id from projects where id=? and organization_id=?",(id,org_id)).fetchone()
             if not p:return False
+            active=c.execute("""select count(*) from scans s join targets t on t.id=s.target_id
+              where t.project_id=? and s.status in ('QUEUED','SCANNING')""",(id,)).fetchone()[0]
+            if active:raise ValueError("Project has queued or running scans. Cancel them before permanent deletion.")
+            enabled=c.execute("""select count(*) from schedules s join targets t on t.id=s.target_id
+              where t.project_id=? and s.enabled=1""",(id,)).fetchone()[0]
+            if enabled:raise ValueError("Project has active schedules. Pause or delete them before permanent deletion.")
             tids=[r[0] for r in c.execute("select id from targets where project_id=?",(id,))]
             for tid in tids:
-                sids=[r[0] for r in c.execute("select id from scans where target_id=?",(tid,))]
+                scan_ids=[r[0] for r in c.execute("select id from scans where target_id=?",(tid,))]
+                schedule_ids=[r[0] for r in c.execute("select id from schedules where target_id=?",(tid,))]
                 state_ids=[r[0] for r in c.execute("select id from finding_states where target_id=?",(tid,))]
                 for state_id in state_ids:
                     c.execute("delete from finding_comments where finding_state_id=?",(state_id,))
+                    c.execute("delete from finding_activity where finding_state_id=?",(state_id,))
+                    c.execute("delete from finding_escalations where finding_state_id=?",(state_id,))
                     c.execute("delete from remediation_verifications where finding_state_id=?",(state_id,))
                 c.execute("delete from finding_states where target_id=?",(tid,))
-                for sid in sids:
+                for sid in scan_ids:
                     c.execute("delete from assets where scan_id=?",(sid,))
                     c.execute("delete from remediation_verifications where scan_id=?",(sid,))
-                    c.execute("delete from findings where scan_id=?",(sid,));c.execute("delete from scan_events where scan_id=?",(sid,));c.execute("delete from zap_imports where scan_id=?",(sid,));c.execute("delete from scans where id=?",(sid,))
+                    c.execute("delete from report_exports where scan_id=?",(sid,))
+                    c.execute("delete from schedule_runs where scan_id=?",(sid,))
+                    c.execute("delete from findings where scan_id=?",(sid,))
+                    c.execute("delete from scan_events where scan_id=?",(sid,))
+                    c.execute("delete from zap_imports where scan_id=?",(sid,))
+                    c.execute("delete from scans where id=?",(sid,))
+                for schedule_id in schedule_ids:c.execute("delete from schedule_runs where schedule_id=?",(schedule_id,))
                 c.execute("delete from schedules where target_id=?",(tid,))
                 c.execute("delete from target_preflights where target_id=?",(tid,))
-                c.execute("delete from target_verifications where target_id=?",(tid,));c.execute("delete from targets where id=?",(tid,))
+                c.execute("delete from target_verifications where target_id=?",(tid,))
+                c.execute("delete from targets where id=?",(tid,))
+            profile_ids=[r[0] for r in c.execute("select id from scan_profiles where project_id=?",(id,))]
+            for profile_id in profile_ids:c.execute("delete from scan_profile_versions where profile_id=?",(profile_id,))
+            c.execute("delete from scan_profiles where project_id=?",(id,))
             c.execute("delete from scan_policies where project_id=?",(id,))
             c.execute("delete from projects where id=?",(id,))
         return True
+
     def create_target(self,project_id,url,name,authorized=False,verified=False,created_by=None,criticality='medium',environment='production',tags=None):
         criticality=criticality if criticality in {'low','medium','high','critical'} else 'medium'
         environment=environment if environment in {'development','test','staging','production'} else 'production'
@@ -678,19 +714,29 @@ class Repository:
             row=c.execute("""select t.id from targets t join projects p on p.id=t.project_id
             where t.id=? and p.organization_id=?""",(target_id,org_id)).fetchone()
             if not row:return False
+            active=c.execute("select count(*) from scans where target_id=? and status in ('QUEUED','SCANNING')",(target_id,)).fetchone()[0]
+            if active:raise ValueError("Target has queued or running scans. Cancel them before permanent deletion.")
+            enabled=c.execute("select count(*) from schedules where target_id=? and enabled=1",(target_id,)).fetchone()[0]
+            if enabled:raise ValueError("Target has active schedules. Pause or delete them before permanent deletion.")
             scan_ids=[r[0] for r in c.execute("select id from scans where target_id=?",(target_id,))]
+            schedule_ids=[r[0] for r in c.execute("select id from schedules where target_id=?",(target_id,))]
             state_ids=[r[0] for r in c.execute("select id from finding_states where target_id=?",(target_id,))]
             for state_id in state_ids:
                 c.execute("delete from finding_comments where finding_state_id=?",(state_id,))
+                c.execute("delete from finding_activity where finding_state_id=?",(state_id,))
+                c.execute("delete from finding_escalations where finding_state_id=?",(state_id,))
                 c.execute("delete from remediation_verifications where finding_state_id=?",(state_id,))
             c.execute("delete from finding_states where target_id=?",(target_id,))
             for sid in scan_ids:
                 c.execute("delete from assets where scan_id=?",(sid,))
                 c.execute("delete from remediation_verifications where scan_id=?",(sid,))
+                c.execute("delete from report_exports where scan_id=?",(sid,))
+                c.execute("delete from schedule_runs where scan_id=?",(sid,))
                 c.execute("delete from findings where scan_id=?",(sid,))
                 c.execute("delete from scan_events where scan_id=?",(sid,))
                 c.execute("delete from zap_imports where scan_id=?",(sid,))
                 c.execute("delete from scans where id=?",(sid,))
+            for schedule_id in schedule_ids:c.execute("delete from schedule_runs where schedule_id=?",(schedule_id,))
             c.execute("delete from schedules where target_id=?",(target_id,))
             c.execute("delete from target_preflights where target_id=?",(target_id,))
             c.execute("delete from target_verifications where target_id=?",(target_id,))
