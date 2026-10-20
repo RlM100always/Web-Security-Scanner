@@ -61,3 +61,24 @@ def test_target_accountability_metadata_is_persistent():
         assert saved["owner_user_id"]==owner["user_id"]
         assert "Payments release" in saved["notes"]
         assert sorted(saved["tags"])==["customer-facing","payments"]
+
+
+def test_workspace_readiness_is_derived_from_real_persisted_state():
+    with tempfile.TemporaryDirectory() as d:
+        r=Repository(os.path.join(d,"readiness.sqlite3"));r.init_schema()
+        owner=r.create_signup("owner@example.com","Owner",hash_password("correct-horse-battery"),"Acme")
+        initial=r.onboarding_state(owner["user_id"],owner["organization_id"])
+        assert initial["percent"]==0 and initial["completed"] is False
+
+        r.set_email_verified(owner["user_id"],True)
+        p=r.create_project("Production","",owner["organization_id"],owner["user_id"],[])
+        profile=r.ensure_default_scan_profile(p["id"],owner["user_id"])
+        t=r.create_target(p["id"],"https://example.com/","Portal",True,False,owner["user_id"],"high","production",[])
+        r.update_target_metadata(t["id"],owner["organization_id"],{"owner_user_id":owner["user_id"]})
+        s=r.create_scan(t["id"],t["url"],profile["scan_mode"],owner["user_id"],profile["policy"],profile["id"])
+        r.update_scan(s["id"],status="COMPLETED",stage="COMPLETED",progress=100,completed_at=r.now())
+
+        ready=r.onboarding_state(owner["user_id"],owner["organization_id"])
+        assert ready["completed"] is True and ready["percent"]==100
+        hidden=r.set_onboarding_dismissed(owner["user_id"],owner["organization_id"],True)
+        assert hidden["dismissed"] is True
