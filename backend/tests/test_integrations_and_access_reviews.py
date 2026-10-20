@@ -91,6 +91,12 @@ def test_report_export_ledger_preserves_hash_actor_and_scan_context():
         assert history[0]["id"]==row["id"]
         assert history[0]["sha256"]=="a"*64 and history[0]["size_bytes"]==4096
         assert history[0]["user_email"]=="owner@example.com" and history[0]["target_url"]=="https://example.com/"
+        old="2000-01-01T00:00:00+00:00"
+        r.update_scan(scan["id"],completed_at=old)
+        assert r.purge_retention(1)==1
+        retained=r.list_report_exports(owner["organization_id"])
+        assert retained and retained[0]["id"]==row["id"]
+        assert retained[0]["target_url"]=="https://example.com/" and retained[0]["score"]==88 and retained[0]["profile"]=="standard"
 
 
 def test_overdue_finding_escalation_is_daily_deduplicated():
