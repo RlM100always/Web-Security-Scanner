@@ -416,7 +416,7 @@ def create_blueprint():
     def scan_get(scan_id):
         ident=current_identity();s=repo().get_scan(scan_id,ident['organization_id'])
         if not s:return {'error':'Scan not found'},404
-        s['findings']=repo().findings(scan_id);s['assets']=repo().assets(scan_id);s['policy']=repo().scan_policy(scan_id);s['comparison']=repo().comparison(scan_id);s['zap']=repo().latest_zap_import(scan_id);return s
+        s['findings']=repo().findings(scan_id);s['assets']=repo().assets(scan_id);s['asset_comparison']=repo().asset_comparison(scan_id);s['standards_summary']=repo().standards_summary(scan_id);s['policy']=repo().scan_policy(scan_id);s['comparison']=repo().comparison(scan_id);s['zap']=repo().latest_zap_import(scan_id);return s
 
     @bp.get('/scans/<scan_id>/events')
     @require_auth
@@ -452,7 +452,7 @@ def create_blueprint():
     def finding_state_get(state_id):
         ident=current_identity();row=repo().get_finding_state(state_id,ident['organization_id'])
         if not row:return {'error':'Finding state not found'},404
-        row['comments']=repo().finding_comments(state_id,ident['organization_id']);row['verifications']=repo().remediation_history(state_id,ident['organization_id']);return row
+        row['comments']=repo().finding_comments(state_id,ident['organization_id']);row['verifications']=repo().remediation_history(state_id,ident['organization_id']);row['timeline']=repo().finding_timeline(state_id,ident['organization_id']);return row
 
     @bp.patch('/finding-states/<state_id>')
     @require_role('analyst')
