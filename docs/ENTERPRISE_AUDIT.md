@@ -26,8 +26,8 @@ This document records the current SentinelScope product architecture, the workfl
 | Scan creation | Three-step target/profile/scope/review wizard with target business context and explicit final authorisation confirmation |
 | Scanner | TLS/certificate/protocol/cipher/expiry, HTTPS/HSTS, CSP quality, browser headers, cookies, CORS reflection, forms, mixed content, methods, disclosure, security.txt and same-origin asset discovery |
 | Asset inventory | Persisted URL/status/type/title/depth/size/source/timing/redirect/truncation metadata; portfolio inventory; latest-target view; added/removed/changed baseline analysis |
-| Findings | Stable fingerprint, first/last seen, occurrence count, effective severity, target criticality context, risk score, assignee, due date, comments and detection timeline |
-| Risk decisions | OPEN/ACKNOWLEDGED/IN_PROGRESS/ACCEPTED_RISK/FALSE_POSITIVE/REMEDIATED; rationale requirement; risk-review expiry; expired acceptance priority signal |
+| Findings | Stable fingerprint, first/last seen, occurrence count, effective severity, target criticality context, risk score, assignee, SLA due date, comments, scan detection timeline and immutable workflow activity |
+| Risk decisions | OPEN/ACKNOWLEDGED/IN_PROGRESS/ACCEPTED_RISK/FALSE_POSITIVE/REMEDIATED; saved/private/shared issue views; portfolio filters; bulk triage; rationale requirement; risk-review expiry; optional Owner-only acceptance approval; expired acceptance priority signal |
 | Remediation verification | Queued re-assessment linked to the persistent issue; VERIFIED_FIXED/STILL_PRESENT history |
 | Standards | Check-level references and scan-level mapped PASS/WARNING/FAIL/ERROR summary; no blanket certification claim |
 | Reports | Executive summary, scope, policy, target context, standards evidence, findings, assets, drift, methodology and limitations in PDF/HTML/JSON |
@@ -39,7 +39,7 @@ This document records the current SentinelScope product architecture, the workfl
 | API access | Expiring one-time-displayed bearer tokens, hashed storage, read/scan/write/admin scopes and central scope enforcement |
 | Backups | SQLite online backup, integrity validation, restore workflow, workspace/system-admin history |
 | Retention & quotas | Daily scan quota, concurrent scan limit, retention policy and admin-triggered cleanup |
-| Responsive UX | Desktop condensed sidebar + command palette + breadcrumbs; mobile compact header + bottom navigation dock; responsive public site, tables, cards and modals |
+| Responsive UX | Premium desktop security console with condensed sidebar, command palette, executive risk dashboard and dense evidence views; mobile uses a separate compact shell with bottom dock, stacked operational cards, safe-area spacing and sheet-style modals instead of shrinking the desktop layout |
 | Accessibility | Semantic public navigation, page headings, keyboard command palette, labelled inputs, focusable controls and high-contrast light/dark design tokens |
 
 ## Security boundaries
@@ -90,3 +90,38 @@ Regression coverage includes authentication, system administration, public produ
 ## Remaining architectural constraint
 
 The project intentionally remains **SQLite-based** for the current academic/product scope. SQLite WAL plus a persistent job queue can support this deployment model, but it is not presented as a substitute for a horizontally distributed multi-region database/queue architecture. The UI/API design keeps domain boundaries explicit so those infrastructure components can be replaced later without changing the product model.
+
+## Public information architecture
+
+The unauthenticated product site now provides dedicated routes for:
+
+- Product
+- Features
+- Solutions
+- Enterprise workflows
+- End-to-end workflow
+- Security model
+- Standards mapping
+- Research & evaluation
+- Responsible use
+- Deployment model
+- Documentation
+- About
+
+The public experience intentionally explains what the scanner does, what it does not do, how evidence moves through remediation, how SQLite deployment is operated, and why automated standards mapping is not equivalent to certification.
+
+## Portfolio operating model
+
+The enterprise issue inbox now supports:
+
+1. search plus lifecycle/severity/assignee/SLA filtering;
+2. private and workspace-shared saved views;
+3. multi-select operations;
+4. bulk assignment/state/due-date changes;
+5. CSV export of the current filtered view;
+6. workspace severity-based remediation SLAs;
+7. automatic due dates when an issue is first created;
+8. optional Owner-only risk acceptance;
+9. durable workflow activity history for creation, reopen, comments, triage and automatic remediation.
+
+The dashboard also exposes executive portfolio signals for active security debt, overdue/unassigned issues, expired risk acceptances, remediation rate, posture trend, schedule health and critical-target coverage.
