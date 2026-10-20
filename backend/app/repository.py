@@ -877,12 +877,25 @@ class Repository:
         return row
 
     def finalize_schedule_run(self,scan_id,status):
+        notify=None
         with self.conn() as c:
-            run=c.execute("select schedule_id from schedule_runs where scan_id=? order by created_at desc limit 1",(scan_id,)).fetchone()
+            run=c.execute("""select sr.schedule_id,s.created_by,s.notify_on_failure,s.name,t.name target_name,p.organization_id
+              from schedule_runs sr join schedules s on s.id=sr.schedule_id join targets t on t.id=s.target_id
+              join projects p on p.id=t.project_id where sr.scan_id=? order by sr.created_at desc limit 1""",(scan_id,)).fetchone()
             if not run:return False
             c.execute("update schedule_runs set status=?,completed_at=? where scan_id=?",(status,self.now(),scan_id))
-            if status=='FAILED':c.execute("update schedules set failure_count=failure_count+1 where id=?",(run['schedule_id'],))
-            return True
+            if status=='FAILED':
+                c.execute("update schedules set failure_count=failure_count+1 where id=?",(run['schedule_id'],))
+                if run['notify_on_failure']:
+                    notify=dict(run)
+            if status=='COMPLETED':
+                c.execute("update schedules set failure_count=case when failure_count<0 then 0 else failure_count end where id=?",(run['schedule_id'],))
+        if notify:
+            self.add_notification(notify['organization_id'],notify['created_by'],'schedule_failure',
+              'Recurring assessment failed',
+              f"{notify.get('name') or notify.get('target_name') or 'Scheduled assessment'} failed. Review the scan and worker error before the next run.",
+              {'schedule_id':notify['schedule_id'],'scan_id':scan_id})
+        return True
 
     def schedule_history(self,schedule_id,org_id,limit=50):
         with self.conn() as c:
