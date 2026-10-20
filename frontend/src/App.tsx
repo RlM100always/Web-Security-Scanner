@@ -31,6 +31,7 @@ export default function App(){
     try{setReportExports(await api('/reports/history'))}catch{}
     if(can(user,'admin')){try{setWebhooks(await api('/integrations/webhooks'));setWebhookDeliveries(await api('/integrations/webhooks/deliveries'))}catch{}}
     try{const inbox=await api('/portfolio/issues');setIssues(inbox.items||[]);setIssueSummary(inbox.summary||{})}catch{}
+    try{setEscalations(await api('/portfolio/escalations'))}catch{}
     try{const inventory=await api('/assets');setAssets(inventory.items||[]);setAssetSummary(inventory.summary||{})}catch{}
     try{setExposure(await api('/exposure-map'))}catch{}
     if(user.role==='owner'){try{setBackups(await api('/backups'))}catch{}}
