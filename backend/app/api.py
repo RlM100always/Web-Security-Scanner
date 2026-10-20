@@ -744,11 +744,19 @@ def create_blueprint():
         if not old:return {'error':'Scan not found'},404
         target=repo().get_target(old['target_id'],ident['organization_id'])
         if not target:return {'error':'Target not found'},404
+        if not target.get('authorized'):return {'error':'Target is not authorized'},403
         project=repo().get_project(target['project_id'],ident['organization_id'])
         if project and project.get('status')=='archived':return {'error':'Archived projects cannot queue assessments'},409
         if old['profile']=='lab' and not target.get('verified'):return {'error':'Lab profile requires verified ownership'},403
         if repo().system_setting('require_verified_email_for_scans',False) and not ident.get('email_verified'):
             return {'error':'Verify your email before creating assessments'},403
+        preflight=repo().latest_target_preflight(target['id'],ident['organization_id'],old['profile'],15)
+        if not preflight:
+            pf_result=run_target_preflight(target,old['profile'],current_app.config['SCANNER_ALLOW_PRIVATE'],min(float(current_app.config.get('REQUEST_TIMEOUT',8)),8))
+            preflight=repo().save_target_preflight(target['id'],ident['organization_id'],ident['user_id'],old['profile'],pf_result)
+            audit('TARGET_PREFLIGHT_AUTO_COMPLETED','target',target['id'],{'profile':old['profile'],'status':pf_result.get('status'),'preflight_id':preflight['id']})
+        if preflight.get('status')=='BLOCKED':
+            return {'error':'Target preflight blocked this rerun','preflight':preflight},409
         usage=repo().organization_scan_usage(ident['organization_id'])
         quota=max(1,int(repo().system_setting('scan_quota_per_day',100)));concurrent=max(1,int(repo().system_setting('max_concurrent_scans_per_org',3)))
         if usage['last_24h']>=quota:return {'error':'Daily scan quota reached','quota':quota,'usage':usage},429
@@ -757,8 +765,8 @@ def create_blueprint():
         profile_snapshot={'id':old.get('scan_profile_id'),'name':old.get('scan_profile_name'),'version':old.get('scan_profile_version'),'scan_mode':old['profile']} if old.get('scan_profile_id') else None
         new=repo().create_scan(target['id'],target['url'],old['profile'],ident['user_id'],policy,old.get('scan_profile_id'),profile_snapshot)
         job=repo().enqueue_job('scan',{'scan_id':new['id'],'target_id':target['id'],'rerun_of':scan_id})
-        audit('SCAN_RERUN_QUEUED','scan',new['id'],{'rerun_of':scan_id,'job_id':job['id']})
-        new['job_id']=job['id'];new['rerun_of']=scan_id;return new,202
+        audit('SCAN_RERUN_QUEUED','scan',new['id'],{'rerun_of':scan_id,'job_id':job['id'],'preflight_id':preflight.get('id')})
+        new['job_id']=job['id'];new['rerun_of']=scan_id;new['preflight']=preflight;return new,202
 
     @bp.get('/scans/<scan_id>/events')
     @require_auth
