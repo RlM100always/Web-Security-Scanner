@@ -2,6 +2,7 @@ import os
 import socket
 import time
 from .scanner.engine import run_scan
+from .mailer import send_email
 
 def process_scan(repo, config, payload):
     scan=repo.get_scan(payload["scan_id"])
@@ -19,9 +20,18 @@ def process_scan(repo, config, payload):
         repo.update_scan(scan['id'],status='COMPLETED',stage='COMPLETED',progress=100,score=result.score,
                          pages_scanned=result.pages_scanned,duration_ms=result.duration_ms,completed_at=repo.now())
         repo.add_scan_event(scan['id'],'STATE','COMPLETED',100,'Scan completed',{"score":result.score,"checks_run":result.checks_run})
+        if scan.get('created_by'):
+            target_title=target.get('name') or target.get('url')
+            repo.add_notification(None,scan['created_by'],'scan_completed','Scan completed',f"{target_title} scored {result.score}/100",{"scan_id":scan['id']})
+            user=repo.get_user_by_id(scan['created_by'])
+            if user:
+                try:send_email(vars(config),user['email'],'SentinelScope scan completed',f"{target_title}\nSecurity score: {result.score}/100")
+                except Exception:pass
     except Exception as e:
         repo.update_scan(scan['id'],status='FAILED',stage='FAILED',progress=100,error=str(e)[:1000],completed_at=repo.now())
         repo.add_scan_event(scan['id'],'STATE','FAILED',100,'Scan failed',{"error":str(e)[:1000]})
+        if scan.get('created_by'):
+            repo.add_notification(None,scan['created_by'],'scan_failed','Scan failed',str(e)[:300],{"scan_id":scan['id']})
         raise
 
 def process_one(repo, config, worker_id):
