@@ -113,6 +113,8 @@ class Repository:
             """)
             self._ensure_column(c,"memberships","active","integer not null default 1")
             self._ensure_column(c,"projects","organization_id","text")
+            self._ensure_column(c,"projects","status","text not null default 'active'")
+            self._ensure_column(c,"projects","tags_json","text not null default '[]'")
             self._ensure_column(c,"projects","created_by","text")
             self._ensure_column(c,"targets","created_by","text")
             self._ensure_column(c,"targets","criticality","text not null default 'medium'")
@@ -411,20 +413,40 @@ class Repository:
         return data
 
     # projects / targets
-    def create_project(self,name,description='',organization_id=None,created_by=None):
-        x={'id':self._id(),'name':name,'description':description,'organization_id':organization_id,'created_by':created_by,'created_at':self.now()}
-        with self.conn() as c:c.execute("insert into projects(id,name,description,organization_id,created_by,created_at) values(?,?,?,?,?,?)",tuple(x.values()))
-        return x
+    def create_project(self,name,description='',organization_id=None,created_by=None,tags=None):
+        x={'id':self._id(),'name':name,'description':description,'organization_id':organization_id,'created_by':created_by,'created_at':self.now(),'status':'active','tags_json':json.dumps(tags or [])}
+        with self.conn() as c:c.execute("""insert into projects(id,name,description,organization_id,created_by,created_at,status,tags_json)
+          values(?,?,?,?,?,?,?,?)""",(x['id'],x['name'],x['description'],x['organization_id'],x['created_by'],x['created_at'],x['status'],x['tags_json']))
+        x['tags']=json.loads(x.pop('tags_json'));return x
+    def _project_row(self,row):
+        if not row:return None
+        d=dict(row)
+        try:d['tags']=json.loads(d.pop('tags_json') or '[]')
+        except Exception:d['tags']=[]
+        return d
     def list_projects(self,org_id=None):
         q="select * from projects";args=[]
         if org_id:q+=" where organization_id=?";args=[org_id]
-        q+=" order by created_at desc"
-        with self.conn() as c:return [dict(r) for r in c.execute(q,args)]
+        q+=" order by case status when 'active' then 0 else 1 end,created_at desc"
+        with self.conn() as c:rows=c.execute(q,args).fetchall()
+        return [self._project_row(r) for r in rows]
     def get_project(self,id,org_id=None):
         q="select * from projects where id=?";args=[id]
         if org_id:q+=" and organization_id=?";args.append(org_id)
         with self.conn() as c:r=c.execute(q,args).fetchone()
-        return dict(r) if r else None
+        return self._project_row(r)
+    def update_project(self,id,org_id,updates):
+        allowed={'name','description','status','tags_json'};sets=[];vals=[]
+        for k,v in updates.items():
+            if k in allowed:sets.append(k+"=?");vals.append(v)
+        if not sets:return self.get_project(id,org_id)
+        with self.conn() as c:
+            row=c.execute("select id from projects where id=? and organization_id=?",(id,org_id)).fetchone()
+            if not row:return None
+            vals.append(id);c.execute("update projects set "+",".join(sets)+" where id=?",vals)
+            if updates.get('status')=='archived':
+                c.execute("""update schedules set enabled=0 where target_id in (select id from targets where project_id=?)""",(id,))
+        return self.get_project(id,org_id)
     def delete_project(self,id,org_id):
         with self.conn() as c:
             p=c.execute("select id from projects where id=? and organization_id=?",(id,org_id)).fetchone()
