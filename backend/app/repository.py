@@ -358,6 +358,20 @@ class Repository:
     def mark_notification_read(self,id,user_id):
         with self.conn() as c:c.execute("update notifications set read_at=? where id=? and (user_id=? or user_id is null)",(self.now(),id,user_id))
 
+    def mark_all_notifications_read(self,org_id,user_id):
+        with self.conn() as c:
+            cur=c.execute("""update notifications set read_at=? where read_at is null
+              and (organization_id=? or organization_id is null) and (user_id=? or user_id is null)""",(self.now(),org_id,user_id))
+            return cur.rowcount
+
+    def notification_counts(self,org_id,user_id):
+        with self.conn() as c:
+            total=c.execute("""select count(*) from notifications where (organization_id=? or organization_id is null)
+              and (user_id=? or user_id is null)""",(org_id,user_id)).fetchone()[0]
+            unread=c.execute("""select count(*) from notifications where read_at is null and (organization_id=? or organization_id is null)
+              and (user_id=? or user_id is null)""",(org_id,user_id)).fetchone()[0]
+        return {'total':total,'unread':unread}
+
     def record_backup(self,org_id,user_id,filename,size_bytes):
         with self.conn() as c:c.execute("insert into backup_history values(?,?,?,?,?,?)",(self._id(),org_id,user_id,filename,size_bytes,self.now()))
 
@@ -916,7 +930,8 @@ class Repository:
         with self.conn() as c:c.execute("""insert into audit_logs(id,organization_id,user_id,event,resource_type,resource_id,details_json,ip,created_at)
         values(?,?,?,?,?,?,?,?,?)""",(self._id(),org_id,user_id,event,resource_type,resource_id,json.dumps(details or {}),ip,self.now()))
     def list_audit(self,org_id,limit=200):
-        with self.conn() as c:rows=[dict(r) for r in c.execute("select * from audit_logs where organization_id=? order by created_at desc limit ?",(org_id,limit))]
+        with self.conn() as c:rows=[dict(r) for r in c.execute("""select a.*,u.email user_email,u.name user_name
+          from audit_logs a left join users u on u.id=a.user_id where a.organization_id=? order by a.created_at desc limit ?""",(org_id,limit))]
         for r in rows:r['details']=json.loads(r.pop('details_json') or '{}')
         return rows
 
