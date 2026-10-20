@@ -20,6 +20,7 @@ test('deep scan policy and API key workflow works',async({page},testInfo)=>{
   await page.getByLabel('Password').fill('deep-feature-password-123');
   await page.getByRole('button',{name:'Create account'}).click();
   await expect(page.getByRole('heading',{name:'Dashboard'})).toBeVisible();
+  await expect(page.getByText('WORKSPACE READINESS')).toBeVisible();
 
   await openNav(page,'Projects');
   await page.getByRole('button',{name:'New project'}).click();
@@ -29,7 +30,19 @@ test('deep scan policy and API key workflow works',async({page},testInfo)=>{
   await expect(page.getByText('Production Estate')).toBeVisible();
 
   const projectCard=page.locator('.projectCard').filter({hasText:'Production Estate'});
-  await projectCard.getByRole('button',{name:'Scan policy'}).click();
+  await projectCard.getByRole('button',{name:'Scan profiles'}).click();
+  await expect(page.getByText('Govern assessment configuration once, reuse it everywhere.')).toBeVisible();
+  await expect(page.getByText('Standard Baseline')).toBeVisible();
+  await page.getByRole('button',{name:'Create scan profile'}).click();
+  await page.getByLabel('Profile name').fill('Release Gate');
+  await page.getByLabel('Description').fill('Release readiness profile');
+  await page.getByLabel('Maximum pages').fill('22');
+  await page.getByRole('button',{name:'Create profile'}).click();
+  await expect(page.getByText('Release Gate')).toBeVisible();
+  await expect(page.getByText('v1 · 22 pages · depth 2')).toBeVisible();
+  await page.locator('.modalHead button').click();
+
+  await projectCard.getByRole('button',{name:'Base policy'}).click();
   await page.getByLabel('Maximum pages').fill('37');
   await page.getByLabel('Maximum crawl depth').fill('3');
   await page.getByLabel('Request delay (ms)').fill('250');
@@ -42,7 +55,7 @@ test('deep scan policy and API key workflow works',async({page},testInfo)=>{
 
   await Promise.all([
     page.waitForResponse(r=>r.url().includes('/policy')&&r.request().method()==='GET'&&r.status()===200),
-    projectCard.getByRole('button',{name:'Scan policy'}).click()
+    projectCard.getByRole('button',{name:'Base policy'}).click()
   ]);
   await expect(page.getByLabel('Maximum pages')).toHaveValue('37');
   const persistedExclude=await page.getByLabel('Exclude path regex — one per line').inputValue();
