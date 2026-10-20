@@ -109,6 +109,8 @@ def run_target_preflight(target, profile="standard", allow_private=False, timeou
             "Verify DNS, TLS, firewall/proxy policy and target availability."))
         result["status"]="BLOCKED"
         return result
+    finally:
+        client.close()
 
     final_url=result.get("final_url") or safe_url
     if urlsplit(final_url).scheme=="https":
