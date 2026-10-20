@@ -99,6 +99,11 @@ class Repository:
               scan_mode text not null default 'standard',policy_json text not null,version integer not null default 1,
               is_default integer not null default 0,active integer not null default 1,created_by text,updated_by text,
               created_at text not null,updated_at text not null);
+            create table if not exists scan_profile_versions(
+              id text primary key,profile_id text not null,project_id text not null,version integer not null,
+              name text not null,description text not null,scan_mode text not null,policy_json text not null,
+              is_default integer not null,active integer not null,changed_by text,change_note text,
+              created_at text not null,unique(profile_id,version));
             create table if not exists assets(
               id text primary key,scan_id text not null,target_id text not null,url text not null,kind text not null,
               status_code integer,content_type text,title text,depth integer not null,size_bytes integer not null,
@@ -180,6 +185,8 @@ class Repository:
             self._ensure_column(c,"schedules","run_count","integer not null default 0")
             self._ensure_column(c,"schedules","failure_count","integer not null default 0")
             self._ensure_column(c,"schedules","notify_on_failure","integer not null default 1")
+            self._ensure_column(c,"schedules","last_error","text")
+            self._ensure_column(c,"scan_profiles","archived_at","text")
             self._ensure_column(c,"finding_states","base_severity","text not null default 'INFO'")
             self._ensure_column(c,"finding_states","risk_expires_at","text")
             self._ensure_column(c,"finding_states","risk_accepted_by","text")
@@ -207,6 +214,7 @@ class Repository:
             c.execute("create index if not exists idx_webhooks_org on webhook_endpoints(organization_id,active)")
             c.execute("create index if not exists idx_webhook_deliveries_endpoint on webhook_deliveries(endpoint_id,created_at)")
             c.execute("create index if not exists idx_scan_profiles_project on scan_profiles(project_id,active)")
+            c.execute("create index if not exists idx_scan_profile_versions on scan_profile_versions(profile_id,version)")
             c.execute("create index if not exists idx_assets_scan on assets(scan_id)")
             c.execute("create index if not exists idx_assets_target on assets(target_id,url)")
             c.execute("create index if not exists idx_finding_states_target on finding_states(target_id,state,last_seen_at)")
@@ -700,13 +708,17 @@ class Repository:
             vals.append(target_id);c.execute("update targets set "+",".join(sets)+" where id=?",vals)
         return self.get_target(target_id,org_id)
 
+    def _record_scan_profile_version(self,profile,changed_by,change_note=None):
+        with self.conn() as c:c.execute("""insert or replace into scan_profile_versions(id,profile_id,project_id,version,name,description,scan_mode,policy_json,is_default,active,changed_by,change_note,created_at)
+          values(?,?,?,?,?,?,?,?,?,?,?,?,?)""",(self._id(),profile['id'],profile['project_id'],profile['version'],profile['name'],profile['description'],profile['scan_mode'],json.dumps(profile['policy']),int(profile['is_default']),int(profile['active']),changed_by,(change_note or '')[:500],self.now()))
+
     def create_scan_profile(self,project_id,name,description,scan_mode,policy,is_default,user_id):
         now=self.now();pid=self._id()
         with self.conn() as c:
             if is_default:c.execute("update scan_profiles set is_default=0 where project_id=?",(project_id,))
-            c.execute("""insert into scan_profiles(id,project_id,name,description,scan_mode,policy_json,version,is_default,active,created_by,updated_by,created_at,updated_at)
-              values(?,?,?,?,?,?,1,?,1,?,?,?,?)""",(pid,project_id,name,description,scan_mode,json.dumps(policy),int(is_default),user_id,user_id,now,now))
-        return self.get_scan_profile(pid)
+            c.execute("""insert into scan_profiles(id,project_id,name,description,scan_mode,policy_json,version,is_default,active,created_by,updated_by,created_at,updated_at,archived_at)
+              values(?,?,?,?,?,?,1,?,1,?,?,?,?,null)""",(pid,project_id,name,description,scan_mode,json.dumps(policy),int(is_default),user_id,user_id,now,now))
+        row=self.get_scan_profile(pid);self._record_scan_profile_version(row,user_id,'Profile created');return row
 
     def get_scan_profile(self,profile_id):
         with self.conn() as c:r=c.execute("select * from scan_profiles where id=?",(profile_id,)).fetchone()
@@ -729,18 +741,49 @@ class Repository:
             if is_default:c.execute("update scan_profiles set is_default=0 where project_id=? and id<>?",(project_id,profile_id))
             c.execute("""update scan_profiles set name=?,description=?,scan_mode=?,policy_json=?,version=version+1,is_default=?,active=?,updated_by=?,updated_at=?
               where id=? and project_id=?""",(name,description,scan_mode,json.dumps(policy),int(is_default),int(active),user_id,self.now(),profile_id,project_id))
-        return self.get_scan_profile(profile_id)
+        row=self.get_scan_profile(profile_id);self._record_scan_profile_version(row,user_id,updates.get('change_note') or 'Profile updated');return row
+
+    def scan_profile_versions(self,profile_id,project_id):
+        with self.conn() as c:rows=[dict(r) for r in c.execute("""select v.*,u.name changed_by_name,u.email changed_by_email
+          from scan_profile_versions v left join users u on u.id=v.changed_by
+          where v.profile_id=? and v.project_id=? order by v.version desc""",(profile_id,project_id))]
+        for d in rows:
+            try:d['policy']=json.loads(d.pop('policy_json') or '{}')
+            except Exception:d['policy']={}
+            d['is_default']=bool(d['is_default']);d['active']=bool(d['active'])
+        return rows
+
+    def restore_scan_profile_version(self,profile_id,project_id,version,user_id):
+        with self.conn() as c:r=c.execute("select * from scan_profile_versions where profile_id=? and project_id=? and version=?",(profile_id,project_id,int(version))).fetchone()
+        if not r:return None
+        d=dict(r);policy=json.loads(d['policy_json'] or '{}')
+        return self.update_scan_profile(profile_id,project_id,{'name':d['name'],'description':d['description'],'scan_mode':d['scan_mode'],'policy':policy,'is_default':bool(d['is_default']),'active':True,'change_note':f'Restored from v{version}'},user_id)
+
+    def scan_profile_usage(self,profile_id,project_id):
+        with self.conn() as c:
+            schedules=c.execute("""select count(*) from schedules s join targets t on t.id=s.target_id
+              where s.scan_profile_id=? and t.project_id=? and s.enabled=1""",(profile_id,project_id)).fetchone()[0]
+            scans=c.execute("""select count(*) from scans s join targets t on t.id=s.target_id
+              where s.scan_profile_id=? and t.project_id=?""",(profile_id,project_id)).fetchone()[0]
+        return {'enabled_schedules':schedules,'historical_scans':scans}
 
     def clone_scan_profile(self,profile_id,project_id,user_id):
         current=self.get_scan_profile(profile_id)
         if not current or current['project_id']!=project_id:return None
         return self.create_scan_profile(project_id,current['name']+" Copy",current['description'],current['scan_mode'],current['policy'],False,user_id)
 
-    def delete_scan_profile(self,profile_id,project_id):
+    def delete_scan_profile(self,profile_id,project_id,user_id=None):
+        usage=self.scan_profile_usage(profile_id,project_id)
+        if usage['enabled_schedules']>0:raise ValueError("Rebind or pause enabled schedules before archiving this profile")
         with self.conn() as c:
-            r=c.execute("select is_default from scan_profiles where id=? and project_id=?",(profile_id,project_id)).fetchone()
+            r=c.execute("select is_default,active from scan_profiles where id=? and project_id=?",(profile_id,project_id)).fetchone()
             if not r:return False
-            c.execute("delete from scan_profiles where id=?",(profile_id,))
+            c.execute("update scan_profiles set active=0,is_default=0,archived_at=?,updated_by=?,updated_at=? where id=?",(self.now(),user_id,self.now(),profile_id))
+            if r['is_default']:
+                replacement=c.execute("select id from scan_profiles where project_id=? and id<>? and active=1 order by updated_at desc limit 1",(project_id,profile_id)).fetchone()
+                if replacement:c.execute("update scan_profiles set is_default=1 where id=?",(replacement['id'],))
+        row=self.get_scan_profile(profile_id)
+        if row:self._record_scan_profile_version(row,user_id,'Profile archived')
         return True
 
     def ensure_default_scan_profile(self,project_id,user_id):
@@ -1292,8 +1335,10 @@ class Repository:
         if s.get('project_status')=='archived':raise ValueError("Archived projects cannot run recurring assessments")
         if s.get('profile')=='lab' and not s.get('target_verified'):raise ValueError("Lab profile requires verified ownership")
         named=self.get_scan_profile(s.get('scan_profile_id')) if s.get('scan_profile_id') else None
-        policy=named['policy'] if named and named.get('active') else self.get_project_policy(s['project_id'])
-        mode=named['scan_mode'] if named and named.get('active') else s['profile']
+        if s.get('scan_profile_id') and (not named or not named.get('active')):
+            raise ValueError("This schedule is bound to an inactive or missing scan profile; rebind the schedule before running it")
+        policy=named['policy'] if named else self.get_project_policy(s['project_id'])
+        mode=named['scan_mode'] if named else s['profile']
         scan=self.create_scan(s['target_id'],s['target_url'],mode,user_id,policy,named['id'] if named else None)
         self.enqueue_job('scan',{'scan_id':scan['id'],'target_id':s['target_id'],'schedule_id':schedule_id})
         self.create_schedule_run(schedule_id,scan['id'])
@@ -1307,8 +1352,15 @@ class Repository:
             t=self.get_target(s['target_id'])
             if not t:continue
             named=self.get_scan_profile(s.get('scan_profile_id')) if s.get('scan_profile_id') else None
-            policy=named['policy'] if named and named.get('active') else self.get_project_policy(t['project_id'])
-            mode=named['scan_mode'] if named and named.get('active') else s['profile']
+            if s.get('scan_profile_id') and (not named or not named.get('active')):
+                nxt=(datetime.now(timezone.utc)+timedelta(minutes=s['interval_minutes'])).isoformat()
+                message="Schedule blocked: bound scan profile is inactive or missing"
+                with self.conn() as c:c.execute("update schedules set next_run_at=?,failure_count=failure_count+1,last_error=? where id=?",(nxt,message,s['id']))
+                if s.get('created_by'):
+                    self.add_notification(None,s['created_by'],'schedule_failed','Recurring assessment blocked',message,{'schedule_id':s['id'],'scan_profile_id':s.get('scan_profile_id')})
+                continue
+            policy=named['policy'] if named else self.get_project_policy(t['project_id'])
+            mode=named['scan_mode'] if named else s['profile']
             scan=self.create_scan(t['id'],t['url'],mode,s['created_by'],policy,named['id'] if named else None)
             self.enqueue_job('scan',{'scan_id':scan['id'],'target_id':t['id'],'schedule_id':s['id']})
             self.create_schedule_run(s['id'],scan['id'])
