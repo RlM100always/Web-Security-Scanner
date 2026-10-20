@@ -26,7 +26,7 @@ test('deep scan policy and API key workflow works',async({page},testInfo)=>{
   await page.getByRole('button',{name:'New project'}).click();
   await page.getByLabel('Project name').fill('Production Estate');
   await page.getByLabel('Description').fill('Policy managed estate');
-  await page.getByRole('button',{name:'Create',exact:true}).click();
+  await page.getByRole('button',{name:'Create project',exact:true}).click();
   await expect(page.getByText('Production Estate')).toBeVisible();
 
   await page.getByRole('button',{name:'Scan policy'}).click();
