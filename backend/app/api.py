@@ -490,6 +490,8 @@ def create_blueprint():
         ident=current_identity()
         if request.method=='GET':return jsonify(repo().list_scans(100,ident['organization_id']))
         if ROLES.get(ident['role'],0)<ROLES['analyst']:return {'error':'Analyst role required'},403
+        if repo().system_setting('require_verified_email_for_scans',False) and not ident.get('email_verified'):
+            return {'error':'Verify your email before creating assessments'},403
         d=request.get_json(force=True) or {};t=repo().get_target(d.get('target_id'),ident['organization_id'])
         if not t:return {'error':'Target not found'},404
         project=repo().get_project(t['project_id'],ident['organization_id'])
@@ -636,6 +638,8 @@ def create_blueprint():
         ident=current_identity()
         if request.method=='GET':return jsonify(repo().list_schedules(ident['organization_id']))
         if ROLES.get(ident['role'],0)<ROLES['analyst']:return {'error':'Analyst role required'},403
+        if repo().system_setting('require_verified_email_for_scans',False) and not ident.get('email_verified'):
+            return {'error':'Verify your email before creating recurring assessments'},403
         d=request.get_json(force=True) or {};t=repo().get_target(d.get('target_id'),ident['organization_id'])
         if not t:return {'error':'Target not found'},404
         interval=int(d.get('interval_minutes') or 1440)
@@ -666,7 +670,10 @@ def create_blueprint():
     @bp.post('/schedules/<schedule_id>/run-now')
     @require_role('analyst')
     def schedule_run_now(schedule_id):
-        ident=current_identity();usage=repo().organization_scan_usage(ident['organization_id'])
+        ident=current_identity()
+        if repo().system_setting('require_verified_email_for_scans',False) and not ident.get('email_verified'):
+            return {'error':'Verify your email before running recurring assessments'},403
+        usage=repo().organization_scan_usage(ident['organization_id'])
         concurrent=max(1,int(repo().system_setting('max_concurrent_scans_per_org',3)))
         if usage['active']>=concurrent:return {'error':'Concurrent scan limit reached','limit':concurrent},429
         scan=repo().run_schedule_now(schedule_id,ident['organization_id'],ident['user_id'])
