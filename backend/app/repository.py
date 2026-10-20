@@ -171,6 +171,8 @@ class Repository:
             self._ensure_column(c,"scans","cancel_requested","integer not null default 0")
             self._ensure_column(c,"scans","policy_json","text")
             self._ensure_column(c,"scans","scan_profile_id","text")
+            self._ensure_column(c,"scans","scan_profile_name","text")
+            self._ensure_column(c,"scans","scan_profile_version","integer")
             self._ensure_column(c,"schedules","scan_profile_id","text")
             self._ensure_column(c,"schedules","name","text")
             self._ensure_column(c,"schedules","last_run_at","text")
@@ -761,11 +763,16 @@ class Repository:
         return {'last_24h':used,'active':active}
 
     # scans / findings
-    def create_scan(self,target_id,target_url,profile,created_by=None,policy=None,scan_profile_id=None):
-        x={'id':self._id(),'target_id':target_id,'target_url':target_url,'profile':profile,'status':'QUEUED','progress':0,'stage':'QUEUED','score':None,'pages_scanned':None,'duration_ms':None,'created_by':created_by,'created_at':self.now(),'completed_at':None,'error':None,'cancel_requested':0,'policy_json':json.dumps(policy or {}),'scan_profile_id':scan_profile_id}
-        with self.conn() as c:c.execute("""insert into scans(id,target_id,target_url,profile,status,progress,stage,score,pages_scanned,duration_ms,created_by,created_at,completed_at,error,cancel_requested,policy_json,scan_profile_id)
-          values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",(x['id'],x['target_id'],x['target_url'],x['profile'],x['status'],x['progress'],x['stage'],x['score'],x['pages_scanned'],x['duration_ms'],x['created_by'],x['created_at'],x['completed_at'],x['error'],x['cancel_requested'],x['policy_json'],x['scan_profile_id']))
-        self.add_scan_event(x['id'],'STATE','QUEUED',0,'Scan queued')
+    def create_scan(self,target_id,target_url,profile,created_by=None,policy=None,scan_profile_id=None,scan_profile_snapshot=None):
+        snapshot=scan_profile_snapshot
+        if not snapshot and scan_profile_id:
+            p=self.get_scan_profile(scan_profile_id)
+            if p:snapshot={'id':p['id'],'name':p['name'],'version':p['version'],'scan_mode':p['scan_mode']}
+        snapshot=snapshot or {}
+        x={'id':self._id(),'target_id':target_id,'target_url':target_url,'profile':profile,'status':'QUEUED','progress':0,'stage':'QUEUED','score':None,'pages_scanned':None,'duration_ms':None,'created_by':created_by,'created_at':self.now(),'completed_at':None,'error':None,'cancel_requested':0,'policy_json':json.dumps(policy or {}),'scan_profile_id':scan_profile_id,'scan_profile_name':snapshot.get('name'),'scan_profile_version':snapshot.get('version')}
+        with self.conn() as c:c.execute("""insert into scans(id,target_id,target_url,profile,status,progress,stage,score,pages_scanned,duration_ms,created_by,created_at,completed_at,error,cancel_requested,policy_json,scan_profile_id,scan_profile_name,scan_profile_version)
+          values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",(x['id'],x['target_id'],x['target_url'],x['profile'],x['status'],x['progress'],x['stage'],x['score'],x['pages_scanned'],x['duration_ms'],x['created_by'],x['created_at'],x['completed_at'],x['error'],x['cancel_requested'],x['policy_json'],x['scan_profile_id'],x['scan_profile_name'],x['scan_profile_version']))
+        self.add_scan_event(x['id'],'STATE','QUEUED',0,'Scan queued',{'scan_profile_id':scan_profile_id,'scan_profile_name':x['scan_profile_name'],'scan_profile_version':x['scan_profile_version']})
         x['policy']=policy or {};x.pop('policy_json',None)
         return x
     def update_scan(self,id,**kw):
@@ -1164,11 +1171,15 @@ class Repository:
           values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",(x['id'],x['target_id'],x['profile'],x['interval_minutes'],x['enabled'],x['next_run_at'],x['created_by'],x['created_at'],x['name'],x['last_run_at'],x['last_scan_id'],x['run_count'],x['failure_count'],x['notify_on_failure'],x['scan_profile_id']))
         return x
     def list_schedules(self,org_id):
-        with self.conn() as c:return [dict(r) for r in c.execute("""select s.* from schedules s join targets t on t.id=s.target_id join projects p on p.id=t.project_id where p.organization_id=? order by s.created_at desc""",(org_id,))]
+        with self.conn() as c:return [dict(r) for r in c.execute("""select s.*,sp.name scan_profile_name,sp.version scan_profile_version,sp.active scan_profile_active
+          from schedules s join targets t on t.id=s.target_id join projects p on p.id=t.project_id
+          left join scan_profiles sp on sp.id=s.scan_profile_id
+          where p.organization_id=? order by s.created_at desc""",(org_id,))]
     def get_schedule(self,schedule_id,org_id=None):
         q="""select s.*,t.url target_url,t.name target_name,t.verified target_verified,t.project_id,
-          p.name project_name,p.status project_status,p.organization_id
-          from schedules s join targets t on t.id=s.target_id join projects p on p.id=t.project_id where s.id=?""";args=[schedule_id]
+          p.name project_name,p.status project_status,p.organization_id,sp.name scan_profile_name,sp.version scan_profile_version,sp.active scan_profile_active
+          from schedules s join targets t on t.id=s.target_id join projects p on p.id=t.project_id
+          left join scan_profiles sp on sp.id=s.scan_profile_id where s.id=?""";args=[schedule_id]
         if org_id:q+=" and p.organization_id=?";args.append(org_id)
         with self.conn() as c:r=c.execute(q,args).fetchone()
         return dict(r) if r else None
