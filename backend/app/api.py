@@ -562,6 +562,7 @@ def create_blueprint():
         d=request.get_json(force=True) or {};name=(d.get('name') or '').strip()
         scopes=[s for s in d.get('scopes',['read']) if s in {'read','scan','write','admin'}]
         if not name or not scopes:return {'error':'Name and at least one valid scope are required'},400
+        if 'admin' in scopes and not ident.get('system_admin'):return {'error':'System administrator access is required for admin-scoped keys'},403
         days=int(d.get('expires_in_days') or 90);days=max(1,min(days,365))
         raw='wss_'+secrets.token_urlsafe(36);prefix=raw[:12];expires=(datetime.now(timezone.utc)+timedelta(days=days)).isoformat()
         row=repo().create_api_key(ident['user_id'],ident['organization_id'],name,token_hash(raw),prefix,scopes,expires)
