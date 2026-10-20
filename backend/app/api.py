@@ -17,6 +17,11 @@ import os
 import tempfile
 import pyotp
 
+WEBHOOK_EVENTS={
+  'scan.completed','scan.failed','finding.updated','finding.remediation_requested',
+  'risk.accepted','schedule.created','schedule.updated','webhook.test'
+}
+
 def create_blueprint():
     bp=Blueprint('api',__name__)
     def repo():return current_app.extensions['repo']
@@ -715,7 +720,10 @@ def create_blueprint():
         if d.get('assignee_user_id') and d.get('assignee_user_id') not in {m['id'] for m in repo().list_members(ident['organization_id'])}:return {'error':'Assignee must be a workspace member'},400
         row=repo().update_finding_state(state_id,ident['organization_id'],d,ident['user_id'])
         if not row:return {'error':'Finding state not found'},404
-        audit('FINDING_STATE_UPDATED','finding_state',state_id,d);return row
+        audit('FINDING_STATE_UPDATED','finding_state',state_id,d)
+        event='risk.accepted' if row.get('state')=='ACCEPTED_RISK' else 'finding.updated'
+        repo().emit_webhook_event(ident['organization_id'],event,{'finding_state_id':state_id,'target_id':row.get('target_id'),'state':row.get('state'),'severity':row.get('effective_severity') or row.get('base_severity'),'title':row.get('title'),'updated_by':ident['user_id']})
+        return row
 
     @bp.route('/finding-states/<state_id>/comments',methods=['GET','POST'])
     @require_auth
@@ -743,6 +751,7 @@ def create_blueprint():
         job=repo().enqueue_job('scan',{'scan_id':scan['id'],'target_id':t['id'],'purpose':'remediation_verification'})
         verification=repo().create_remediation_verification(state_id,scan['id'],ident['user_id'])
         audit('REMEDIATION_VERIFICATION_QUEUED','finding_state',state_id,{'scan_id':scan['id']})
+        repo().emit_webhook_event(ident['organization_id'],'finding.remediation_requested',{'finding_state_id':state_id,'scan_id':scan['id'],'target_id':state.get('target_id'),'requested_by':ident['user_id']})
         return {'verification':verification,'scan':scan,'job_id':job['id']},202
 
     # Schedules
@@ -843,6 +852,86 @@ def create_blueprint():
         if fmt=='html':return Response(as_html(s,f,comp,context),mimetype='text/html',headers={'Content-Disposition':f'inline; filename=sentinelscope-{scan_id}.html'})
         if fmt=='pdf':return Response(as_pdf(s,f,comp,context),mimetype='application/pdf',headers={'Content-Disposition':f'attachment; filename=sentinelscope-{scan_id}.pdf'})
         return {'error':'Unsupported format'},404
+
+    # Workspace integrations / signed webhooks
+    @bp.get('/integrations/webhooks')
+    @require_role('admin')
+    def webhook_list():
+        return jsonify(repo().list_webhook_endpoints(current_identity()['organization_id']))
+
+    @bp.post('/integrations/webhooks')
+    @require_role('admin')
+    def webhook_create():
+        ident=current_identity();d=request.get_json(force=True) or {}
+        name=(d.get('name') or '').strip()[:160];url=(d.get('url') or '').strip()
+        events=[x for x in d.get('events',[]) if x in WEBHOOK_EVENTS or x=='*']
+        if not name or not url:return {'error':'Name and HTTPS endpoint URL are required'},400
+        if not events:return {'error':'Select at least one supported event'},400
+        try:
+            normalized=validate_target(url,current_app.config['SCANNER_ALLOW_PRIVATE'])
+        except TargetValidationError as e:return {'error':str(e)},400
+        if not normalized.lower().startswith('https://') and not current_app.config['SCANNER_ALLOW_PRIVATE']:
+            return {'error':'Webhook endpoints must use HTTPS'},400
+        raw='whsec_'+secrets.token_urlsafe(32)
+        try:protected=encrypt_secret(raw,current_app.config.get('APP_ENCRYPTION_KEY'))
+        except Exception as e:return {'error':'Webhook secret encryption failed: '+str(e)},500
+        row=repo().create_webhook_endpoint(ident['organization_id'],name,normalized,protected,events,ident['user_id'])
+        audit('WEBHOOK_CREATED','webhook',row['id'],{'name':name,'url':normalized,'events':events})
+        return {**row,'secret':raw},201
+
+    @bp.patch('/integrations/webhooks/<endpoint_id>')
+    @require_role('admin')
+    def webhook_update(endpoint_id):
+        ident=current_identity();d=request.get_json(force=True) or {};updates={}
+        if 'name' in d:updates['name']=(d.get('name') or '').strip()[:160]
+        if 'active' in d:updates['active']=bool(d.get('active'))
+        if 'events' in d:
+            events=[x for x in d.get('events',[]) if x in WEBHOOK_EVENTS or x=='*']
+            if not events:return {'error':'Select at least one supported event'},400
+            updates['events']=events
+        if 'url' in d:
+            try:normalized=validate_target((d.get('url') or '').strip(),current_app.config['SCANNER_ALLOW_PRIVATE'])
+            except TargetValidationError as e:return {'error':str(e)},400
+            if not normalized.lower().startswith('https://') and not current_app.config['SCANNER_ALLOW_PRIVATE']:
+                return {'error':'Webhook endpoints must use HTTPS'},400
+            updates['url']=normalized
+        if d.get('rotate_secret'):
+            raw='whsec_'+secrets.token_urlsafe(32)
+            updates['secret_ciphertext']=encrypt_secret(raw,current_app.config.get('APP_ENCRYPTION_KEY'))
+        else:raw=None
+        row=repo().update_webhook_endpoint(endpoint_id,ident['organization_id'],updates)
+        if not row:return {'error':'Webhook endpoint not found'},404
+        audit('WEBHOOK_UPDATED','webhook',endpoint_id,{k:v for k,v in updates.items() if k!='secret_ciphertext'})
+        return ({**row,'secret':raw} if raw else row)
+
+    @bp.delete('/integrations/webhooks/<endpoint_id>')
+    @require_role('admin')
+    def webhook_delete(endpoint_id):
+        ident=current_identity()
+        if not repo().delete_webhook_endpoint(endpoint_id,ident['organization_id']):return {'error':'Webhook endpoint not found'},404
+        audit('WEBHOOK_DELETED','webhook',endpoint_id);return {'ok':True}
+
+    @bp.get('/integrations/webhooks/deliveries')
+    @require_role('admin')
+    def webhook_deliveries():
+        ident=current_identity();return jsonify(repo().list_webhook_deliveries(ident['organization_id'],request.args.get('endpoint_id')))
+
+    @bp.post('/integrations/webhooks/<endpoint_id>/test')
+    @require_role('admin')
+    def webhook_test(endpoint_id):
+        ident=current_identity();endpoint=repo().get_webhook_endpoint(endpoint_id,ident['organization_id'])
+        if not endpoint:return {'error':'Webhook endpoint not found'},404
+        delivery=repo().create_webhook_delivery(endpoint_id,'webhook.test',{'event':'webhook.test','created_at':repo().now(),'data':{'message':'SentinelScope webhook test','workspace_id':ident['organization_id']}})
+        job=repo().enqueue_job('webhook',{'delivery_id':delivery['id']},max_attempts=5)
+        audit('WEBHOOK_TEST_QUEUED','webhook',endpoint_id,{'delivery_id':delivery['id']})
+        return {'delivery':delivery,'job_id':job['id']},202
+
+    @bp.post('/integrations/webhooks/deliveries/<delivery_id>/retry')
+    @require_role('admin')
+    def webhook_retry(delivery_id):
+        ident=current_identity()
+        if not repo().retry_webhook_delivery(delivery_id,ident['organization_id']):return {'error':'Delivery not found'},404
+        audit('WEBHOOK_RETRY_QUEUED','webhook_delivery',delivery_id);return {'ok':True},202
 
     # Personal API keys
     @bp.route('/api-keys',methods=['GET','POST'])
