@@ -263,6 +263,29 @@ class Repository:
     def list_backups(self,org_id):
         with self.conn() as c:return [dict(r) for r in c.execute("select * from backup_history where organization_id=? order by created_at desc",(org_id,))]
 
+    def delete_account(self,user_id):
+        with self.conn() as c:
+            owners=[dict(r) for r in c.execute("select organization_id,role from memberships where user_id=?",(user_id,))]
+            for m in owners:
+                if m['role']=='owner':
+                    count=c.execute("select count(*) from memberships where organization_id=?",(m['organization_id'],)).fetchone()[0]
+                    if count>1:
+                        raise ValueError("Transfer or remove other workspace members before deleting an owner account")
+                    c.execute("delete from audit_logs where organization_id=?",(m['organization_id'],))
+                    c.execute("delete from organizations where id=?",(m['organization_id'],))
+            c.execute("delete from sessions where user_id=?",(user_id,))
+            c.execute("delete from memberships where user_id=?",(user_id,))
+            c.execute("delete from notifications where user_id=?",(user_id,))
+            c.execute("delete from auth_tokens where user_id=?",(user_id,))
+            c.execute("delete from users where id=?",(user_id,))
+
+    def export_workspace(self,org_id):
+        data={'organization':None,'members':self.list_members(org_id),'projects':self.list_projects(org_id),'targets':self.list_targets(org_id=org_id),'scans':self.list_scans(10000,org_id),'schedules':self.list_schedules(org_id),'audit':self.list_audit(org_id,10000)}
+        with self.conn() as c:
+            o=c.execute("select * from organizations where id=?",(org_id,)).fetchone()
+            data['organization']=dict(o) if o else None
+        return data
+
     # projects / targets
     def create_project(self,name,description='',organization_id=None,created_by=None):
         x={'id':self._id(),'name':name,'description':description,'organization_id':organization_id,'created_by':created_by,'created_at':self.now()}
