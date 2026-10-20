@@ -9,7 +9,10 @@ from app.scanner.models import Finding
 
 class FakeResponse:
     status_code=204
-    text=""
+    encoding="utf-8"
+    def __init__(self,body=b""): self.body=body
+    def iter_content(self,size,decode_unicode=False):
+        for i in range(0,len(self.body),size): yield self.body[i:i+size]
 
 def setup_repo(path):
     r=Repository(path);r.init_schema()
@@ -58,8 +61,8 @@ def test_webhook_queue_signing_delivery_and_history(monkeypatch):
         assert delivery["status"]=="QUEUED"
 
         captured={}
-        def fake_post(url,data,timeout,allow_redirects,headers):
-            captured.update({"url":url,"data":data,"headers":headers,"allow_redirects":allow_redirects})
+        def fake_post(url,data,timeout,allow_redirects,stream,headers):
+            captured.update({"url":url,"data":data,"headers":headers,"allow_redirects":allow_redirects,"stream":stream})
             return FakeResponse()
         import app.worker as worker
         monkeypatch.setattr(worker.requests,"post",fake_post)
@@ -69,7 +72,7 @@ def test_webhook_queue_signing_delivery_and_history(monkeypatch):
         process_webhook(r,Config,{"delivery_id":delivery["id"]})
         after=r.get_webhook_delivery(delivery["id"])
         assert after["status"]=="DELIVERED" and after["response_code"]==204 and after["attempts"]==1
-        assert captured["allow_redirects"] is False
+        assert captured["allow_redirects"] is False and captured["stream"] is True
         assert captured["headers"]["X-SentinelScope-Event"]=="scan.completed"
         assert captured["headers"]["X-SentinelScope-Signature"].startswith("sha256=")
         history=r.list_webhook_deliveries(owner["organization_id"])
@@ -110,3 +113,33 @@ def test_overdue_finding_escalation_is_daily_deduplicated():
         assert second==[]
         history=r.list_finding_escalations(owner["organization_id"])
         assert len(history)==2 and all(x["finding_state_id"]==state["id"] for x in history)
+
+
+def test_webhook_response_body_is_bounded(monkeypatch):
+    with tempfile.TemporaryDirectory() as d:
+        r,owner,_=setup_repo(os.path.join(d,"webhook-cap.sqlite3"))
+        key=Fernet.generate_key().decode()
+        endpoint=r.create_webhook_endpoint(owner["organization_id"],"SOC","https://example.com/hooks",
+                                           encrypt_secret("whsec_test_secret",key),["scan.completed"],owner["user_id"])
+        delivery_id=r.emit_webhook_event(owner["organization_id"],"scan.completed",{"scan_id":"abc"})[0]
+
+        class LargeResponse(FakeResponse):
+            status_code=500
+            def __init__(self): super().__init__(b"x"*100_000)
+
+        def fake_post(url,data,timeout,allow_redirects,stream,headers):
+            return LargeResponse()
+
+        import app.worker as worker
+        monkeypatch.setattr(worker.requests,"post",fake_post)
+
+        class Config:
+            APP_ENCRYPTION_KEY=key
+
+        try:process_webhook(r,Config,{"delivery_id":delivery_id})
+        except ValueError:pass
+        stored=r.get_webhook_delivery(delivery_id)
+        assert stored["status"]=="FAILED"
+        assert stored["response_code"]==500
+        assert len(stored["response_body"])<17_000
+        assert "truncated at 16384 bytes" in stored["response_body"]
