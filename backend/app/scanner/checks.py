@@ -7,7 +7,7 @@ from .models import Finding
 SEV_WEIGHT={"INFO":0,"LOW":2,"MEDIUM":5,"HIGH":10,"CRITICAL":20}
 
 def mk(check_id,title,category,status,severity,confidence,url,evidence,description,impact,remediation,standards,metadata=None):
-    raw=f"{check_id}|{urlsplit(url).hostname}|{urlsplit(url).path}|{evidence[:180]}"
+    raw=f"{check_id}|{urlsplit(url).hostname}|{urlsplit(url).path}|{title}"
     return Finding(check_id,title,category,status,severity,confidence,url,evidence,description,impact,remediation,standards,hashlib.sha256(raw.encode()).hexdigest()[:24],metadata or {})
 
 def header_check(resp,url,key,title,severity,standards,remediation):
