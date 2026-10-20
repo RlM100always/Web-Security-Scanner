@@ -19,8 +19,12 @@ def process_scan(repo, config, payload):
         repo.update_scan(scan['id'],stage=stage,progress=pct,status='SCANNING')
         repo.add_scan_event(scan['id'],'PROGRESS',stage,pct,msg)
     try:
-        result=run_scan(target['url'],scan['profile'],config.SCANNER_ALLOW_PRIVATE,progress)
+        policy=repo.scan_policy(scan['id'])
+        result=run_scan(target['url'],scan['profile'],config.SCANNER_ALLOW_PRIVATE,progress,policy=policy)
         repo.add_findings(scan['id'],result.findings)
+        repo.add_assets(scan['id'],target['id'],result.assets)
+        repo.sync_finding_states(scan['id'])
+        repo.finalize_remediation_verifications(scan['id'])
         repo.update_scan(scan['id'],status='COMPLETED',stage='COMPLETED',progress=100,score=result.score,
                          pages_scanned=result.pages_scanned,duration_ms=result.duration_ms,completed_at=repo.now())
         repo.add_scan_event(scan['id'],'STATE','COMPLETED',100,'Scan completed',{"score":result.score,"checks_run":result.checks_run})
