@@ -23,9 +23,13 @@ All authenticated mutation endpoints use the HttpOnly session cookie plus `X-CSR
 ## Dashboard and projects
 - `GET /api/v1/dashboard`
 - `GET|POST /api/v1/projects`
+- `PATCH /api/v1/projects/:id`
 - `DELETE /api/v1/projects/:id`
 - `GET|POST /api/v1/targets`
+- `PATCH /api/v1/targets/:id`
 - `DELETE /api/v1/targets/:id`
+
+Target metadata includes business criticality, environment, tags, accountable `owner_user_id` and operational notes.
 
 ## Ownership verification
 - `POST /api/v1/targets/:id/verification`
@@ -107,6 +111,14 @@ All routes below require `system_admin=1` on the authenticated user.
 
 Policy fields:
 `max_pages`, `max_depth`, `request_delay_ms`, `include_paths`, `exclude_paths`, `disabled_checks`.
+
+### Reusable scan profiles
+- `GET|POST /api/v1/projects/:project_id/scan-profiles`
+- `PATCH /api/v1/projects/:project_id/scan-profiles/:profile_id`
+- `POST /api/v1/projects/:project_id/scan-profiles/:profile_id/clone`
+- `DELETE /api/v1/projects/:project_id/scan-profiles/:profile_id`
+
+Profiles are project-scoped, named, versioned and reusable by manual scans and schedules. Profile fields include `name`, `description`, `scan_mode`, `is_default`, `active` and the same bounded policy fields as the project base policy. Updating a profile increments its version for future runs. A scan stores immutable `scan_profile_name`, `scan_profile_version` and exact `policy` snapshot.
 
 ### Scan result depth
 `GET /api/v1/scans/:scan_id` now includes:
@@ -241,3 +253,10 @@ The endpoint exposes only public-safe service, database-engine and queue-engine 
 - `GET /api/v1/portfolio/escalations`
 
 The worker evaluates overdue active issues and creates daily-deduplicated escalation evidence. In-app/email delivery respects user preferences. Signed webhook subscribers may receive `finding.overdue`.
+
+
+## Workspace readiness
+- `GET /api/v1/onboarding`
+- `POST /api/v1/onboarding/dismiss`
+
+Readiness is derived from persisted account/workspace state: email verification, active project, authorised target, target owner, active scan profile and first completed scan. The endpoint also exposes optional Lab readiness through verified-target counts.
