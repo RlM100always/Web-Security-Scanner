@@ -8,19 +8,21 @@ ROLES = {"owner": 40, "admin": 30, "analyst": 20, "viewer": 10}
 def current_identity():
     if hasattr(g, "identity"):
         return g.identity
-    token = request.cookies.get("wss_session")
-    auth = request.headers.get("Authorization", "")
-    if not token and auth.lower().startswith("bearer "):
-        token = auth.split(None, 1)[1].strip()
-    if not token:
-        g.identity = None
+    auth=request.headers.get("Authorization","")
+    if auth.lower().startswith("bearer "):
+        bearer=auth.split(None,1)[1].strip()
+        identity=current_app.extensions["repo"].api_key_identity(token_hash(bearer)) if bearer else None
+        if identity:
+            identity["auth_method"]="api_key"
+        g.identity=identity
+        return g.identity
+    session_token=request.cookies.get("wss_session")
+    if not session_token:
+        g.identity=None
         return None
-    hashed=token_hash(token)
-    identity=current_app.extensions["repo"].session_identity(hashed)
+    identity=current_app.extensions["repo"].session_identity(token_hash(session_token))
     if identity:
         identity["auth_method"]="session"
-    elif auth.lower().startswith("bearer "):
-        identity=current_app.extensions["repo"].api_key_identity(hashed)
     g.identity=identity
     return g.identity
 
