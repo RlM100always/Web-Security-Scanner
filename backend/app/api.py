@@ -790,8 +790,15 @@ def create_blueprint():
         start=int(request.headers.get('Last-Event-ID') or request.args.get('after') or 0)
         @stream_with_context
         def stream():
-            cursor=start;idle=0
+            cursor=start;idle=0;loops=0
             while idle<120:
+                loops+=1
+                if loops==1 or loops%5==0:
+                    still_active=(repo().api_key_is_active(ident.get('api_key_id')) if ident.get('auth_method')=='api_key'
+                                  else repo().session_is_active(ident.get('session_id')))
+                    if not still_active:
+                        yield "event: auth\ndata: {\"error\":\"credential_revoked\"}\n\n"
+                        break
                 events=repo().scan_events(scan_id,cursor)
                 if events:
                     idle=0
