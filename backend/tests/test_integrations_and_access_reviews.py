@@ -143,3 +143,53 @@ def test_webhook_response_body_is_bounded(monkeypatch):
         assert stored["response_code"]==500
         assert len(stored["response_body"])<17_000
         assert "truncated at 16384 bytes" in stored["response_body"]
+
+
+def test_webhook_retry_and_pause_lifecycle_is_safe(monkeypatch):
+    with tempfile.TemporaryDirectory() as d:
+        r,owner,_=setup_repo(os.path.join(d,"webhook-lifecycle.sqlite3"))
+        key=Fernet.generate_key().decode()
+        endpoint=r.create_webhook_endpoint(owner["organization_id"],"SOC","https://example.com/hooks",
+                                           encrypt_secret("whsec_test_secret",key),["scan.completed"],owner["user_id"])
+        delivery_id=r.emit_webhook_event(owner["organization_id"],"scan.completed",{"scan_id":"one"})[0]
+
+        def fake_post(url,data,timeout,allow_redirects,stream,headers):
+            return FakeResponse()
+        import app.worker as worker
+        monkeypatch.setattr(worker.requests,"post",fake_post)
+
+        class Config:
+            APP_ENCRYPTION_KEY=key
+
+        assert process_webhook(r,Config,{"delivery_id":delivery_id})=="DELIVERED"
+        assert r.retry_webhook_delivery(delivery_id,owner["organization_id"]) is False
+
+        paused_id=r.emit_webhook_event(owner["organization_id"],"scan.completed",{"scan_id":"two"})[0]
+        r.update_webhook_endpoint(endpoint["id"],owner["organization_id"],{"active":False})
+        assert process_webhook(r,Config,{"delivery_id":paused_id})=="CANCELLED"
+        paused=r.get_webhook_delivery(paused_id)
+        assert paused["status"]=="CANCELLED"
+        assert r.retry_webhook_delivery(paused_id,owner["organization_id"]) is False
+
+def test_webhook_delete_cancels_queued_jobs_and_blocks_running_delivery():
+    with tempfile.TemporaryDirectory() as d:
+        r,owner,_=setup_repo(os.path.join(d,"webhook-delete.sqlite3"))
+        key=Fernet.generate_key().decode()
+        endpoint=r.create_webhook_endpoint(owner["organization_id"],"SOC","https://example.com/hooks",
+                                           encrypt_secret("whsec_test_secret",key),["scan.completed"],owner["user_id"])
+        delivery_id=r.emit_webhook_event(owner["organization_id"],"scan.completed",{"scan_id":"one"})[0]
+        assert r.delete_webhook_endpoint(endpoint["id"],owner["organization_id"])
+        with r.conn() as db:
+            assert db.execute("select count(*) from webhook_deliveries where id=?",(delivery_id,)).fetchone()[0]==0
+            queued=[dict(x) for x in db.execute("select status,payload_json from jobs where kind='webhook'")]
+            assert any(x["status"]=="CANCELLED" and delivery_id in x["payload_json"] for x in queued)
+
+        endpoint2=r.create_webhook_endpoint(owner["organization_id"],"SOC 2","https://example.com/hooks2",
+                                            encrypt_secret("whsec_test_secret",key),["scan.completed"],owner["user_id"])
+        running_id=r.create_webhook_delivery(endpoint2["id"],"scan.completed",{"event":"scan.completed","data":{}})["id"]
+        r.mark_webhook_delivery_running(running_id)
+        try:
+            r.delete_webhook_endpoint(endpoint2["id"],owner["organization_id"])
+            assert False,"running delivery must block deletion"
+        except ValueError as e:
+            assert "in progress" in str(e)
