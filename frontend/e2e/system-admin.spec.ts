@@ -2,7 +2,7 @@ import {test,expect} from '@playwright/test';
 
 test('system admin can open global control center',async({page},testInfo)=>{
   const email='e2e-admin-'+testInfo.project.name+'@example.com';
-  await page.goto('/');
+  await page.goto('/signup');
   await page.getByRole('button',{name:'Create account'}).click();
   await page.getByLabel('Full name').fill('System Admin');
   await page.getByLabel('Workspace name').fill('Admin Workspace');
