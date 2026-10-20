@@ -190,3 +190,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 [data-theme="dark"] .offlineBanner{background:#2a2112;border-color:#5b4520;color:#f0c878}
 @media(max-width:820px){.offlineBanner{margin:10px 12px 0}.workspaceLoading{padding:16px 12px 90px}.loadingMetrics{grid-template-columns:1fr 1fr}.loadingGrid{grid-template-columns:1fr}.panelSkeleton{height:180px}.loadingHeader{align-items:flex-start;flex-direction:column}.skeleton.line.wide{width:min(78vw,300px)}}
 @media(prefers-reduced-motion:reduce){.skeleton,.spin{animation:none!important}}
+
+/* Fatal UI recovery boundary */
+.fatalBoundary{min-height:100dvh;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 50% 15%,rgba(37,92,244,.1),transparent 36%),var(--ent-bg)}
+.fatalCard{width:min(520px,100%);text-align:center;border:1px solid var(--ent-border);background:var(--ent-surface);border-radius:18px;padding:34px;box-shadow:var(--ent-shadow)}
+.fatalCard .brandmark{margin:0 auto 20px;display:grid;place-items:center;width:42px;height:42px;border-radius:12px}.fatalIcon{width:28px;height:28px;color:var(--ent-danger);margin-bottom:12px}.fatalCard h1{font-size:24px;letter-spacing:-.03em;margin:8px 0 10px}.fatalCard p{font-size:11px;line-height:1.65;color:var(--ent-muted);margin:0 auto 22px;max-width:420px}.fatalCard .primary{margin:auto}
