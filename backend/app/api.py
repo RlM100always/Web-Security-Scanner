@@ -337,7 +337,10 @@ def create_blueprint():
     def team_role(user_id):
         d=request.get_json(force=True) or {};role=d.get('role')
         if role not in {'admin','analyst','viewer'}:return {'error':'Invalid role'},400
-        repo().update_member_role(current_identity()['organization_id'],user_id,role);audit('TEAM_ROLE_CHANGED','user',user_id,{'role':role})
+        try:updated=repo().update_member_role(current_identity()['organization_id'],user_id,role)
+        except ValueError as e:return {'error':str(e)},409
+        if not updated:return {'error':'Workspace member not found'},404
+        audit('TEAM_ROLE_CHANGED','user',user_id,{'role':role})
         return {'ok':True,'role':role}
 
     @bp.post('/team/invitations')
