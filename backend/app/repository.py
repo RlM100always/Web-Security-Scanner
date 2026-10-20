@@ -69,11 +69,25 @@ class Repository:
               details_json text,ip text,created_at text not null);
             create table if not exists auth_attempts(
               id integer primary key autoincrement,email text,ip text,success integer not null,created_at text not null);
+            create table if not exists auth_tokens(
+              id text primary key,user_id text not null,purpose text not null,token_hash text not null unique,
+              expires_at text not null,used_at text,meta_json text,created_at text not null);
+            create table if not exists invitations(
+              id text primary key,organization_id text not null,email text not null,role text not null,token_hash text not null unique,
+              status text not null default 'PENDING',invited_by text,expires_at text not null,accepted_at text,created_at text not null);
+            create table if not exists notifications(
+              id text primary key,organization_id text,user_id text,type text not null,title text not null,body text not null,
+              read_at text,meta_json text,created_at text not null);
+            create table if not exists backup_history(
+              id text primary key,organization_id text,user_id text,filename text not null,size_bytes integer not null,
+              created_at text not null);
             """)
             self._ensure_column(c,"projects","organization_id","text")
             self._ensure_column(c,"projects","created_by","text")
             self._ensure_column(c,"targets","created_by","text")
             self._ensure_column(c,"scans","created_by","text")
+            self._ensure_column(c,"users","mfa_enabled","integer not null default 0")
+            self._ensure_column(c,"users","mfa_secret","text")
             self._ensure_column(c,"audit_logs","organization_id","text")
             self._ensure_column(c,"audit_logs","user_id","text")
             self._ensure_column(c,"audit_logs","resource_type","text")
@@ -84,6 +98,9 @@ class Repository:
             c.execute("create index if not exists idx_events_scan on scan_events(scan_id,id)")
             c.execute("create index if not exists idx_audit_org on audit_logs(organization_id,created_at)")
             c.execute("create index if not exists idx_auth_attempts on auth_attempts(email,created_at)")
+            c.execute("create index if not exists idx_auth_tokens on auth_tokens(user_id,purpose,expires_at)")
+            c.execute("create index if not exists idx_invites_org on invitations(organization_id,status)")
+            c.execute("create index if not exists idx_notifications_user on notifications(user_id,created_at)")
     # auth / org
     def user_count(self):
         with self.conn() as c:return c.execute("select count(*) from users").fetchone()[0]
@@ -155,6 +172,91 @@ class Repository:
         return {"user_id":uid,"email":email.lower(),"role":role}
     def update_member_role(self,org_id,user_id,role):
         with self.conn() as c:c.execute("update memberships set role=? where organization_id=? and user_id=?",(role,org_id,user_id))
+    def set_email_verified(self,user_id,verified=True):
+        with self.conn() as c:c.execute("update users set email_verified=? where id=?",(int(verified),user_id))
+
+    def create_auth_token(self,user_id,purpose,token_hash,ttl_minutes,meta=None):
+        now=self.now();exp=(datetime.now(timezone.utc)+timedelta(minutes=ttl_minutes)).isoformat()
+        row={'id':self._id(),'user_id':user_id,'purpose':purpose,'token_hash':token_hash,'expires_at':exp,'used_at':None,'meta_json':json.dumps(meta or {}),'created_at':now}
+        with self.conn() as c:
+            c.execute("delete from auth_tokens where user_id=? and purpose=? and used_at is null",(user_id,purpose))
+            c.execute("insert into auth_tokens values(?,?,?,?,?,?,?,?)",tuple(row.values()))
+        return {'id':row['id'],'expires_at':exp}
+
+    def consume_auth_token(self,purpose,token_hash):
+        now=self.now()
+        with self.conn() as c:
+            c.execute("begin immediate")
+            r=c.execute("select * from auth_tokens where purpose=? and token_hash=? and used_at is null and expires_at>?",(purpose,token_hash,now)).fetchone()
+            if not r:c.commit();return None
+            c.execute("update auth_tokens set used_at=? where id=?",(now,r['id']));c.commit()
+        d=dict(r);d['meta']=json.loads(d.pop('meta_json') or '{}');return d
+
+    def set_mfa(self,user_id,enabled,secret=None):
+        with self.conn() as c:c.execute("update users set mfa_enabled=?,mfa_secret=? where id=?",(int(enabled),secret if enabled else None,user_id))
+
+    def switch_session_workspace(self,session_id,user_id,organization_id):
+        with self.conn() as c:
+            ok=c.execute("select 1 from memberships where user_id=? and organization_id=?",(user_id,organization_id)).fetchone()
+            if not ok:return False
+            c.execute("update sessions set organization_id=?,last_seen_at=? where id=? and user_id=?",(organization_id,self.now(),session_id,user_id))
+        return True
+
+    def create_invitation(self,org_id,email,role,token_hash,invited_by,ttl_hours):
+        now=self.now();exp=(datetime.now(timezone.utc)+timedelta(hours=ttl_hours)).isoformat()
+        row={'id':self._id(),'organization_id':org_id,'email':email.lower(),'role':role,'token_hash':token_hash,'status':'PENDING','invited_by':invited_by,'expires_at':exp,'accepted_at':None,'created_at':now}
+        with self.conn() as c:
+            c.execute("update invitations set status='REVOKED' where organization_id=? and lower(email)=lower(?) and status='PENDING'",(org_id,email))
+            c.execute("insert into invitations values(?,?,?,?,?,?,?,?,?,?)",tuple(row.values()))
+        return row
+
+    def consume_invitation(self,token_hash):
+        now=self.now()
+        with self.conn() as c:
+            c.execute("begin immediate")
+            r=c.execute("select * from invitations where token_hash=? and status='PENDING' and expires_at>?",(token_hash,now)).fetchone()
+            if not r:c.commit();return None
+            c.execute("update invitations set status='ACCEPTED',accepted_at=? where id=?",(now,r['id']));c.commit()
+        return dict(r)
+
+    def list_invitations(self,org_id):
+        with self.conn() as c:return [dict(r) for r in c.execute("select id,email,role,status,expires_at,created_at from invitations where organization_id=? order by created_at desc",(org_id,))]
+
+    def deactivate_member(self,org_id,user_id,active):
+        with self.conn() as c:
+            owner=c.execute("select role from memberships where organization_id=? and user_id=?",(org_id,user_id)).fetchone()
+            if not owner:return False
+            if owner['role']=='owner' and not active:return False
+            c.execute("update users set active=? where id=?",(int(active),user_id))
+        return True
+
+    def remove_member(self,org_id,user_id):
+        with self.conn() as c:
+            row=c.execute("select role from memberships where organization_id=? and user_id=?",(org_id,user_id)).fetchone()
+            if not row or row['role']=='owner':return False
+            c.execute("delete from memberships where organization_id=? and user_id=?",(org_id,user_id))
+            c.execute("update sessions set revoked_at=? where organization_id=? and user_id=? and revoked_at is null",(self.now(),org_id,user_id))
+        return True
+
+    def add_notification(self,org_id,user_id,kind,title,body,meta=None):
+        row={'id':self._id(),'organization_id':org_id,'user_id':user_id,'type':kind,'title':title,'body':body,'read_at':None,'meta_json':json.dumps(meta or {}),'created_at':self.now()}
+        with self.conn() as c:c.execute("insert into notifications values(?,?,?,?,?,?,?,?,?)",tuple(row.values()))
+        return row['id']
+
+    def list_notifications(self,org_id,user_id,limit=50):
+        with self.conn() as c:rows=[dict(r) for r in c.execute("select * from notifications where organization_id=? and (user_id=? or user_id is null) order by created_at desc limit ?",(org_id,user_id,limit))]
+        for r in rows:r['meta']=json.loads(r.pop('meta_json') or '{}')
+        return rows
+
+    def mark_notification_read(self,id,user_id):
+        with self.conn() as c:c.execute("update notifications set read_at=? where id=? and (user_id=? or user_id is null)",(self.now(),id,user_id))
+
+    def record_backup(self,org_id,user_id,filename,size_bytes):
+        with self.conn() as c:c.execute("insert into backup_history values(?,?,?,?,?,?)",(self._id(),org_id,user_id,filename,size_bytes,self.now()))
+
+    def list_backups(self,org_id):
+        with self.conn() as c:return [dict(r) for r in c.execute("select * from backup_history where organization_id=? order by created_at desc",(org_id,))]
+
     # projects / targets
     def create_project(self,name,description='',organization_id=None,created_by=None):
         x={'id':self._id(),'name':name,'description':description,'organization_id':organization_id,'created_by':created_by,'created_at':self.now()}
