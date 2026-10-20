@@ -274,6 +274,22 @@ def create_blueprint():
         return {'user':ident,'csrf_token':ident['csrf_token'],'workspaces':repo().list_memberships_for_user(ident['user_id']),
                 'security':{'recovery_codes_remaining':repo().unused_mfa_recovery_count(ident['user_id']) if ident.get('mfa_enabled') else 0}}
 
+    # Workspace onboarding / readiness
+    @bp.get('/onboarding')
+    @require_auth
+    def onboarding_get():
+        ident=current_identity()
+        return repo().onboarding_state(ident['user_id'],ident['organization_id'])
+
+    @bp.post('/onboarding/dismiss')
+    @require_auth
+    def onboarding_dismiss():
+        ident=current_identity();d=request.get_json(force=True) or {}
+        dismissed=bool(d.get('dismissed',True))
+        state=repo().set_onboarding_dismissed(ident['user_id'],ident['organization_id'],dismissed)
+        audit('ONBOARDING_'+('DISMISSED' if dismissed else 'RESTORED'),'workspace',ident['organization_id'])
+        return state
+
     # Dashboard
     @bp.get('/dashboard')
     @require_auth
