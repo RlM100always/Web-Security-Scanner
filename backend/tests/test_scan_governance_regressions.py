@@ -129,7 +129,7 @@ def test_schedule_run_now_uses_bound_profile_and_scan_scope(monkeypatch):
 
         profile2=repo.create_scan_profile(p["id"],"Retired","old","standard",repo.get_project_policy(p["id"]),False,user["user_id"])
         schedule2=repo.create_schedule(t["id"],"standard",1440,user["user_id"],scan_profile_id=profile2["id"])
-        repo.update_scan_profile(p["id"],profile2["id"],{"active":False},user["user_id"],"Retire profile")
+        repo.update_scan_profile(profile2["id"],p["id"],{"active":False},user["user_id"])
         blocked=client.post("/api/v1/schedules/"+schedule2["id"]+"/run-now",json={},headers={"X-CSRF-Token":csrf})
         assert blocked.status_code==409
 
