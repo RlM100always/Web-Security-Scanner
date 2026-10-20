@@ -141,3 +141,30 @@ Authorization: Bearer wss_...
 - `POST /api/v1/admin/retention/run`
 
 Platform settings also include `scan_quota_per_day`, `max_concurrent_scans_per_org` and `scan_retention_days`.
+
+## Enterprise issue operations
+
+### Workspace remediation governance
+- `GET /api/v1/workspace/security-policy`
+- `PUT /api/v1/workspace/security-policy`
+
+Workspace policy currently governs:
+- severity-based remediation SLA days
+- automatic due dates for newly created persistent issues
+- optional Owner-only approval for `ACCEPTED_RISK`
+
+### Saved issue views
+- `GET|POST /api/v1/issue-views`
+- `PATCH|DELETE /api/v1/issue-views/:view_id`
+
+A saved view persists issue filters. Admins can create shared workspace views; users can keep private views.
+
+### Bulk issue triage
+- `POST /api/v1/finding-states/bulk`
+
+Up to 250 selected persistent issues can be updated in one governed operation. Supported fields include lifecycle state, severity override, assignee, due date, risk reason and risk-review expiry. The same validation rules used by single-issue triage still apply.
+
+### Issue activity history
+`GET /api/v1/finding-states/:state_id` includes `activity` in addition to comments, scan-detection timeline and remediation-verification history.
+
+Activity captures events such as issue creation, reopen, automatic remediation, comments and triage changes.
