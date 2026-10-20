@@ -1,0 +1,38 @@
+import {test,expect} from '@playwright/test';
+
+async function noPageOverflow(page:any){
+  const m=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,client:document.documentElement.clientWidth}));
+  expect(m.scroll).toBeLessThanOrEqual(m.client+2);
+}
+
+test('public shell has no page-level horizontal overflow',async({page})=>{
+  for(const path of ['/','/product','/enterprise','/vulnerability-management','/trust']){
+    await page.goto(path);
+    await page.waitForLoadState('domcontentloaded');
+    await noPageOverflow(page);
+  }
+});
+
+test('authenticated shell switches between desktop and mobile navigation models',async({page},testInfo)=>{
+  await page.goto('/');
+  await page.getByRole('link',{name:/Create secure workspace|Create workspace|Start workspace/}).first().click();
+  await page.getByLabel('Full name').fill('Responsive Owner');
+  await page.getByLabel('Workspace name').fill('Responsive Workspace');
+  await page.getByLabel('Email address').fill('responsive-'+testInfo.project.name+'-'+Date.now()+'@example.com');
+  await page.getByLabel('Password').fill('responsive-secure-password-123');
+  await page.getByRole('button',{name:'Create account'}).click();
+  await expect(page.getByRole('heading',{name:'Dashboard'})).toBeVisible();
+  await noPageOverflow(page);
+
+  const width=page.viewportSize()?.width||1200;
+  if(width<=820){
+    await expect(page.locator('.mobileDock')).toBeVisible();
+    await expect(page.locator('.side')).not.toBeInViewport();
+    const buttons=page.locator('.mobileDock button');
+    await expect(buttons).toHaveCount(5);
+  }else{
+    await expect(page.locator('.side')).toBeVisible();
+    await expect(page.locator('.mobileDock')).toBeHidden();
+    await expect(page.locator('.commandTrigger')).toBeVisible();
+  }
+});
