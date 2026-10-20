@@ -10,6 +10,7 @@ from .reports import as_json,as_html,as_pdf
 from .auth import current_identity,require_auth,require_role,require_scope,ROLES
 from .crypto import hash_password,verify_password,token_hash,encrypt_secret,decrypt_secret
 from .verification import make_verification,check_file,check_dns
+from .preflight import run_target_preflight
 from .zap import parse_zap_json,compare_with_scanner
 from .mailer import send_email
 from .backup import create_sqlite_backup,restore_sqlite_backup
@@ -612,6 +613,22 @@ def create_blueprint():
         if not repo().delete_target(target_id,ident['organization_id']):return {'error':'Target not found'},404
         audit('TARGET_DELETED','target',target_id);return {'ok':True}
 
+    @bp.route('/targets/<target_id>/preflight',methods=['GET','POST'])
+    @require_role('analyst')
+    def target_preflight(target_id):
+        ident=current_identity();t=repo().get_target(target_id,ident['organization_id'])
+        if not t:return {'error':'Target not found'},404
+        if request.method=='GET':
+            limit=max(1,min(int(request.args.get('limit',10)),50))
+            rows=repo().target_preflights(target_id,ident['organization_id'],limit)
+            return {'latest':rows[0] if rows else None,'history':rows}
+        d=request.get_json(silent=True) or {};profile=d.get('profile','standard')
+        if profile not in {'quick','standard','lab'}:return {'error':'Invalid profile'},400
+        result=run_target_preflight(t,profile,current_app.config['SCANNER_ALLOW_PRIVATE'],min(float(current_app.config.get('REQUEST_TIMEOUT',8)),8))
+        saved=repo().save_target_preflight(target_id,ident['organization_id'],ident['user_id'],profile,result)
+        audit('TARGET_PREFLIGHT_COMPLETED','target',target_id,{'profile':profile,'status':result.get('status'),'preflight_id':saved['id']})
+        return saved,200
+
     @bp.post('/targets/<target_id>/verification')
     @require_role('analyst')
     def verification_create(target_id):
@@ -659,6 +676,13 @@ def create_blueprint():
         profile=named_profile['scan_mode'] if named_profile else d.get('profile','standard')
         if profile not in {'quick','standard','lab'}:return {'error':'Invalid profile'},400
         if profile=='lab' and not t.get('verified'):return {'error':'Lab profile requires verified ownership'},403
+        preflight=repo().latest_target_preflight(t['id'],ident['organization_id'],profile,15)
+        if not preflight:
+            pf_result=run_target_preflight(t,profile,current_app.config['SCANNER_ALLOW_PRIVATE'],min(float(current_app.config.get('REQUEST_TIMEOUT',8)),8))
+            preflight=repo().save_target_preflight(t['id'],ident['organization_id'],ident['user_id'],profile,pf_result)
+            audit('TARGET_PREFLIGHT_AUTO_COMPLETED','target',t['id'],{'profile':profile,'status':pf_result.get('status'),'preflight_id':preflight['id']})
+        if preflight.get('status')=='BLOCKED':
+            return {'error':'Target preflight blocked this assessment','preflight':preflight},409
         if ident.get('auth_method')=='api_key' and 'scan' not in set(ident.get('api_scopes') or []) and 'admin' not in set(ident.get('api_scopes') or []):
             return {'error':'API key scan scope required'},403
         usage=repo().organization_scan_usage(ident['organization_id'])
@@ -684,7 +708,7 @@ def create_blueprint():
         for key in ['max_pages','max_depth','request_delay_ms','include_paths','exclude_paths','disabled_checks']:
             if key in override:policy[key]=override[key]
         s=repo().create_scan(t['id'],t['url'],profile,ident['user_id'],policy,named_profile['id'] if named_profile else None);job=repo().enqueue_job('scan',{'scan_id':s['id'],'target_id':t['id']})
-        audit('SCAN_QUEUED','scan',s['id'],{'profile':profile,'scan_profile_id':named_profile['id'] if named_profile else None,'scan_profile_version':named_profile['version'] if named_profile else None,'job_id':job['id'],'policy':policy});s['job_id']=job['id'];s['usage']=usage;return s,202
+        audit('SCAN_QUEUED','scan',s['id'],{'profile':profile,'scan_profile_id':named_profile['id'] if named_profile else None,'scan_profile_version':named_profile['version'] if named_profile else None,'job_id':job['id'],'policy':policy,'preflight_id':preflight.get('id'),'preflight_status':preflight.get('status')});s['job_id']=job['id'];s['usage']=usage;s['preflight']=preflight;return s,202
 
     @bp.get('/scans/<scan_id>')
     @require_auth
