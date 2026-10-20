@@ -45,6 +45,10 @@ class Repository:
               id text primary key,target_id text not null,method text not null,token text not null,instructions text,
               status text not null default 'PENDING',evidence text,created_by text,created_at text not null,verified_at text,
               foreign key(target_id) references targets(id) on delete cascade);
+            create table if not exists target_preflights(
+              id text primary key,target_id text not null,organization_id text not null,user_id text,
+              profile text not null,status text not null,result_json text not null,created_at text not null,
+              foreign key(target_id) references targets(id) on delete cascade);
             create table if not exists scans(
               id text primary key,target_id text,target_url text,profile text,status text,progress integer default 0,stage text,
               score integer,pages_scanned integer,duration_ms integer,created_by text,created_at text,completed_at text,error text);
@@ -206,6 +210,7 @@ class Repository:
             c.execute("create index if not exists idx_mfa_recovery_user on mfa_recovery_codes(user_id,used_at)")
             c.execute("create index if not exists idx_invites_org on invitations(organization_id,status)")
             c.execute("create index if not exists idx_notifications_user on notifications(user_id,created_at)")
+            c.execute("create index if not exists idx_target_preflights on target_preflights(target_id,created_at)")
             c.execute("create index if not exists idx_finding_escalations_org on finding_escalations(organization_id,created_at)")
             c.execute("create index if not exists idx_report_exports_org on report_exports(organization_id,created_at)")
             c.execute("create index if not exists idx_report_exports_scan on report_exports(scan_id,created_at)")
@@ -620,6 +625,7 @@ class Repository:
                     c.execute("delete from remediation_verifications where scan_id=?",(sid,))
                     c.execute("delete from findings where scan_id=?",(sid,));c.execute("delete from scan_events where scan_id=?",(sid,));c.execute("delete from zap_imports where scan_id=?",(sid,));c.execute("delete from scans where id=?",(sid,))
                 c.execute("delete from schedules where target_id=?",(tid,))
+                c.execute("delete from target_preflights where target_id=?",(tid,))
                 c.execute("delete from target_verifications where target_id=?",(tid,));c.execute("delete from targets where id=?",(tid,))
             c.execute("delete from scan_policies where project_id=?",(id,))
             c.execute("delete from projects where id=?",(id,))
@@ -686,6 +692,7 @@ class Repository:
                 c.execute("delete from zap_imports where scan_id=?",(sid,))
                 c.execute("delete from scans where id=?",(sid,))
             c.execute("delete from schedules where target_id=?",(target_id,))
+            c.execute("delete from target_preflights where target_id=?",(target_id,))
             c.execute("delete from target_verifications where target_id=?",(target_id,))
             c.execute("delete from targets where id=?",(target_id,))
         return True
@@ -797,6 +804,39 @@ class Repository:
         rows=self.list_scan_profiles(project_id);active=[x for x in rows if x.get('active')]
         if active:return next((x for x in active if x['is_default']),active[0])
         return self.create_scan_profile(project_id,"Standard Baseline","Reusable default project assessment profile","standard",self.get_project_policy(project_id),True,user_id)
+
+    # target preflight history
+    def save_target_preflight(self,target_id,org_id,user_id,profile,result):
+        row={'id':self._id(),'target_id':target_id,'organization_id':org_id,'user_id':user_id,'profile':profile,
+             'status':result.get('status','BLOCKED'),'result_json':json.dumps(result),'created_at':self.now()}
+        with self.conn() as c:c.execute("insert into target_preflights values(?,?,?,?,?,?,?,?)",tuple(row.values()))
+        return {'id':row['id'],'target_id':target_id,'profile':profile,'status':row['status'],'result':result,'created_at':row['created_at']}
+
+    def target_preflights(self,target_id,org_id,limit=20):
+        with self.conn() as c:rows=[dict(r) for r in c.execute("""select pf.* from target_preflights pf
+          join targets t on t.id=pf.target_id join projects p on p.id=t.project_id
+          where pf.target_id=? and pf.organization_id=? and p.organization_id=?
+          order by pf.created_at desc limit ?""",(target_id,org_id,org_id,limit))]
+        out=[]
+        for r in rows:
+            try:result=json.loads(r.pop('result_json') or '{}')
+            except Exception:result={}
+            r['result']=result;out.append(r)
+        return out
+
+    def latest_target_preflight(self,target_id,org_id,profile=None,max_age_minutes=15):
+        cutoff=(datetime.now(timezone.utc)-timedelta(minutes=max_age_minutes)).isoformat()
+        q="""select pf.* from target_preflights pf join targets t on t.id=pf.target_id
+          join projects p on p.id=t.project_id where pf.target_id=? and pf.organization_id=? and p.organization_id=? and pf.created_at>=?"""
+        args=[target_id,org_id,org_id,cutoff]
+        if profile:q+=" and pf.profile=?";args.append(profile)
+        q+=" order by pf.created_at desc limit 1"
+        with self.conn() as c:r=c.execute(q,args).fetchone()
+        if not r:return None
+        d=dict(r)
+        try:d['result']=json.loads(d.pop('result_json') or '{}')
+        except Exception:d['result']={}
+        return d
 
     # verification
     def create_verification(self,target_id,method,token,instructions,created_by):
