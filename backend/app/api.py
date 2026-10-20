@@ -41,6 +41,16 @@ def create_blueprint():
                 secure=current_app.config["SESSION_COOKIE_SECURE"],samesite=current_app.config["SESSION_COOKIE_SAMESITE"],path="/")
         return response
 
+
+    def bounded_query_int(name,default,minimum,maximum):
+        raw=request.args.get(name)
+        if raw is None or str(raw).strip()=='':
+            return default,None
+        try:value=int(raw)
+        except (TypeError,ValueError):
+            return None,({'error':f'{name} must be a whole number'},400)
+        return max(minimum,min(value,maximum)),None
+
     def send_token_email(user,purpose,token,subject,path):
         link=current_app.config["PUBLIC_APP_URL"].rstrip("/")+"/"+path+"?token="+token
         result=send_email(current_app.config,user["email"],subject,subject+"\n\n"+link)
@@ -318,7 +328,9 @@ def create_blueprint():
     @bp.get('/team/<user_id>/activity')
     @require_role('admin')
     def team_member_activity(user_id):
-        ident=current_identity();rows=repo().member_activity(ident['organization_id'],user_id,min(int(request.args.get('limit',100)),500))
+        ident=current_identity();limit,error=bounded_query_int('limit',100,1,500)
+        if error:return error
+        rows=repo().member_activity(ident['organization_id'],user_id,limit)
         if rows is None:return {'error':'Team member not found'},404
         return jsonify(rows)
 
@@ -631,7 +643,8 @@ def create_blueprint():
         ident=current_identity();t=repo().get_target(target_id,ident['organization_id'])
         if not t:return {'error':'Target not found'},404
         if request.method=='GET':
-            limit=max(1,min(int(request.args.get('limit',10)),50))
+            limit,error=bounded_query_int('limit',10,1,50)
+            if error:return error
             rows=repo().target_preflights(target_id,ident['organization_id'],limit)
             return {'latest':rows[0] if rows else None,'history':rows}
         d=request.get_json(silent=True) or {};profile=d.get('profile','standard')
@@ -795,7 +808,9 @@ def create_blueprint():
     @require_auth
     def asset_inventory():
         ident=current_identity()
-        rows=repo().latest_assets_for_org(ident['organization_id'],min(int(request.args.get('limit',2000)),5000))
+        limit,error=bounded_query_int('limit',2000,1,5000)
+        if error:return error
+        rows=repo().latest_assets_for_org(ident['organization_id'],limit)
         q=(request.args.get('q') or '').strip().lower();kind=(request.args.get('kind') or '').strip().lower()
         if q:rows=[r for r in rows if q in (r.get('url') or '').lower() or q in (r.get('title') or '').lower() or q in (r.get('target_name') or '').lower() or q in (r.get('project_name') or '').lower()]
         if kind:rows=[r for r in rows if (r.get('kind') or '').lower()==kind]
@@ -806,7 +821,9 @@ def create_blueprint():
     def asset_history():
         ident=current_identity();target_id=(request.args.get('target_id') or '').strip();url=(request.args.get('url') or '').strip()
         if not target_id or not url:return {'error':'target_id and url are required'},400
-        row=repo().asset_history(ident['organization_id'],target_id,url,min(int(request.args.get('limit',100)),500))
+        limit,error=bounded_query_int('limit',100,1,500)
+        if error:return error
+        row=repo().asset_history(ident['organization_id'],target_id,url,limit)
         if row is None:return {'error':'Asset or target not found'},404
         return row
 
@@ -1130,7 +1147,9 @@ def create_blueprint():
     @bp.get('/portfolio/escalations')
     @require_auth
     def portfolio_escalations():
-        ident=current_identity();return jsonify(repo().list_finding_escalations(ident['organization_id'],min(int(request.args.get('limit',200)),1000)))
+        ident=current_identity();limit,error=bounded_query_int('limit',200,1,1000)
+        if error:return error
+        return jsonify(repo().list_finding_escalations(ident['organization_id'],limit))
 
     # Reports / audit
     @bp.get('/scans/<scan_id>/report.<fmt>')
@@ -1154,7 +1173,9 @@ def create_blueprint():
     @bp.get('/reports/history')
     @require_auth
     def report_history():
-        ident=current_identity();return jsonify(repo().list_report_exports(ident['organization_id'],min(int(request.args.get('limit',200)),1000)))
+        ident=current_identity();limit,error=bounded_query_int('limit',200,1,1000)
+        if error:return error
+        return jsonify(repo().list_report_exports(ident['organization_id'],limit))
 
     # Enterprise access reviews
     @bp.route('/access-reviews',methods=['GET','POST'])
@@ -1289,7 +1310,9 @@ def create_blueprint():
         scopes=[s for s in d.get('scopes',['read']) if s in {'read','scan','write','admin'}]
         if not name or not scopes:return {'error':'Name and at least one valid scope are required'},400
         if 'admin' in scopes and not ident.get('system_admin'):return {'error':'System administrator access is required for admin-scoped keys'},403
-        days=int(d.get('expires_in_days') or 90);days=max(1,min(days,365))
+        try:days=int(d.get('expires_in_days') or 90)
+        except (TypeError,ValueError):return {'error':'expires_in_days must be a whole number'},400
+        days=max(1,min(days,365))
         raw='wss_'+secrets.token_urlsafe(36);prefix=raw[:12];expires=(datetime.now(timezone.utc)+timedelta(days=days)).isoformat()
         row=repo().create_api_key(ident['user_id'],ident['organization_id'],name,token_hash(raw),prefix,scopes,expires)
         audit('API_KEY_CREATED','api_key',row['id'],{'name':name,'scopes':scopes})
@@ -1353,7 +1376,9 @@ def create_blueprint():
     @bp.get('/audit')
     @require_role('admin')
     def audit_list():
-        ident=current_identity();rows=repo().list_audit(ident['organization_id'],min(int(request.args.get('limit',500)),5000))
+        ident=current_identity();limit,error=bounded_query_int('limit',500,1,5000)
+        if error:return error
+        rows=repo().list_audit(ident['organization_id'],limit)
         q=(request.args.get('q') or '').strip().lower();event=(request.args.get('event') or '').strip()
         if event:rows=[r for r in rows if r.get('event')==event]
         if q:rows=[r for r in rows if q in (' '.join([str(r.get('event') or ''),str(r.get('user_email') or ''),str(r.get('resource_type') or ''),str(r.get('resource_id') or ''),json.dumps(r.get('details') or {})])).lower()]
