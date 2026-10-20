@@ -700,12 +700,19 @@ def create_blueprint():
     @bp.get('/notifications')
     @require_auth
     def notifications():
-        ident=current_identity();return jsonify(repo().list_notifications(ident['organization_id'],ident['user_id']))
+        ident=current_identity();return {'summary':repo().notification_counts(ident['organization_id'],ident['user_id']),
+                                         'items':repo().list_notifications(ident['organization_id'],ident['user_id'],200)}
 
     @bp.post('/notifications/<notification_id>/read')
     @require_auth
     def notification_read(notification_id):
         ident=current_identity();repo().mark_notification_read(notification_id,ident['user_id']);return {'ok':True}
+
+    @bp.post('/notifications/read-all')
+    @require_auth
+    def notifications_read_all():
+        ident=current_identity();count=repo().mark_all_notifications_read(ident['organization_id'],ident['user_id'])
+        return {'ok':True,'updated':count}
 
     @bp.post('/backups')
     @require_role('owner')
@@ -756,6 +763,18 @@ def create_blueprint():
 
     @bp.get('/audit')
     @require_role('admin')
-    def audit_list():return jsonify(repo().list_audit(current_identity()['organization_id']))
+    def audit_list():
+        ident=current_identity();rows=repo().list_audit(ident['organization_id'],min(int(request.args.get('limit',500)),5000))
+        q=(request.args.get('q') or '').strip().lower();event=(request.args.get('event') or '').strip()
+        if event:rows=[r for r in rows if r.get('event')==event]
+        if q:rows=[r for r in rows if q in (' '.join([str(r.get('event') or ''),str(r.get('user_email') or ''),str(r.get('resource_type') or ''),str(r.get('resource_id') or ''),json.dumps(r.get('details') or {})])).lower()]
+        return jsonify(rows)
+
+    @bp.get('/audit/export.json')
+    @require_role('admin')
+    def audit_export():
+        ident=current_identity();rows=repo().list_audit(ident['organization_id'],10000)
+        return Response(json.dumps({'generated_at':datetime.now(timezone.utc).isoformat(),'events':rows},indent=2),mimetype='application/json',
+                        headers={'Content-Disposition':'attachment; filename=sentinelscope-audit.json'})
 
     return bp
