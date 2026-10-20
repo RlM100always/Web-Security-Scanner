@@ -98,3 +98,46 @@ All routes below require `system_admin=1` on the authenticated user.
 - `GET /api/v1/admin/backups/:filename`
 - `GET /api/v1/admin/metrics`
 - `GET /api/v1/admin/metrics/prometheus`
+
+## Deep assessment workflow APIs
+
+### Scan policy
+- `GET /api/v1/projects/:project_id/policy`
+- `PUT /api/v1/projects/:project_id/policy`
+
+Policy fields:
+`max_pages`, `max_depth`, `request_delay_ms`, `include_paths`, `exclude_paths`, `disabled_checks`.
+
+### Scan result depth
+`GET /api/v1/scans/:scan_id` now includes:
+- `findings`
+- `assets`
+- `asset_comparison`
+- `standards_summary`
+- `policy`
+- `comparison`
+- optional `zap` comparison
+
+### Finding lifecycle
+- `GET /api/v1/finding-states`
+- `GET /api/v1/finding-states/:state_id`
+- `PATCH /api/v1/finding-states/:state_id`
+- `GET|POST /api/v1/finding-states/:state_id/comments`
+- `POST /api/v1/finding-states/:state_id/verify`
+
+The detail response includes comments, remediation verification history and the scan-by-scan detection timeline.
+
+### API keys
+- `GET|POST /api/v1/api-keys`
+- `DELETE /api/v1/api-keys/:key_id`
+
+Use the one-time raw token as:
+
+```http
+Authorization: Bearer wss_...
+```
+
+### Admin lifecycle controls
+- `POST /api/v1/admin/retention/run`
+
+Platform settings also include `scan_quota_per_day`, `max_concurrent_scans_per_org` and `scan_retention_days`.
