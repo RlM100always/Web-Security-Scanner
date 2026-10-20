@@ -346,7 +346,8 @@ def create_blueprint():
         ident=current_identity();d=request.get_json(force=True) or {};email=(d.get('email') or '').strip().lower();role=d.get('role','viewer')
         if '@' not in email or role not in {'admin','analyst','viewer'}:return {'error':'Valid email and role required'},400
         raw=secrets.token_urlsafe(40)
-        inv=repo().create_invitation(ident['organization_id'],email,role,token_hash(raw),ident['user_id'],current_app.config['INVITE_TTL_HOURS'])
+        try:inv=repo().create_invitation(ident['organization_id'],email,role,token_hash(raw),ident['user_id'],current_app.config['INVITE_TTL_HOURS'])
+        except ValueError as e:return {'error':str(e)},409
         dummy={'id':'invite','email':email}
         result,link=send_token_email(dummy,'invite',raw,'You are invited to SentinelScope','accept-invite')
         audit('INVITATION_CREATED','invitation',inv['id'],{'email':email,'role':role})
