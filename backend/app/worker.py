@@ -1,8 +1,13 @@
 import os
 import socket
 import time
+import json
+import hmac
+import hashlib
+import requests
 from .scanner.engine import run_scan
 from .mailer import send_email
+from .crypto import decrypt_secret
 
 class ScanCancelled(Exception): pass
 
@@ -29,6 +34,9 @@ def process_scan(repo, config, payload):
                          pages_scanned=result.pages_scanned,duration_ms=result.duration_ms,completed_at=repo.now())
         repo.finalize_schedule_run(scan['id'],'COMPLETED')
         repo.add_scan_event(scan['id'],'STATE','COMPLETED',100,'Scan completed',{"score":result.score,"checks_run":result.checks_run})
+        org_id=repo.target_organization(target['id'])
+        if org_id:
+            repo.emit_webhook_event(org_id,'scan.completed',{"scan_id":scan['id'],"target_id":target['id'],"target_url":target['url'],"score":result.score,"checks_run":result.checks_run,"pages_scanned":result.pages_scanned})
         if scan.get('created_by'):
             target_title=target.get('name') or target.get('url');org_id=repo.target_organization(target['id'])
             repo.add_notification(org_id,scan['created_by'],'scan_completed','Scan completed',f"{target_title} scored {result.score}/100",{"scan_id":scan['id']})
@@ -51,6 +59,9 @@ def process_scan(repo, config, payload):
                 try:send_email(vars(config),user['email'],'SentinelScope recurring assessment failed',f"{schedule_ctx.get('name') or schedule_ctx.get('target_name') or 'Scheduled assessment'} failed.\n\n{str(e)[:500]}")
                 except Exception:pass
         repo.add_scan_event(scan['id'],'STATE','FAILED',100,'Scan failed',{"error":str(e)[:1000]})
+        org_id=repo.target_organization(target['id'])
+        if org_id:
+            repo.emit_webhook_event(org_id,'scan.failed',{"scan_id":scan['id'],"target_id":target['id'],"target_url":target['url'],"error":str(e)[:500]})
         if scan.get('created_by'):
             org_id=repo.target_organization(target['id'])
             repo.add_notification(org_id,scan['created_by'],'scan_failed','Scan failed',str(e)[:300],{"scan_id":scan['id']})
@@ -58,6 +69,36 @@ def process_scan(repo, config, payload):
             if user and (not org_id or repo.notification_enabled(scan['created_by'],org_id,'scan_failed','email')):
                 try:send_email(vars(config),user['email'],'SentinelScope scan failed',f"{target.get('name') or target.get('url')}\n\n{str(e)[:500]}")
                 except Exception:pass
+        raise
+
+
+def process_webhook(repo, config, payload):
+    delivery=repo.get_webhook_delivery(payload["delivery_id"])
+    if not delivery: raise ValueError("Webhook delivery does not exist")
+    if not delivery.get("endpoint_active"): raise ValueError("Webhook endpoint is disabled")
+    repo.mark_webhook_delivery_running(delivery["id"])
+    raw=json.dumps(delivery["payload"],separators=(",",":"),sort_keys=True).encode()
+    try:
+        secret=decrypt_secret(delivery.get("secret_ciphertext") or "",getattr(config,"APP_ENCRYPTION_KEY",""))
+        signature=hmac.new(secret.encode(),raw,hashlib.sha256).hexdigest()
+        response=requests.post(
+            delivery["url"],data=raw,timeout=10,allow_redirects=False,
+            headers={
+              "Content-Type":"application/json",
+              "User-Agent":"SentinelScope-Webhooks/1.0",
+              "X-SentinelScope-Event":delivery["event"],
+              "X-SentinelScope-Delivery":delivery["id"],
+              "X-SentinelScope-Signature":"sha256="+signature,
+            }
+        )
+        if response.status_code<200 or response.status_code>=300:
+            repo.mark_webhook_delivery_failure(delivery["id"],f"HTTP {response.status_code}",response.status_code,response.text)
+            raise ValueError(f"Webhook endpoint returned HTTP {response.status_code}")
+        repo.mark_webhook_delivery_success(delivery["id"],response.status_code,response.text)
+    except Exception as e:
+        current=repo.get_webhook_delivery(delivery["id"])
+        if current and current.get("status")!="DELIVERED":
+            repo.mark_webhook_delivery_failure(delivery["id"],str(e),current.get("response_code"),current.get("response_body"))
         raise
 
 def process_one(repo, config, worker_id):
@@ -68,6 +109,7 @@ def process_one(repo, config, worker_id):
     repo.worker_heartbeat(worker_id,worker_id.split(':')[0],int(worker_id.split(':')[-1]),'BUSY',job['id'])
     try:
         if job['kind']=='scan':process_scan(repo,config,job['payload'])
+        elif job['kind']=='webhook':process_webhook(repo,config,job['payload'])
         else:raise ValueError(f"Unknown job kind: {job['kind']}")
         repo.finish_job(job['id'])
     except Exception as e:
