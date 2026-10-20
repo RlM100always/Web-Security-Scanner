@@ -72,6 +72,8 @@ class Repository:
             create table if not exists auth_tokens(
               id text primary key,user_id text not null,purpose text not null,token_hash text not null unique,
               expires_at text not null,used_at text,meta_json text,created_at text not null);
+            create table if not exists mfa_recovery_codes(
+              id text primary key,user_id text not null,code_hash text not null unique,used_at text,created_at text not null);
             create table if not exists invitations(
               id text primary key,organization_id text not null,email text not null,role text not null,token_hash text not null unique,
               status text not null default 'PENDING',invited_by text,expires_at text not null,accepted_at text,created_at text not null);
@@ -134,6 +136,7 @@ class Repository:
             c.execute("create index if not exists idx_audit_org on audit_logs(organization_id,created_at)")
             c.execute("create index if not exists idx_auth_attempts on auth_attempts(email,created_at)")
             c.execute("create index if not exists idx_auth_tokens on auth_tokens(user_id,purpose,expires_at)")
+            c.execute("create index if not exists idx_mfa_recovery_user on mfa_recovery_codes(user_id,used_at)")
             c.execute("create index if not exists idx_invites_org on invitations(organization_id,status)")
             c.execute("create index if not exists idx_notifications_user on notifications(user_id,created_at)")
             c.execute("create index if not exists idx_assets_scan on assets(scan_id)")
@@ -252,6 +255,31 @@ class Repository:
     def set_mfa(self,user_id,enabled,secret=None):
         with self.conn() as c:c.execute("update users set mfa_enabled=?,mfa_secret=? where id=?",(int(enabled),secret if enabled else None,user_id))
 
+    def replace_mfa_recovery_codes(self,user_id,code_hashes):
+        now=self.now()
+        with self.conn() as c:
+            c.execute("delete from mfa_recovery_codes where user_id=?",(user_id,))
+            for h in code_hashes:c.execute("insert into mfa_recovery_codes(id,user_id,code_hash,used_at,created_at) values(?,?,?,null,?)",(self._id(),user_id,h,now))
+        return len(code_hashes)
+
+    def consume_mfa_recovery_code(self,user_id,code_hash):
+        with self.conn() as c:
+            c.execute("begin immediate")
+            row=c.execute("select id from mfa_recovery_codes where user_id=? and code_hash=? and used_at is null",(user_id,code_hash)).fetchone()
+            if not row:c.commit();return False
+            c.execute("update mfa_recovery_codes set used_at=? where id=?",(self.now(),row['id']));c.commit();return True
+
+    def unused_mfa_recovery_count(self,user_id):
+        with self.conn() as c:return c.execute("select count(*) from mfa_recovery_codes where user_id=? and used_at is null",(user_id,)).fetchone()[0]
+
+    def clear_mfa_recovery_codes(self,user_id):
+        with self.conn() as c:c.execute("delete from mfa_recovery_codes where user_id=?",(user_id,))
+
+    def revoke_user_session(self,user_id,session_id):
+        with self.conn() as c:
+            cur=c.execute("update sessions set revoked_at=? where id=? and user_id=? and revoked_at is null",(self.now(),session_id,user_id))
+            return cur.rowcount>0
+
     def switch_session_workspace(self,session_id,user_id,organization_id):
         with self.conn() as c:
             ok=c.execute("""select 1 from memberships m join organizations o on o.id=m.organization_id
@@ -337,6 +365,7 @@ class Repository:
             c.execute("delete from memberships where user_id=?",(user_id,))
             c.execute("delete from notifications where user_id=?",(user_id,))
             c.execute("delete from auth_tokens where user_id=?",(user_id,))
+            c.execute("delete from mfa_recovery_codes where user_id=?",(user_id,))
             c.execute("delete from api_keys where user_id=?",(user_id,))
             c.execute("delete from users where id=?",(user_id,))
 
