@@ -14,7 +14,7 @@ This document records the current SentinelScope product architecture, the workfl
 
 | Domain | Enterprise workflow depth |
 | --- | --- |
-| Public product experience | Home, Product, Features, Security, Standards, Docs and About routes; responsive product narrative; explicit responsible-use boundary |
+| Public product experience | Home plus Product, Features, Solutions, Enterprise, Workflow, Security, Standards, Research, Responsible Use, Deployment, Docs, About, Trust, Integrations, API, Architecture, Scanner Checks, Reports, Developers, Status, Asset Inventory, Scan Profiles, Vulnerability Management, Continuous Monitoring, Governance, Getting Started and Methodology routes; responsive product narrative; explicit responsible-use boundary |
 | Authentication | Signup/login, email verification, password reset, PBKDF2 password hashing, login throttling, HttpOnly session cookies, CSRF, TOTP MFA, one-time recovery codes, session/device revocation |
 | Secret storage | API/session/token hashes; optional Fernet encryption for MFA secrets using deployment-managed APP_ENCRYPTION_KEY |
 | Workspace isolation | Active per-workspace memberships, Owner/Admin/Analyst/Viewer roles, workspace switching, suspended-workspace enforcement, workspace-scoped member deactivation, member email/MFA/last-login posture and member-level audit activity drilldown |
@@ -22,9 +22,9 @@ This document records the current SentinelScope product architecture, the workfl
 | Access certification | Formal workspace membership snapshots, per-member keep/revoke decisions, reviewer notes, owner protection, completion-time revocation and session invalidation |
 | System administration | Separate system-admin privilege, users/workspaces/scans/jobs/workers/security events/audit/settings/backups/retention/quotas/maintenance/broadcast/SMTP diagnostics |
 | Projects | Editable name/description/tags, active/archive lifecycle, archived-project scan/target enforcement, retained history, safer archive-before-delete workflow |
-| Targets | Explicit authorisation, ownership verification, business criticality, environment, tags, metadata editing, SSRF-safe URL validation |
-| Scan policy | Project policy plus per-scan bounded overrides, include/exclude regex, disabled checks, request pacing, depth/page caps and immutable per-scan policy snapshot |
-| Scan creation | Three-step target/profile/scope/review wizard with target business context and explicit final authorisation confirmation |
+| Targets | Explicit authorisation, ownership verification, business criticality, environment, tags, accountable workspace owner, operational notes, metadata editing and SSRF-safe URL validation |
+| Scan policy | Project base policy plus named/versioned reusable scan profiles, default/active lifecycle, clone/update/delete controls, manual/scheduled reuse, per-run bounded overrides, include/exclude regex, disabled checks, pacing/depth/page caps and immutable per-scan profile-name/version/policy provenance |
+| Scan creation | Three-step target/profile/scope/review wizard with target business context, reusable profile library, one-run override preview, immutable execution provenance and explicit final authorisation confirmation |
 | Scanner | TLS/certificate/protocol/cipher/expiry, HTTPS/HSTS, CSP quality, browser headers, cookies, CORS reflection, forms, mixed content, methods, disclosure, security.txt and same-origin asset discovery |
 | Asset inventory | Persisted URL/status/type/title/depth/size/source/timing/redirect/truncation metadata; portfolio inventory; latest-target view; added/removed/changed baseline analysis; first/last seen and scan-by-scan provenance drilldown |
 | Findings | Stable fingerprint, first/last seen, occurrence count, effective severity, target criticality context, risk score, assignee, SLA due date, comments, scan detection timeline and immutable workflow activity |
@@ -33,7 +33,7 @@ This document records the current SentinelScope product architecture, the workfl
 | Standards | Check-level references and scan-level mapped PASS/WARNING/FAIL/ERROR summary; no blanket certification claim |
 | Reports | Executive summary, scope, policy, target context, standards evidence, findings, assets, drift, methodology and limitations in PDF/HTML/JSON; immutable export ledger with actor, format, byte size and SHA-256 provenance |
 | ZAP comparison | Imported JSON baseline comparison stored with scan evidence |
-| Schedules | Named recurring assessments, cadence/profile, failure notification preference, pause/resume, run-now, run count, failure count, last/next run and persisted execution history |
+| Schedules | Named recurring assessments, reusable versioned scan-profile binding or project-base fallback, cadence, failure notification preference, pause/resume, run-now, run count, failure count, last/next run and persisted execution history |
 | Job processing | Persistent SQLite queue, cancellation, bounded exponential retry backoff, stale-lease recovery, worker heartbeat, status telemetry and durable webhook delivery jobs |
 | Notifications | Personal/workspace/global notifications, unread summary, mark-one/read-all workflow, scheduled failure delivery, configurable overdue-finding escalation and escalation history |
 | Audit | Actor/resource/IP/details/timestamp evidence, search/filter UI and JSON export |
@@ -41,7 +41,8 @@ This document records the current SentinelScope product architecture, the workfl
 | Integrations | Workspace-admin managed HTTPS webhooks, event subscriptions, protected signing secrets, HMAC-SHA256 signatures, durable queue delivery, delivery history, retries, pause/test/rotation controls |
 | Backups | SQLite online backup, integrity validation, restore workflow, workspace/system-admin history |
 | Retention & quotas | Daily scan quota, concurrent scan limit, retention policy and admin-triggered cleanup |
-| Responsive UX | Premium desktop security console with condensed sidebar, command palette, executive risk dashboard and dense evidence views; mobile uses a separate compact shell with bottom dock, stacked operational cards, safe-area spacing and sheet-style modals instead of shrinking the desktop layout |
+| Responsive UX | Premium desktop security console with condensed grouped sidebar, command palette, executive risk dashboard, dense evidence views and split-library scan-profile editor; mobile uses a separate compact shell with bottom dock, stacked operational cards, safe-area spacing, horizontal profile library and full-screen/sheet-style workflows instead of shrinking desktop layout |
+| Workspace readiness | Persisted-state onboarding journey covering email verification, project, authorised target, accountable ownership, reusable scan profile and first completed baseline; optional Lab-readiness signal and dismiss/restore state |
 | Accessibility | Semantic public navigation, page headings, keyboard command palette, labelled inputs, focusable controls and high-contrast light/dark design tokens |
 
 ## Security boundaries
@@ -87,7 +88,7 @@ GitHub Actions must run:
 3. Playwright browser E2E on Desktop Chrome;
 4. Playwright browser E2E using a Pixel 7 device profile.
 
-Regression coverage includes authentication, system administration, public product pages, deep scan policy persistence, API-key creation, multi-workspace isolation, MFA recovery codes, target risk scoring, schedule history, notifications and report generation.
+Regression coverage includes authentication, system administration, expanded public product pages, workspace-readiness derivation, reusable scan-profile versioning/provenance, scan-policy persistence, target ownership metadata, API-key creation, multi-workspace isolation, MFA recovery codes, target risk scoring, schedule/profile history, notifications and report generation.
 
 ## Remaining architectural constraint
 
@@ -117,6 +118,13 @@ The unauthenticated product site now provides dedicated routes for:
 - Reporting
 - Developers
 - Public platform status
+- Asset inventory & drift
+- Reusable scan profiles
+- Vulnerability management
+- Continuous monitoring
+- Governance
+- Getting started
+- Scanner methodology
 
 The public experience intentionally explains what the scanner does, what it does not do, how evidence moves through remediation, how SQLite deployment is operated, and why automated standards mapping is not equivalent to certification.
 
