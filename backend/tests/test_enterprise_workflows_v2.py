@@ -82,3 +82,35 @@ def test_activity_records_reopen_comment_and_auto_remediation():
         assert r.get_finding_state(state["id"],owner["organization_id"])["state"]=="OPEN"
         events=[x["event"] for x in r.finding_activity(state["id"],owner["organization_id"])]
         assert "COMMENT_ADDED" in events and "AUTO_REMEDIATED" in events and "REOPENED" in events
+
+
+def test_notification_preferences_suppress_in_app_delivery_per_workspace():
+    with tempfile.TemporaryDirectory() as d:
+        r,owner,p,t=setup_repo(os.path.join(d,"notifications.sqlite3"))
+        org=owner["organization_id"];uid=owner["user_id"]
+        defaults=r.get_notification_preferences(uid,org)
+        assert defaults["in_app_scan_completed"] is True
+        saved=r.set_notification_preferences(uid,org,{"in_app_scan_completed":False,"email_scan_failed":True})
+        assert saved["in_app_scan_completed"] is False and saved["email_scan_failed"] is True
+        nid=r.add_notification(org,uid,"scan_completed","Scan completed","Baseline complete")
+        assert nid is None
+        assert not any(x["type"]=="scan_completed" for x in r.list_notifications(org,uid))
+        nid2=r.add_notification(org,uid,"scan_failed","Scan failed","Network error")
+        assert nid2
+        assert any(x["type"]=="scan_failed" for x in r.list_notifications(org,uid))
+
+def test_asset_history_is_workspace_scoped_and_tracks_changes():
+    with tempfile.TemporaryDirectory() as d:
+        r,owner,p,t=setup_repo(os.path.join(d,"assets.sqlite3"))
+        from app.scanner.models import Asset
+        s1=r.create_scan(t["id"],t["url"],"standard",owner["user_id"],{})
+        r.add_assets(s1["id"],t["id"],[Asset("https://example.com/account","html",200,"text/html","Account",1,1200,t["url"],{"elapsed_ms":90})])
+        r.update_scan(s1["id"],status="COMPLETED",completed_at=r.now(),score=82)
+        s2=r.create_scan(t["id"],t["url"],"standard",owner["user_id"],{})
+        r.add_assets(s2["id"],t["id"],[Asset("https://example.com/account","html",403,"text/html","Account",1,1300,t["url"],{"elapsed_ms":110})])
+        r.update_scan(s2["id"],status="COMPLETED",completed_at=r.now(),score=79)
+        history=r.asset_history(owner["organization_id"],t["id"],"https://example.com/account")
+        assert history and history["summary"]["occurrences"]==2
+        assert history["summary"]["status_changes"]==1
+        other=r.create_signup("other@example.com","Other",hash_password("correct-horse-battery"),"Other")
+        assert r.asset_history(other["organization_id"],t["id"],"https://example.com/account") is None
