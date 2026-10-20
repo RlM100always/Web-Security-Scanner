@@ -41,6 +41,14 @@ def create_blueprint():
             repo().add_notification(None,user["id"],"auth",subject,link,{"development_link":link})
         return result,link
 
+    def make_recovery_codes(count=10):
+        raw=[secrets.token_hex(4).upper() for _ in range(count)]
+        repo().replace_mfa_recovery_codes(current_identity()['user_id'],[token_hash(x.lower()) for x in raw])
+        return [x[:4]+'-'+x[4:] for x in raw]
+
+    def recovery_hash(value):
+        return token_hash(str(value or '').replace('-','').replace(' ','').lower())
+
     # Authentication
     @bp.post('/auth/signup')
     def signup():
@@ -87,8 +95,9 @@ def create_blueprint():
         if user.get('mfa_enabled'):
             code=str(d.get('mfa_code') or '').replace(' ','')
             if not code:return {'error':'MFA code required','mfa_required':True},401
-            if not pyotp.TOTP(user.get('mfa_secret') or '').verify(code,valid_window=1):
-                return {'error':'Invalid MFA code','mfa_required':True},401
+            totp_ok=pyotp.TOTP(user.get('mfa_secret') or '').verify(code.replace('-',''),valid_window=1) if code.replace('-','').isdigit() else False
+            recovery_ok=False if totp_ok else repo().consume_mfa_recovery_code(user['id'],recovery_hash(code))
+            if not totp_ok and not recovery_ok:return {'error':'Invalid MFA or recovery code','mfa_required':True},401
         repo().set_login_success(user['id'])
         memberships=repo().list_memberships_for_user(user['id'])
         if not memberships:return {'error':'Account has no active workspace'},403
@@ -155,14 +164,25 @@ def create_blueprint():
     def mfa_confirm():
         ident=current_identity();d=request.get_json(force=True) or {};secret=d.get('secret') or '';code=str(d.get('code') or '').replace(' ','')
         if not secret or not pyotp.TOTP(secret).verify(code,valid_window=1):return {'error':'Invalid authenticator code'},400
-        repo().set_mfa(ident['user_id'],True,secret);audit('MFA_ENABLED','user',ident['user_id']);return {'ok':True}
+        repo().set_mfa(ident['user_id'],True,secret);codes=make_recovery_codes();audit('MFA_ENABLED','user',ident['user_id'],{'recovery_codes':len(codes)});return {'ok':True,'recovery_codes':codes}
 
     @bp.post('/auth/mfa/disable')
     @require_auth
     def mfa_disable():
         ident=current_identity();d=request.get_json(force=True) or {};user=repo().get_user_by_id(ident['user_id'])
         if not verify_password(d.get('password') or '',user['password_hash']):return {'error':'Password is incorrect'},400
-        repo().set_mfa(ident['user_id'],False,None);audit('MFA_DISABLED','user',ident['user_id']);return {'ok':True}
+        repo().set_mfa(ident['user_id'],False,None);repo().clear_mfa_recovery_codes(ident['user_id']);audit('MFA_DISABLED','user',ident['user_id']);return {'ok':True}
+
+    @bp.post('/auth/mfa/recovery-codes/regenerate')
+    @require_auth
+    def mfa_recovery_regenerate():
+        ident=current_identity();d=request.get_json(force=True) or {};user=repo().get_user_by_id(ident['user_id'])
+        if not user or not user.get('mfa_enabled'):return {'error':'MFA is not enabled'},400
+        if not verify_password(d.get('password') or '',user['password_hash']):return {'error':'Password is incorrect'},400
+        code=str(d.get('code') or '').replace(' ','')
+        if not pyotp.TOTP(user.get('mfa_secret') or '').verify(code,valid_window=1):return {'error':'Valid authenticator code required'},400
+        codes=make_recovery_codes();audit('MFA_RECOVERY_CODES_REGENERATED','user',ident['user_id'],{'count':len(codes)})
+        return {'ok':True,'recovery_codes':codes}
 
     @bp.post('/auth/workspace')
     @require_auth
@@ -211,6 +231,14 @@ def create_blueprint():
         for r in rows:r['current']=r['id']==ident['session_id']
         return jsonify(rows)
 
+    @bp.delete('/auth/sessions/<session_id>')
+    @require_auth
+    def auth_session_revoke(session_id):
+        ident=current_identity()
+        if session_id==ident.get('session_id'):return {'error':'Use sign out to end the current session'},400
+        if not repo().revoke_user_session(ident['user_id'],session_id):return {'error':'Session not found or already revoked'},404
+        audit('SESSION_REVOKED','session',session_id);return {'ok':True}
+
     @bp.delete('/auth/account')
     @require_auth
     def delete_account():
@@ -224,7 +252,8 @@ def create_blueprint():
     @require_auth
     def me():
         ident=current_identity()
-        return {'user':ident,'csrf_token':ident['csrf_token'],'workspaces':repo().list_memberships_for_user(ident['user_id'])}
+        return {'user':ident,'csrf_token':ident['csrf_token'],'workspaces':repo().list_memberships_for_user(ident['user_id']),
+                'security':{'recovery_codes_remaining':repo().unused_mfa_recovery_count(ident['user_id']) if ident.get('mfa_enabled') else 0}}
 
     # Dashboard
     @bp.get('/dashboard')
