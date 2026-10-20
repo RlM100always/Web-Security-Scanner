@@ -308,6 +308,15 @@ class Repository:
     def list_invitations(self,org_id):
         with self.conn() as c:return [dict(r) for r in c.execute("select id,email,role,status,expires_at,created_at from invitations where organization_id=? order by created_at desc",(org_id,))]
 
+    def get_invitation(self,invite_id,org_id):
+        with self.conn() as c:r=c.execute("select id,organization_id,email,role,status,expires_at,created_at from invitations where id=? and organization_id=?",(invite_id,org_id)).fetchone()
+        return dict(r) if r else None
+
+    def revoke_invitation(self,invite_id,org_id):
+        with self.conn() as c:
+            cur=c.execute("update invitations set status='REVOKED' where id=? and organization_id=? and status='PENDING'",(invite_id,org_id))
+            return cur.rowcount>0
+
     def deactivate_member(self,org_id,user_id,active):
         with self.conn() as c:
             owner=c.execute("select role from memberships where organization_id=? and user_id=?",(org_id,user_id)).fetchone()
