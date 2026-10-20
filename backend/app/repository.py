@@ -117,6 +117,9 @@ class Repository:
               prefix text not null,scopes_json text not null,expires_at text,last_used_at text,revoked_at text,created_at text not null);
             create table if not exists system_settings(
               key text primary key,value_json text not null,updated_by text,updated_at text not null);
+            create table if not exists report_exports(
+              id text primary key,organization_id text not null,scan_id text not null,format text not null,
+              user_id text not null,sha256 text not null,size_bytes integer not null,created_at text not null);
             create table if not exists access_reviews(
               id text primary key,organization_id text not null,name text not null,status text not null default 'OPEN',
               created_by text not null,created_at text not null,completed_at text);
@@ -176,6 +179,8 @@ class Repository:
             c.execute("create index if not exists idx_mfa_recovery_user on mfa_recovery_codes(user_id,used_at)")
             c.execute("create index if not exists idx_invites_org on invitations(organization_id,status)")
             c.execute("create index if not exists idx_notifications_user on notifications(user_id,created_at)")
+            c.execute("create index if not exists idx_report_exports_org on report_exports(organization_id,created_at)")
+            c.execute("create index if not exists idx_report_exports_scan on report_exports(scan_id,created_at)")
             c.execute("create index if not exists idx_access_reviews_org on access_reviews(organization_id,created_at)")
             c.execute("create index if not exists idx_access_review_items_review on access_review_items(review_id,decision)")
             c.execute("create index if not exists idx_webhooks_org on webhook_endpoints(organization_id,active)")
@@ -1225,6 +1230,19 @@ class Repository:
                 c.execute("delete from assets where scan_id=?",(sid,));c.execute("delete from remediation_verifications where scan_id=?",(sid,));c.execute("delete from findings where scan_id=?",(sid,));c.execute("delete from scan_events where scan_id=?",(sid,));c.execute("delete from zap_imports where scan_id=?",(sid,))
                 c.execute("delete from scans where id=?",(sid,))
             return len(scan_ids)
+
+    # report export evidence ledger
+    def record_report_export(self,org_id,scan_id,fmt,user_id,sha256,size_bytes):
+        row={'id':self._id(),'organization_id':org_id,'scan_id':scan_id,'format':fmt.upper(),'user_id':user_id,
+             'sha256':sha256,'size_bytes':int(size_bytes),'created_at':self.now()}
+        with self.conn() as c:c.execute("insert into report_exports values(?,?,?,?,?,?,?,?)",tuple(row.values()))
+        return row
+
+    def list_report_exports(self,org_id,limit=200):
+        with self.conn() as c:
+            return [dict(r) for r in c.execute("""select e.*,u.name user_name,u.email user_email,s.target_url,s.score,s.profile
+              from report_exports e join users u on u.id=e.user_id join scans s on s.id=e.scan_id
+              where e.organization_id=? order by e.created_at desc limit ?""",(org_id,limit))]
 
     # enterprise access certification
     def create_access_review(self,org_id,name,created_by):
