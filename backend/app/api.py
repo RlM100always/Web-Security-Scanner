@@ -862,6 +862,15 @@ def create_blueprint():
         if not repo().revoke_api_key(key_id,ident['user_id'],ident['organization_id']):return {'error':'API key not found or already revoked'},404
         audit('API_KEY_REVOKED','api_key',key_id);return {'ok':True}
 
+    @bp.route('/notification-preferences',methods=['GET','PUT'])
+    @require_auth
+    def notification_preferences():
+        ident=current_identity()
+        if request.method=='GET':return repo().get_notification_preferences(ident['user_id'],ident['organization_id'])
+        d=request.get_json(force=True) or {}
+        prefs=repo().set_notification_preferences(ident['user_id'],ident['organization_id'],d)
+        audit('NOTIFICATION_PREFERENCES_UPDATED','user',ident['user_id'],prefs);return prefs
+
     @bp.get('/notifications')
     @require_auth
     def notifications():
