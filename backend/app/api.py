@@ -43,6 +43,8 @@ def create_blueprint():
     # Authentication
     @bp.post('/auth/signup')
     def signup():
+        if not repo().system_setting("registration_enabled",True):
+            return {'error':'Public registration is currently disabled'},403
         d=request.get_json(force=True) or {}
         email=(d.get('email') or '').strip().lower();name=(d.get('name') or '').strip();password=d.get('password') or ''
         org=(d.get('organization_name') or f"{name}'s workspace").strip()
@@ -52,6 +54,8 @@ def create_blueprint():
         if repo().get_user_by_email(email):return {'error':'An account already exists for this email'},409
         try:created=repo().create_signup(email,name,hash_password(password),org)
         except Exception:return {'error':'Unable to create account'},400
+        if email in current_app.config.get('SYSTEM_ADMIN_EMAILS',[]):
+            repo().set_system_admin(created['user_id'],True)
         raw=secrets.token_urlsafe(48);csrf=secrets.token_urlsafe(32)
         sess=repo().create_session(created['user_id'],created['organization_id'],token_hash(raw),csrf,current_app.config['SESSION_TTL_HOURS'],request.headers.get('User-Agent','')[:300],ip_addr())
         repo().audit(created['organization_id'],created['user_id'],'ACCOUNT_SIGNUP','user',created['user_id'],{'email':email},ip_addr())
