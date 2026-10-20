@@ -575,6 +575,42 @@ class Repository:
         for r in rows:
             r['standards']=json.loads(r.pop('standards_json'));r['metadata']=json.loads(r.pop('metadata_json'))
         return rows
+    def asset_comparison(self,scan_id):
+        current=self.get_scan(scan_id)
+        if not current:return {}
+        with self.conn() as c:
+            prev=c.execute("select id from scans where target_id=? and status='COMPLETED' and id<>? and created_at<? order by created_at desc limit 1",(current['target_id'],scan_id,current['created_at'])).fetchone()
+        cur={a['url']:a for a in self.assets(scan_id)};old={a['url']:a for a in self.assets(prev['id'])} if prev else {}
+        added=sorted(set(cur)-set(old));removed=sorted(set(old)-set(cur));changed=[]
+        for url in sorted(set(cur)&set(old)):
+            diffs={}
+            for key in ['status_code','content_type','title','size_bytes']:
+                if cur[url].get(key)!=old[url].get(key):diffs[key]={'before':old[url].get(key),'after':cur[url].get(key)}
+            if diffs:changed.append({'url':url,'changes':diffs})
+        return {'previous_scan_id':prev['id'] if prev else None,'added':added,'removed':removed,'changed':changed,
+                'summary':{'added':len(added),'removed':len(removed),'changed':len(changed),'current_assets':len(cur)}}
+
+    def standards_summary(self,scan_id):
+        summary={}
+        for f in self.findings(scan_id,with_lifecycle=False):
+            for standard in f.get('standards') or []:
+                row=summary.setdefault(standard,{'checks':set(),'PASS':0,'WARNING':0,'FAIL':0,'ERROR':0,'INFO':0,'NOT_APPLICABLE':0})
+                row['checks'].add(f['check_id']);row[f['status']]=row.get(f['status'],0)+1
+        out=[]
+        for standard,row in sorted(summary.items()):
+            checks=len(row.pop('checks'));active=row.get('FAIL',0)+row.get('WARNING',0)+row.get('ERROR',0)
+            out.append({'standard':standard,'mapped_checks':checks,'active_findings':active,**row})
+        return out
+
+    def finding_timeline(self,state_id,org_id):
+        state=self.get_finding_state(state_id,org_id)
+        if not state:return []
+        with self.conn() as c:
+            rows=[dict(r) for r in c.execute("""select s.id scan_id,s.created_at,s.completed_at,s.score,f.status,f.severity,f.confidence,f.evidence
+              from scans s join findings f on f.scan_id=s.id where s.target_id=? and f.fingerprint=?
+              order by s.created_at desc limit 100""",(state['target_id'],state['fingerprint']))]
+        return rows
+
     def comparison(self,scan_id):
         current=self.get_scan(scan_id)
         if not current:return {}
