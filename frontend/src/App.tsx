@@ -6,7 +6,7 @@ import{api,setCsrfToken,csrfHeaders}from'./lib/api';
 type User={user_id:string,email:string,name:string,role:string,organization_id:string,organization_name:string,csrf_token:string,email_verified?:number,mfa_enabled?:number,system_admin?:number,organization_active?:number};
 type Project={id:string,name:string,description:string,status?:string,tags?:string[]};
 type Target={id:string,project_id:string,url:string,name:string,authorized:boolean,verified:boolean,criticality?:string,environment?:string,tags?:string[],owner_user_id?:string,notes?:string};
-type Scan={id:string,target_id:string,target_url:string,profile:string,status:string,progress:number,stage:string,score?:number,created_at:string,error?:string};
+type Scan={id:string,target_id:string,target_url:string,profile:string,status:string,progress:number,stage:string,score?:number,created_at:string,error?:string,scan_profile_id?:string,scan_profile_name?:string,scan_profile_version?:number};
 type Finding={id:string,title:string,severity:string,status:string,confidence:string,url:string,evidence:string,remediation:string,standards:string[],check_id:string,lifecycle_id?:string,lifecycle_state?:string,severity_override?:string,assignee_user_id?:string,due_at?:string,risk_reason?:string,occurrences?:number};
 
 const roleRank:any={viewer:10,analyst:20,admin:30,owner:40};
