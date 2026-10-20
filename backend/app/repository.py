@@ -106,9 +106,13 @@ class Repository:
               worker_id text primary key,hostname text,pid integer,status text,current_job_id text,
               started_at text not null,last_seen_at text not null);
             """)
+            self._ensure_column(c,"memberships","active","integer not null default 1")
             self._ensure_column(c,"projects","organization_id","text")
             self._ensure_column(c,"projects","created_by","text")
             self._ensure_column(c,"targets","created_by","text")
+            self._ensure_column(c,"targets","criticality","text not null default 'medium'")
+            self._ensure_column(c,"targets","environment","text not null default 'production'")
+            self._ensure_column(c,"targets","tags_json","text not null default '[]'")
             self._ensure_column(c,"scans","created_by","text")
             self._ensure_column(c,"users","mfa_enabled","integer not null default 0")
             self._ensure_column(c,"users","mfa_secret","text")
@@ -116,6 +120,9 @@ class Repository:
             self._ensure_column(c,"organizations","active","integer not null default 1")
             self._ensure_column(c,"scans","cancel_requested","integer not null default 0")
             self._ensure_column(c,"scans","policy_json","text")
+            self._ensure_column(c,"finding_states","base_severity","text not null default 'INFO'")
+            self._ensure_column(c,"finding_states","risk_expires_at","text")
+            self._ensure_column(c,"finding_states","risk_accepted_by","text")
             self._ensure_column(c,"audit_logs","organization_id","text")
             self._ensure_column(c,"audit_logs","user_id","text")
             self._ensure_column(c,"audit_logs","resource_type","text")
@@ -152,7 +159,7 @@ class Repository:
             c.execute("""insert into users(id,email,name,password_hash,active,email_verified,failed_logins,locked_until,last_login_at,created_at,mfa_enabled,mfa_secret)
             values(?,?,?,?,1,0,0,null,null,?,0,null)""",(uid,email.lower(),name,password_hash,now))
             c.execute("insert into organizations(id,name,created_at,active) values(?,?,?,1)",(oid,org_name,now))
-            c.execute("insert into memberships values(?,?,?,?,?)",(mid,oid,uid,"owner",now))
+            c.execute("insert into memberships(id,organization_id,user_id,role,created_at,active) values(?,?,?,?,?,1)",(mid,oid,uid,"owner",now))
         return {"user_id":uid,"organization_id":oid}
     def create_bootstrap_owner(self,email,name,password_hash):
         return self.create_signup(email,name,password_hash,"Default Workspace")
@@ -185,7 +192,8 @@ class Repository:
             r=c.execute("""select s.id session_id,s.csrf_token,s.expires_at,u.id user_id,u.email,u.name,u.email_verified,u.mfa_enabled,u.system_admin,m.organization_id,m.role,o.name organization_name,o.active organization_active
             from sessions s join users u on u.id=s.user_id join memberships m on m.user_id=u.id and m.organization_id=s.organization_id
             join organizations o on o.id=m.organization_id
-            where s.token_hash=? and s.revoked_at is null and s.expires_at>? and u.active=1""",(token_hash,now)).fetchone()
+            where s.token_hash=? and s.revoked_at is null and s.expires_at>? and u.active=1
+              and (m.active=1 or u.system_admin=1) and (o.active=1 or u.system_admin=1)""",(token_hash,now)).fetchone()
             if r:c.execute("update sessions set last_seen_at=? where id=?",(now,r["session_id"]))
         return dict(r) if r else None
     def update_user_password(self,user_id,password_hash):
@@ -205,10 +213,10 @@ class Repository:
         with self.conn() as c:
             return [dict(r) for r in c.execute("""select m.organization_id,m.role,o.name organization_name
             from memberships m join organizations o on o.id=m.organization_id
-            where m.user_id=? order by m.created_at""",(user_id,))]
+            where m.user_id=? and m.active=1 and o.active=1 order by m.created_at""",(user_id,))]
 
     def list_members(self,org_id):
-        with self.conn() as c:return [dict(r) for r in c.execute("""select u.id,u.email,u.name,u.active,m.role,m.created_at from memberships m join users u on u.id=m.user_id where m.organization_id=? order by m.created_at""",(org_id,))]
+        with self.conn() as c:return [dict(r) for r in c.execute("""select u.id,u.email,u.name,m.active,u.active account_active,m.role,m.created_at from memberships m join users u on u.id=m.user_id where m.organization_id=? order by m.created_at""",(org_id,))]
     def add_member(self,org_id,email,name,password_hash,role):
         user=self.get_user_by_email(email);now=self.now()
         with self.conn() as c:
@@ -216,7 +224,8 @@ class Repository:
                 uid=self._id();c.execute("""insert into users(id,email,name,password_hash,active,email_verified,failed_logins,locked_until,last_login_at,created_at,mfa_enabled,mfa_secret)
                 values(?,?,?,?,1,0,0,null,null,?,0,null)""",(uid,email.lower(),name,password_hash,now))
             else:uid=user["id"]
-            c.execute("insert or replace into memberships(id,organization_id,user_id,role,created_at) values(?,?,?,?,?)",(self._id(),org_id,uid,role,now))
+            c.execute("""insert into memberships(id,organization_id,user_id,role,created_at,active) values(?,?,?,?,?,1)
+              on conflict(organization_id,user_id) do update set role=excluded.role,active=1""",(self._id(),org_id,uid,role,now))
         return {"user_id":uid,"email":email.lower(),"role":role}
     def update_member_role(self,org_id,user_id,role):
         with self.conn() as c:c.execute("update memberships set role=? where organization_id=? and user_id=?",(role,org_id,user_id))
@@ -245,7 +254,8 @@ class Repository:
 
     def switch_session_workspace(self,session_id,user_id,organization_id):
         with self.conn() as c:
-            ok=c.execute("select 1 from memberships where user_id=? and organization_id=?",(user_id,organization_id)).fetchone()
+            ok=c.execute("""select 1 from memberships m join organizations o on o.id=m.organization_id
+              where m.user_id=? and m.organization_id=? and m.active=1 and o.active=1""",(user_id,organization_id)).fetchone()
             if not ok:return False
             c.execute("update sessions set organization_id=?,last_seen_at=? where id=? and user_id=?",(organization_id,self.now(),session_id,user_id))
         return True
@@ -275,7 +285,8 @@ class Repository:
             owner=c.execute("select role from memberships where organization_id=? and user_id=?",(org_id,user_id)).fetchone()
             if not owner:return False
             if owner['role']=='owner' and not active:return False
-            c.execute("update users set active=? where id=?",(int(active),user_id))
+            c.execute("update memberships set active=? where organization_id=? and user_id=?",(int(active),org_id,user_id))
+            if not active:c.execute("update sessions set revoked_at=? where organization_id=? and user_id=? and revoked_at is null",(self.now(),org_id,user_id))
         return True
 
     def remove_member(self,org_id,user_id):
@@ -345,7 +356,14 @@ class Repository:
         q="select * from projects";args=[]
         if org_id:q+=" where organization_id=?";args=[org_id]
         q+=" order by created_at desc"
-        with self.conn() as c:return [dict(r) for r in c.execute(q,args)]
+        with self.conn() as c:rows=[dict(r) for r in c.execute(q,args)]
+        for r in rows:
+            if 'authorized' in r:r['authorized']=bool(r['authorized'])
+            if 'verified' in r:r['verified']=bool(r['verified'])
+            if 'tags_json' in r:
+                try:r['tags']=json.loads(r.pop('tags_json') or '[]')
+                except Exception:r['tags']=[]
+        return rows
     def get_project(self,id,org_id=None):
         q="select * from projects where id=?";args=[id]
         if org_id:q+=" and organization_id=?";args.append(org_id)
@@ -372,10 +390,13 @@ class Repository:
             c.execute("delete from scan_policies where project_id=?",(id,))
             c.execute("delete from projects where id=?",(id,))
         return True
-    def create_target(self,project_id,url,name,authorized=False,verified=False,created_by=None):
-        x={'id':self._id(),'project_id':project_id,'url':url,'name':name,'authorized':int(authorized),'verified':int(verified),'created_by':created_by,'created_at':self.now()}
-        with self.conn() as c:c.execute("insert into targets(id,project_id,url,name,authorized,verified,created_by,created_at) values(?,?,?,?,?,?,?,?)",tuple(x.values()))
-        x['authorized']=bool(x['authorized']);x['verified']=bool(x['verified']);return x
+    def create_target(self,project_id,url,name,authorized=False,verified=False,created_by=None,criticality='medium',environment='production',tags=None):
+        criticality=criticality if criticality in {'low','medium','high','critical'} else 'medium'
+        environment=environment if environment in {'development','test','staging','production'} else 'production'
+        x={'id':self._id(),'project_id':project_id,'url':url,'name':name,'authorized':int(authorized),'verified':int(verified),'created_by':created_by,'created_at':self.now(),'criticality':criticality,'environment':environment,'tags_json':json.dumps(tags or [])}
+        with self.conn() as c:c.execute("""insert into targets(id,project_id,url,name,authorized,verified,created_by,created_at,criticality,environment,tags_json)
+          values(?,?,?,?,?,?,?,?,?,?,?)""",(x['id'],x['project_id'],x['url'],x['name'],x['authorized'],x['verified'],x['created_by'],x['created_at'],x['criticality'],x['environment'],x['tags_json']))
+        x['authorized']=bool(x['authorized']);x['verified']=bool(x['verified']);x['tags']=json.loads(x.pop('tags_json'));return x
     def list_targets(self,project_id=None,org_id=None):
         q="select t.* from targets t join projects p on p.id=t.project_id where 1=1";args=[]
         if project_id:q+=" and t.project_id=?";args.append(project_id)
@@ -389,7 +410,10 @@ class Repository:
         if org_id:q+=" and p.organization_id=?";args.append(org_id)
         with self.conn() as c:r=c.execute(q,args).fetchone()
         if not r:return None
-        x=dict(r);x['authorized']=bool(x['authorized']);x['verified']=bool(x['verified']);return x
+        x=dict(r);x['authorized']=bool(x['authorized']);x['verified']=bool(x['verified'])
+        try:x['tags']=json.loads(x.pop('tags_json') or '[]')
+        except Exception:x['tags']=[]
+        return x
     def delete_target(self,target_id,org_id):
         with self.conn() as c:
             row=c.execute("""select t.id from targets t join projects p on p.id=t.project_id
@@ -773,7 +797,8 @@ class Repository:
               m.organization_id,m.role,o.name organization_name,o.active organization_active
               from api_keys k join users u on u.id=k.user_id join memberships m on m.user_id=u.id and m.organization_id=k.organization_id
               join organizations o on o.id=m.organization_id
-              where k.token_hash=? and k.revoked_at is null and (k.expires_at is null or k.expires_at>?) and u.active=1""",(token_hash,now)).fetchone()
+              where k.token_hash=? and k.revoked_at is null and (k.expires_at is null or k.expires_at>?) and u.active=1
+                and m.active=1 and o.active=1""",(token_hash,now)).fetchone()
             if r:c.execute("update api_keys set last_used_at=? where id=?",(now,r['api_key_id']))
         if not r:return None
         d=dict(r);d['api_scopes']=json.loads(d.pop('scopes_json') or '[]');d['auth_method']='api_key';d['csrf_token']=None;d['session_id']=None
