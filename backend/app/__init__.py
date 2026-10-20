@@ -1,4 +1,5 @@
 def create_app(config_object=None):
+    import re
     from flask import Flask, request
     from flask_cors import CORS
     from .config import Config
@@ -33,7 +34,13 @@ def create_app(config_object=None):
             if request.method in {"GET","HEAD"} and not ({"read","admin"} & scopes):
                 return {"error":"API key read scope required"},403
             if request.method not in {"GET","HEAD","OPTIONS"}:
-                needed="scan" if request.path=="/api/v1/scans" and request.method=="POST" else "write"
+                scan_action=request.method=="POST" and (
+                    request.path=="/api/v1/scans" or
+                    re.fullmatch(r"/api/v1/scans/[^/]+/rerun",request.path) or
+                    re.fullmatch(r"/api/v1/finding-states/[^/]+/verify",request.path) or
+                    re.fullmatch(r"/api/v1/schedules/[^/]+/run",request.path)
+                )
+                needed="scan" if scan_action else "write"
                 if needed not in scopes and "admin" not in scopes:
                     return {"error":f"API key {needed} scope required"},403
         if request.path.startswith("/api/v1/") and not request.path.startswith("/api/v1/admin/"):
