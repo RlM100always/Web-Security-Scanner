@@ -28,14 +28,14 @@ This document records the current SentinelScope product architecture, the workfl
 | Scanner | TLS/certificate/protocol/cipher/expiry, HTTPS/HSTS, CSP quality, browser headers, cookies, CORS reflection, forms, mixed content, methods, disclosure, security.txt and same-origin asset discovery |
 | Asset inventory | Persisted URL/status/type/title/depth/size/source/timing/redirect/truncation metadata; portfolio inventory; latest-target view; added/removed/changed baseline analysis; first/last seen and scan-by-scan provenance drilldown |
 | Findings | Stable fingerprint, first/last seen, occurrence count, effective severity, target criticality context, risk score, assignee, SLA due date, comments, scan detection timeline and immutable workflow activity |
-| Risk decisions | OPEN/ACKNOWLEDGED/IN_PROGRESS/ACCEPTED_RISK/FALSE_POSITIVE/REMEDIATED; saved/private/shared issue views; portfolio filters; bulk triage; rationale requirement; risk-review expiry; optional Owner-only acceptance approval; expired acceptance priority signal |
+| Risk decisions | OPEN/ACKNOWLEDGED/IN_PROGRESS/ACCEPTED_RISK/FALSE_POSITIVE/REMEDIATED; saved/private/shared issue views; portfolio filters; bulk triage; rationale requirement; risk-review expiry; optional Owner-only acceptance approval; expired acceptance priority signal; daily-deduplicated overdue SLA escalation to assignee and workspace administrators |
 | Remediation verification | Queued re-assessment linked to the persistent issue; VERIFIED_FIXED/STILL_PRESENT history |
 | Standards | Check-level references and scan-level mapped PASS/WARNING/FAIL/ERROR summary; no blanket certification claim |
 | Reports | Executive summary, scope, policy, target context, standards evidence, findings, assets, drift, methodology and limitations in PDF/HTML/JSON; immutable export ledger with actor, format, byte size and SHA-256 provenance |
 | ZAP comparison | Imported JSON baseline comparison stored with scan evidence |
 | Schedules | Named recurring assessments, cadence/profile, failure notification preference, pause/resume, run-now, run count, failure count, last/next run and persisted execution history |
 | Job processing | Persistent SQLite queue, cancellation, bounded exponential retry backoff, stale-lease recovery, worker heartbeat, status telemetry and durable webhook delivery jobs |
-| Notifications | Personal/workspace/global notifications, unread summary, mark-one/read-all workflow, scheduled failure delivery |
+| Notifications | Personal/workspace/global notifications, unread summary, mark-one/read-all workflow, scheduled failure delivery, configurable overdue-finding escalation and escalation history |
 | Audit | Actor/resource/IP/details/timestamp evidence, search/filter UI and JSON export |
 | API access | Expiring one-time-displayed bearer tokens, hashed storage, read/scan/write/admin scopes and central scope enforcement |
 | Integrations | Workspace-admin managed HTTPS webhooks, event subscriptions, protected signing secrets, HMAC-SHA256 signatures, durable queue delivery, delivery history, retries, pause/test/rotation controls |
@@ -116,6 +116,7 @@ The unauthenticated product site now provides dedicated routes for:
 - Scanner check catalogue
 - Reporting
 - Developers
+- Public platform status
 
 The public experience intentionally explains what the scanner does, what it does not do, how evidence moves through remediation, how SQLite deployment is operated, and why automated standards mapping is not equivalent to certification.
 
@@ -134,3 +135,12 @@ The enterprise issue inbox now supports:
 9. durable workflow activity history for creation, reopen, comments, triage and automatic remediation.
 
 The dashboard also exposes executive portfolio signals for active security debt, overdue/unassigned issues, expired risk acceptances, remediation rate, posture trend, schedule health and critical-target coverage.
+
+
+## SLA escalation automation
+
+Active OPEN, ACKNOWLEDGED or IN_PROGRESS issues with a due date in the past are evaluated by the worker. SentinelScope creates daily-deduplicated escalation evidence, notifies the assignee plus active workspace Owner/Admin members, respects per-user in-app/email preferences, and emits the signed `finding.overdue` webhook event. Escalation history remains queryable in the workspace and is surfaced in the Issues workflow.
+
+## Public operational status
+
+The public `/status` route reads only the public-safe `/health` endpoint. Detailed workers, queue jobs, audit events, security telemetry, database size and administrative controls remain authenticated.
