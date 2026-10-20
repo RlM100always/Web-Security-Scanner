@@ -166,6 +166,7 @@ class Repository:
             c.execute("insert or ignore into system_settings(key,value_json,updated_by,updated_at) values('scan_quota_per_day','100',null,?)",(self.now(),))
             c.execute("insert or ignore into system_settings(key,value_json,updated_by,updated_at) values('max_concurrent_scans_per_org','3',null,?)",(self.now(),))
             c.execute("insert or ignore into system_settings(key,value_json,updated_by,updated_at) values('scan_retention_days','90',null,?)",(self.now(),))
+            c.execute("insert or ignore into system_settings(key,value_json,updated_by,updated_at) values('require_verified_email_for_scans','false',null,?)",(self.now(),))
     # auth / org
     def user_count(self):
         with self.conn() as c:return c.execute("select count(*) from users").fetchone()[0]
@@ -1154,7 +1155,7 @@ class Repository:
         except Exception:return default
 
     def set_system_setting(self,key,value,user_id):
-        allowed={'registration_enabled','maintenance_mode','maintenance_message','platform_name','admin_banner','scan_quota_per_day','max_concurrent_scans_per_org','scan_retention_days'}
+        allowed={'registration_enabled','maintenance_mode','maintenance_message','platform_name','admin_banner','scan_quota_per_day','max_concurrent_scans_per_org','scan_retention_days','require_verified_email_for_scans'}
         if key not in allowed:raise ValueError("Unsupported system setting")
         with self.conn() as c:c.execute("""insert into system_settings(key,value_json,updated_by,updated_at) values(?,?,?,?)
           on conflict(key) do update set value_json=excluded.value_json,updated_by=excluded.updated_by,updated_at=excluded.updated_at""",
