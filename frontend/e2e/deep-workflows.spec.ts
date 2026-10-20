@@ -32,7 +32,7 @@ test('deep scan policy and API key workflow works',async({page},testInfo)=>{
   const projectCard=page.locator('.projectCard').filter({hasText:'Production Estate'});
   await projectCard.getByRole('button',{name:'Scan profiles'}).click();
   await expect(page.getByText('Govern assessment configuration once, reuse it everywhere.')).toBeVisible();
-  await expect(page.getByText('Standard Baseline')).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Standard Baseline',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Create scan profile'}).click();
   await page.getByLabel('Profile name').fill('Release Gate');
   await page.getByLabel('Description').fill('Release readiness profile');
