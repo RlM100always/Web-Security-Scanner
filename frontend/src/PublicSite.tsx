@@ -18,7 +18,8 @@ export default function PublicSite({path='/'}:{path?:string}){
     'asset-inventory':['Asset Inventory | SentinelScope','Review bounded scanner-discovered assets, business context, provenance and baseline drift.'],
     'vulnerability-management':['Vulnerability Management | SentinelScope','Prioritise persistent issues, assign ownership, manage risk decisions and verify remediation.'],
     reports:['Security Reporting | SentinelScope','Generate evidence-rich PDF, HTML and JSON assessment reports with export provenance.'],
-    status:['Platform Status | SentinelScope','Public-safe SentinelScope service availability without exposing sensitive operational telemetry.']
+    status:['Platform Status | SentinelScope','Public-safe SentinelScope service availability without exposing sensitive operational telemetry.'],
+    '404':['Page not found | SentinelScope','The requested SentinelScope page could not be found.']
   };const m=meta[page]||['SentinelScope — '+page.replaceAll('-',' '),'SentinelScope authorised, evidence-first web security assessment platform.'];document.title=m[0];let tag=document.querySelector('meta[name="description"]');if(!tag){tag=document.createElement('meta');tag.setAttribute('name','description');document.head.appendChild(tag)}tag.setAttribute('content',m[1])},[page]);
   return <div className="publicSite">
     <header className="publicNav">
@@ -223,6 +224,11 @@ function StaticPage({page}:{page:string}){
       ['Webhooks','Subscribe to high-value events and verify each delivery with HMAC-SHA256 using a workspace-managed signing secret.',Webhook],
       ['Evidence exports','Consume report JSON, issue portfolios, asset inventories, audit records and scan histories for approved internal workflows.',FileText],
       ['Repository documentation','Architecture, deployment, API, scanner-check, ethics and evaluation documents explain implementation choices and current scaling boundaries.',BookOpen]
+    ]},
+    '404':{eyebrow:'404',title:'This page does not exist.',intro:'The address may be incorrect or the page may have moved. Use the links below to return to a known SentinelScope destination.',sections:[
+      ['Return home','Go back to the public SentinelScope overview and product entry points.',Globe2],
+      ['Open documentation','Review platform workflow, scanner methodology, security model and deployment guidance.',BookOpen],
+      ['Sign in','If you were looking for your security workspace, use the sign-in page.',LockKeyhole]
     ]},
     about:{eyebrow:'ABOUT THE PROJECT',title:'A transparent security-assessment platform built for explainability.',intro:'SentinelScope focuses on clear methodology, reproducible evidence and safe operation rather than opaque “magic” vulnerability claims.',sections:[
       ['Purpose','Help students, small teams and security practitioners understand repeatable web-security checks and track remediation in a controlled workflow.',ShieldCheck],
