@@ -339,7 +339,13 @@ class Repository:
               on conflict(organization_id,user_id) do update set role=excluded.role,active=1""",(self._id(),org_id,uid,role,now))
         return {"user_id":uid,"email":email.lower(),"role":role}
     def update_member_role(self,org_id,user_id,role):
-        with self.conn() as c:c.execute("update memberships set role=? where organization_id=? and user_id=?",(role,org_id,user_id))
+        with self.conn() as c:
+            current=c.execute("select role from memberships where organization_id=? and user_id=?",(org_id,user_id)).fetchone()
+            if not current:return False
+            if current['role']=='owner' and role!='owner':
+                raise ValueError("Workspace Owner role cannot be changed through member role management")
+            cur=c.execute("update memberships set role=? where organization_id=? and user_id=?",(role,org_id,user_id))
+            return cur.rowcount>0
     def set_email_verified(self,user_id,verified=True):
         with self.conn() as c:c.execute("update users set email_verified=? where id=?",(int(verified),user_id))
 
