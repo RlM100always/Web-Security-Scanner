@@ -50,6 +50,27 @@ test('public product site explains platform and routes to signup',async({page})=
   await page.goto('/reports');
   await expect(page.getByRole('heading',{name:/Reports that preserve the context/i})).toBeVisible();
 
+  await page.goto('/asset-inventory');
+  await expect(page.getByRole('heading',{name:/Know what was actually discovered/i})).toBeVisible();
+
+  await page.goto('/scan-profiles');
+  await expect(page.getByRole('heading',{name:/Reusable, versioned scan profiles/i})).toBeVisible();
+
+  await page.goto('/vulnerability-management');
+  await expect(page.getByRole('heading',{name:/Treat findings as owned security work/i})).toBeVisible();
+
+  await page.goto('/continuous-monitoring');
+  await expect(page.getByRole('heading',{name:/Repeat the same governed assessment/i})).toBeVisible();
+
+  await page.goto('/governance');
+  await expect(page.getByRole('heading',{name:/Separate workspace decisions/i})).toBeVisible();
+
+  await page.goto('/getting-started');
+  await expect(page.getByRole('heading',{name:/empty workspace to a trustworthy first baseline/i})).toBeVisible();
+
+  await page.goto('/methodology');
+  await expect(page.getByRole('heading',{name:/What the scanner measures/i})).toBeVisible();
+
   await page.goto('/status');
   await expect(page.getByRole('heading',{name:/Operational transparency/i})).toBeVisible();
   await expect(page.getByText(/All public platform checks operational/i)).toBeVisible();
