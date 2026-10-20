@@ -64,13 +64,18 @@ def test_email_verification_and_password_reset(monkeypatch):
             return {"delivered":True,"mode":"smtp"}
         import app.api as api_module
         monkeypatch.setattr(api_module,"send_email",fake_send)
+        key=client.post("/api/v1/api-keys",json={"name":"Before reset","scopes":["read"],"expires_in_days":30},headers={"X-CSRF-Token":payload["csrf_token"]})
+        assert key.status_code==201
+        raw_key=key.get_json()["token"]
+        assert app.test_client().get("/api/v1/projects",headers={"Authorization":"Bearer "+raw_key}).status_code==200
         forgot=client.post("/api/v1/auth/forgot-password",json={"email":"owner@example.com"})
         assert forgot.status_code==200 and "development_reset_link" not in forgot.get_json()
         unknown=client.post("/api/v1/auth/forgot-password",json={"email":"missing@example.com"})
         assert unknown.get_json()==forgot.get_json()
         reset_token=captured["body"].split("token=",1)[1].strip()
         reset=client.post("/api/v1/auth/reset-password",json={"token":reset_token,"new_password":"new-secure-password-123"})
-        assert reset.status_code==200
+        assert reset.status_code==200 and reset.get_json()["revoked_api_keys"]==1
+        assert app.test_client().get("/api/v1/projects",headers={"Authorization":"Bearer "+raw_key}).status_code==401
         login=client.post("/api/v1/auth/login",json={"email":"owner@example.com","password":"new-secure-password-123"})
         assert login.status_code==200
 
