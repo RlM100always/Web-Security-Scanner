@@ -5,7 +5,7 @@ import pyotp
 sys.path.insert(0,os.path.abspath(os.path.join(os.path.dirname(__file__),'..')))
 
 from app import create_app
-from app.crypto import hash_password
+from app.crypto import hash_password,encrypt_secret,decrypt_secret
 from app.repository import Repository
 from app.reports import as_json,as_html,as_pdf
 from app.scanner.models import Finding,Asset
@@ -133,3 +133,47 @@ def test_audit_ready_report_formats_include_scope_assets_and_standards():
     assert "Executive summary" in h and "Standards-mapped evidence" in h and "Assessment policy" in h
     pdf=as_pdf(scan,[finding],comparison,context)
     assert pdf.startswith(b"%PDF") and len(pdf)>1500
+
+
+def test_project_archive_and_verified_email_are_enforced_by_api():
+    with tempfile.TemporaryDirectory() as d:
+        app=build(os.path.join(d,"governance.sqlite3"));client=app.test_client()
+        signup=client.post("/api/v1/auth/signup",json={"name":"Owner","email":"owner@example.com","password":"correct-horse-battery","organization_name":"Acme"})
+        body=signup.get_json();csrf=body["csrf_token"];uid=body["user"]["user_id"]
+        headers={"X-CSRF-Token":csrf}
+        p=client.post("/api/v1/projects",json={"name":"Production","tags":["internet-facing"]},headers=headers).get_json()
+        t=client.post("/api/v1/targets",json={"project_id":p["id"],"name":"Portal","url":"https://example.com/","authorized":True,"criticality":"critical","environment":"production"},headers=headers)
+        assert t.status_code==201
+        target=t.get_json()
+
+        app.extensions["repo"].set_system_setting("require_verified_email_for_scans",True,uid)
+        blocked=client.post("/api/v1/scans",json={"target_id":target["id"],"profile":"quick"},headers=headers)
+        assert blocked.status_code==403
+        app.extensions["repo"].set_email_verified(uid,True)
+        allowed=client.post("/api/v1/scans",json={"target_id":target["id"],"profile":"quick"},headers=headers)
+        assert allowed.status_code==202
+
+        archived=client.patch("/api/v1/projects/"+p["id"],json={"status":"archived"},headers=headers)
+        assert archived.status_code==200 and archived.get_json()["status"]=="archived"
+        target_blocked=client.post("/api/v1/targets",json={"project_id":p["id"],"name":"Other","url":"https://example.org/","authorized":True},headers=headers)
+        scan_blocked=client.post("/api/v1/scans",json={"target_id":target["id"],"profile":"quick"},headers=headers)
+        assert target_blocked.status_code==409
+        assert scan_blocked.status_code==409
+
+def test_encrypted_secret_round_trip_and_schedule_failure_notification():
+    from cryptography.fernet import Fernet
+    key=Fernet.generate_key().decode()
+    encrypted=encrypt_secret("JBSWY3DPEHPK3PXP",key)
+    assert encrypted.startswith("fernet$")
+    assert decrypt_secret(encrypted,key)=="JBSWY3DPEHPK3PXP"
+
+    with tempfile.TemporaryDirectory() as d:
+        r=Repository(os.path.join(d,"schedule-alert.sqlite3"));r.init_schema()
+        owner=r.create_signup("owner@example.com","Owner",hash_password("correct-horse-battery"),"Acme")
+        p=r.create_project("Production","",owner["organization_id"],owner["user_id"])
+        t=r.create_target(p["id"],"https://example.com/","Portal",True,True,owner["user_id"])
+        schedule=r.create_schedule(t["id"],"standard",1440,owner["user_id"],"Daily baseline",True)
+        scan=r.run_schedule_now(schedule["id"],owner["organization_id"],owner["user_id"])
+        assert r.finalize_schedule_run(scan["id"],"FAILED")
+        notifications=r.list_notifications(owner["organization_id"],owner["user_id"])
+        assert any(n["type"]=="schedule_failure" and "failed" in n["title"].lower() for n in notifications)
