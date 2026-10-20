@@ -152,3 +152,31 @@ Active OPEN, ACKNOWLEDGED or IN_PROGRESS issues with a due date in the past are 
 ## Public operational status
 
 The public `/status` route reads only the public-safe `/health` endpoint. Detailed workers, queue jobs, audit events, security telemetry, database size and administrative controls remain authenticated.
+
+
+## October 2026 UX hardening pass
+
+A product-wide interaction audit identified several patterns that were functionally valid but below the intended enterprise UX standard.
+
+### Issues found and corrected
+
+- Browser-native `confirm()` dialogs were still used by project/target/schedule/member/profile/saved-view/webhook removal paths.
+- Webhook secret rotation still depended on browser `prompt()`.
+- Issue drill-down temporarily used a browser-global object to hand loaded issue data into the modal.
+- The shared modal primitive lacked complete dialog semantics, focus restoration and keyboard focus containment.
+- Public product storytelling explained capabilities but did not clearly surface trust/status proof and role-specific jobs-to-be-done.
+- Permanent deletion did not consistently distinguish archive/pause/revoke from irreversible destruction.
+
+### Resulting interaction standard
+
+- Project and target destruction use a typed `DELETE` confirmation with resource name and impact summary.
+- Lower-impact destructive changes use the shared governed confirmation component.
+- One-time secrets use in-product reveal dialogs with explicit copy/save guidance.
+- Issue detail is managed through React state rather than browser-global state.
+- The shared modal now uses dialog semantics, focus entry/restore, focus containment, Escape close and background scroll locking.
+- Public pages include a trust/status proof strip and explicit AppSec, Engineering and Platform/Operations user journeys.
+- Responsive/product design rules are documented in `docs/DESIGN_SYSTEM.md`.
+
+### Visual reference audit
+
+Current AppSec/security product interfaces were reviewed for interaction patterns rather than copied visually. Relevant patterns included condensed grouped navigation, scope context, command search, dark mode, issue/asset drill-down, saved views and configurable analytics. SentinelScope keeps its own evidence-first web-assessment identity and non-destructive scanner boundary.
