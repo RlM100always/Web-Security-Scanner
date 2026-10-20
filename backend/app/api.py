@@ -961,17 +961,38 @@ def create_blueprint():
     def finding_verify(state_id):
         ident=current_identity();state=repo().get_finding_state(state_id,ident['organization_id'])
         if not state:return {'error':'Finding state not found'},404
+        if repo().system_setting('require_verified_email_for_scans',False) and not ident.get('email_verified'):
+            return {'error':'Verify your email before creating assessments'},403
         t=repo().get_target(state['target_id'],ident['organization_id'])
-        policy=repo().get_project_policy(t['project_id'])
+        if not t:return {'error':'Target not found'},404
+        if not t.get('authorized'):return {'error':'Target is not authorized'},403
+        project=repo().get_project(t['project_id'],ident['organization_id'])
+        if not project:return {'error':'Project not found'},404
+        if project.get('status')=='archived':return {'error':'Archived projects cannot queue remediation verification'},409
+        prior=repo().get_scan(state.get('last_scan_id'),ident['organization_id']) if state.get('last_scan_id') else None
+        mode=prior.get('profile') if prior else 'standard'
+        if mode=='lab' and not t.get('verified'):return {'error':'Lab profile requires verified ownership'},403
+        preflight=repo().latest_target_preflight(t['id'],ident['organization_id'],mode,15)
+        if not preflight:
+            pf_result=run_target_preflight(t,mode,current_app.config['SCANNER_ALLOW_PRIVATE'],min(float(current_app.config.get('REQUEST_TIMEOUT',8)),8))
+            preflight=repo().save_target_preflight(t['id'],ident['organization_id'],ident['user_id'],mode,pf_result)
+            audit('TARGET_PREFLIGHT_AUTO_COMPLETED','target',t['id'],{'profile':mode,'status':pf_result.get('status'),'preflight_id':preflight['id']})
+        if preflight.get('status')=='BLOCKED':
+            return {'error':'Target preflight blocked remediation verification','preflight':preflight},409
         usage=repo().organization_scan_usage(ident['organization_id'])
+        quota=max(1,int(repo().system_setting('scan_quota_per_day',100)))
         concurrent=max(1,int(repo().system_setting('max_concurrent_scans_per_org',3)))
-        if usage['active']>=concurrent:return {'error':'Concurrent scan limit reached'},429
-        scan=repo().create_scan(t['id'],t['url'],'standard',ident['user_id'],policy)
-        job=repo().enqueue_job('scan',{'scan_id':scan['id'],'target_id':t['id'],'purpose':'remediation_verification'})
+        if usage['last_24h']>=quota:return {'error':'Daily scan quota reached','quota':quota,'usage':usage},429
+        if usage['active']>=concurrent:return {'error':'Concurrent scan limit reached','limit':concurrent,'usage':usage},429
+        policy=repo().scan_policy(prior['id']) if prior else repo().get_project_policy(t['project_id'])
+        if not policy:policy=repo().get_project_policy(t['project_id'])
+        snapshot={'id':prior.get('scan_profile_id'),'name':prior.get('scan_profile_name'),'version':prior.get('scan_profile_version'),'scan_mode':mode} if prior and prior.get('scan_profile_id') else None
+        scan=repo().create_scan(t['id'],t['url'],mode,ident['user_id'],policy,prior.get('scan_profile_id') if prior else None,snapshot)
+        job=repo().enqueue_job('scan',{'scan_id':scan['id'],'target_id':t['id'],'purpose':'remediation_verification','finding_state_id':state_id})
         verification=repo().create_remediation_verification(state_id,scan['id'],ident['user_id'])
-        audit('REMEDIATION_VERIFICATION_QUEUED','finding_state',state_id,{'scan_id':scan['id']})
+        audit('REMEDIATION_VERIFICATION_QUEUED','finding_state',state_id,{'scan_id':scan['id'],'source_scan_id':prior.get('id') if prior else None,'profile':mode,'preflight_id':preflight.get('id')})
         repo().emit_webhook_event(ident['organization_id'],'finding.remediation_requested',{'finding_state_id':state_id,'scan_id':scan['id'],'target_id':state.get('target_id'),'requested_by':ident['user_id']})
-        return {'verification':verification,'scan':scan,'job_id':job['id']},202
+        return {'verification':verification,'scan':scan,'job_id':job['id'],'preflight':preflight},202
 
     # Schedules
     @bp.route('/schedules',methods=['GET','POST'])
@@ -1038,13 +1059,27 @@ def create_blueprint():
         ident=current_identity()
         if repo().system_setting('require_verified_email_for_scans',False) and not ident.get('email_verified'):
             return {'error':'Verify your email before running recurring assessments'},403
+        schedule=repo().get_schedule(schedule_id,ident['organization_id'])
+        if not schedule:return {'error':'Schedule not found'},404
+        mode=schedule.get('scan_profile_name') and (repo().get_scan_profile(schedule.get('scan_profile_id')) or {}).get('scan_mode') or schedule.get('profile','standard')
+        target=repo().get_target(schedule['target_id'],ident['organization_id'])
+        if not target:return {'error':'Target not found'},404
+        if not target.get('authorized'):return {'error':'Target is not authorized'},403
+        preflight=repo().latest_target_preflight(target['id'],ident['organization_id'],mode,15)
+        if not preflight:
+            pf_result=run_target_preflight(target,mode,current_app.config['SCANNER_ALLOW_PRIVATE'],min(float(current_app.config.get('REQUEST_TIMEOUT',8)),8))
+            preflight=repo().save_target_preflight(target['id'],ident['organization_id'],ident['user_id'],mode,pf_result)
+            audit('TARGET_PREFLIGHT_AUTO_COMPLETED','target',target['id'],{'profile':mode,'status':pf_result.get('status'),'preflight_id':preflight['id']})
+        if preflight.get('status')=='BLOCKED':
+            return {'error':'Target preflight blocked this recurring assessment','preflight':preflight},409
         usage=repo().organization_scan_usage(ident['organization_id'])
+        quota=max(1,int(repo().system_setting('scan_quota_per_day',100)))
         concurrent=max(1,int(repo().system_setting('max_concurrent_scans_per_org',3)))
-        if usage['active']>=concurrent:return {'error':'Concurrent scan limit reached','limit':concurrent},429
+        if usage['last_24h']>=quota:return {'error':'Daily scan quota reached','quota':quota,'usage':usage},429
+        if usage['active']>=concurrent:return {'error':'Concurrent scan limit reached','limit':concurrent,'usage':usage},429
         try:scan=repo().run_schedule_now(schedule_id,ident['organization_id'],ident['user_id'])
         except ValueError as e:return {'error':str(e)},409
-        if not scan:return {'error':'Schedule not found'},404
-        audit('SCHEDULE_RUN_NOW','schedule',schedule_id,{'scan_id':scan['id']});return scan,202
+        audit('SCHEDULE_RUN_NOW','schedule',schedule_id,{'scan_id':scan['id'],'preflight_id':preflight.get('id')});scan['preflight']=preflight;return scan,202
 
     @bp.get('/schedules/<schedule_id>/history')
     @require_auth
