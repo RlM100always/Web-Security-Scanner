@@ -614,6 +614,64 @@ def create_blueprint():
         return {'summary':repo().finding_portfolio_summary(ident['organization_id']),'items':rows}
 
     # Finding lifecycle and remediation workflow
+    @bp.route('/workspace/security-policy',methods=['GET','PUT'])
+    @require_auth
+    def workspace_security_policy():
+        ident=current_identity()
+        if request.method=='GET':return repo().get_workspace_security_policy(ident['organization_id'])
+        if ROLES.get(ident['role'],0)<ROLES['admin']:return {'error':'Admin role required'},403
+        d=request.get_json(force=True) or {}
+        try:policy=repo().set_workspace_security_policy(ident['organization_id'],d,ident['user_id'])
+        except (ValueError,TypeError) as e:return {'error':'Invalid security policy: '+str(e)},400
+        audit('WORKSPACE_SECURITY_POLICY_UPDATED','organization',ident['organization_id'],policy);return policy
+
+    @bp.route('/issue-views',methods=['GET','POST'])
+    @require_auth
+    def issue_views():
+        ident=current_identity()
+        if request.method=='GET':return jsonify(repo().list_issue_saved_views(ident['organization_id'],ident['user_id']))
+        d=request.get_json(force=True) or {};name=(d.get('name') or '').strip()[:80];filters=d.get('filters') if isinstance(d.get('filters'),dict) else {}
+        if not name:return {'error':'View name is required'},400
+        shared=bool(d.get('is_shared'))
+        if shared and ROLES.get(ident['role'],0)<ROLES['admin']:return {'error':'Admin role required to create shared views'},403
+        row=repo().create_issue_saved_view(ident['organization_id'],ident['user_id'],name,filters,shared)
+        audit('ISSUE_VIEW_CREATED','issue_view',row['id'],{'name':name,'shared':shared});return row,201
+
+    @bp.route('/issue-views/<view_id>',methods=['PATCH','DELETE'])
+    @require_auth
+    def issue_view_update(view_id):
+        ident=current_identity();can_admin=ROLES.get(ident['role'],0)>=ROLES['admin']
+        if request.method=='DELETE':
+            if not repo().delete_issue_saved_view(view_id,ident['organization_id'],ident['user_id'],can_admin):return {'error':'Saved view not found'},404
+            audit('ISSUE_VIEW_DELETED','issue_view',view_id);return {'ok':True}
+        d=request.get_json(force=True) or {}
+        if d.get('is_shared') and not can_admin:return {'error':'Admin role required to share views'},403
+        row=repo().update_issue_saved_view(view_id,ident['organization_id'],ident['user_id'],d,can_admin)
+        if not row:return {'error':'Saved view not found'},404
+        audit('ISSUE_VIEW_UPDATED','issue_view',view_id,d);return row
+
+    @bp.post('/finding-states/bulk')
+    @require_role('analyst')
+    def finding_states_bulk():
+        ident=current_identity();d=request.get_json(force=True) or {};ids=d.get('ids') if isinstance(d.get('ids'),list) else []
+        if not ids:return {'error':'Select at least one issue'},400
+        updates=d.get('updates') if isinstance(d.get('updates'),dict) else {}
+        allowed={'state','severity_override','assignee_user_id','due_at','risk_reason','risk_expires_at'}
+        updates={k:v for k,v in updates.items() if k in allowed}
+        if not updates:return {'error':'No supported updates supplied'},400
+        state=updates.get('state')
+        if state and state not in {'OPEN','ACKNOWLEDGED','IN_PROGRESS','ACCEPTED_RISK','FALSE_POSITIVE','REMEDIATED'}:return {'error':'Invalid finding lifecycle state'},400
+        if state in {'ACCEPTED_RISK','FALSE_POSITIVE'} and not (updates.get('risk_reason') or '').strip():return {'error':'A reason is required for risk acceptance or false-positive classification'},400
+        policy=repo().get_workspace_security_policy(ident['organization_id'])
+        if state=='ACCEPTED_RISK':
+            if not updates.get('risk_expires_at'):return {'error':'Risk acceptance requires a review/expiry date'},400
+            if policy.get('require_owner_for_risk_acceptance') and ident['role']!='owner':return {'error':'Workspace policy requires Owner approval for risk acceptance'},403
+            updates['risk_accepted_by']=ident['user_id']
+        if updates.get('assignee_user_id') and updates.get('assignee_user_id') not in {m['id'] for m in repo().list_members(ident['organization_id'])}:return {'error':'Assignee must be a workspace member'},400
+        result=repo().bulk_update_finding_states(ids,ident['organization_id'],updates,ident['user_id'])
+        audit('FINDING_BULK_UPDATED','finding_state',None,{'count':result['count'],'updates':updates})
+        return result
+
     @bp.get('/finding-states')
     @require_auth
     def finding_states():
@@ -624,7 +682,7 @@ def create_blueprint():
     def finding_state_get(state_id):
         ident=current_identity();row=repo().get_finding_state(state_id,ident['organization_id'])
         if not row:return {'error':'Finding state not found'},404
-        row['comments']=repo().finding_comments(state_id,ident['organization_id']);row['verifications']=repo().remediation_history(state_id,ident['organization_id']);row['timeline']=repo().finding_timeline(state_id,ident['organization_id']);return row
+        row['comments']=repo().finding_comments(state_id,ident['organization_id']);row['verifications']=repo().remediation_history(state_id,ident['organization_id']);row['timeline']=repo().finding_timeline(state_id,ident['organization_id']);row['activity']=repo().finding_activity(state_id,ident['organization_id']);return row
 
     @bp.patch('/finding-states/<state_id>')
     @require_role('analyst')
@@ -634,7 +692,10 @@ def create_blueprint():
         if state and state not in {'OPEN','ACKNOWLEDGED','IN_PROGRESS','ACCEPTED_RISK','FALSE_POSITIVE','REMEDIATED'}:return {'error':'Invalid finding lifecycle state'},400
         if state in {'ACCEPTED_RISK','FALSE_POSITIVE'} and not (d.get('risk_reason') or '').strip():return {'error':'A reason is required for risk acceptance or false-positive classification'},400
         if state=='ACCEPTED_RISK' and not d.get('risk_expires_at'):return {'error':'Risk acceptance requires a review/expiry date'},400
-        if state=='ACCEPTED_RISK':d['risk_accepted_by']=ident['user_id']
+        if state=='ACCEPTED_RISK':
+            policy=repo().get_workspace_security_policy(ident['organization_id'])
+            if policy.get('require_owner_for_risk_acceptance') and ident['role']!='owner':return {'error':'Workspace policy requires Owner approval for risk acceptance'},403
+            d['risk_accepted_by']=ident['user_id']
         if d.get('assignee_user_id') and d.get('assignee_user_id') not in {m['id'] for m in repo().list_members(ident['organization_id'])}:return {'error':'Assignee must be a workspace member'},400
         row=repo().update_finding_state(state_id,ident['organization_id'],d,ident['user_id'])
         if not row:return {'error':'Finding state not found'},404
