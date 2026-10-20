@@ -1,1 +1,74 @@
-{"name":"Web Security Scanner","short_name":"WSS","start_url":"/","display":"standalone","background_color":"#f6f8fb","theme_color":"#0b1220","icons":[]}
+{
+  "name": "SentinelScope Web Security Platform",
+  "short_name": "SentinelScope",
+  "description": "Authorised, non-destructive web security assessment and remediation workflow.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "browser"
+  ],
+  "orientation": "any",
+  "background_color": "#08111f",
+  "theme_color": "#0b1220",
+  "categories": [
+    "security",
+    "productivity",
+    "developer"
+  ],
+  "icons": [
+    {
+      "src": "/sentinelscope-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/sentinelscope-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Workspace",
+      "short_name": "Workspace",
+      "url": "/login",
+      "icons": [
+        {
+          "src": "/sentinelscope-icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Platform status",
+      "short_name": "Status",
+      "url": "/status",
+      "icons": [
+        {
+          "src": "/sentinelscope-icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Documentation",
+      "short_name": "Docs",
+      "url": "/docs",
+      "icons": [
+        {
+          "src": "/sentinelscope-icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ]
+}
