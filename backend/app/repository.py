@@ -245,7 +245,21 @@ class Repository:
             where m.user_id=? and m.active=1 and o.active=1 order by m.created_at""",(user_id,))]
 
     def list_members(self,org_id):
-        with self.conn() as c:return [dict(r) for r in c.execute("""select u.id,u.email,u.name,m.active,u.active account_active,m.role,m.created_at from memberships m join users u on u.id=m.user_id where m.organization_id=? order by m.created_at""",(org_id,))]
+        with self.conn() as c:return [dict(r) for r in c.execute("""select u.id,u.email,u.name,m.active,u.active account_active,m.role,m.created_at,u.last_login_at,u.email_verified,u.mfa_enabled
+          from memberships m join users u on u.id=m.user_id where m.organization_id=? order by m.created_at""",(org_id,))]
+    def member_activity(self,org_id,user_id,limit=100):
+        with self.conn() as c:
+            member=c.execute("select 1 from memberships where organization_id=? and user_id=?",(org_id,user_id)).fetchone()
+            if not member:return None
+            rows=[dict(r) for r in c.execute("""select a.*,actor.name actor_name,actor.email actor_email
+              from audit_logs a left join users actor on actor.id=a.user_id
+              where a.organization_id=? and ((a.resource_type='user' and a.resource_id=?) or a.user_id=?)
+              order by a.created_at desc limit ?""",(org_id,user_id,user_id,limit))]
+        for r in rows:
+            try:r['details']=json.loads(r.pop('details_json') or '{}')
+            except Exception:r['details']={}
+        return rows
+
     def add_member(self,org_id,email,name,password_hash,role):
         user=self.get_user_by_email(email);now=self.now()
         with self.conn() as c:
