@@ -89,7 +89,7 @@ def process_webhook(repo, config, payload):
         signature=hmac.new(secret.encode(),raw,hashlib.sha256).hexdigest()
         safe_url=validate_target(delivery["url"],getattr(config,"SCANNER_ALLOW_PRIVATE",False))
         response=requests.post(
-            safe_url,data=raw,timeout=10,allow_redirects=False,
+            safe_url,data=raw,timeout=10,allow_redirects=False,stream=True,
             headers={
               "Content-Type":"application/json",
               "User-Agent":"SentinelScope-Webhooks/1.0",
@@ -98,10 +98,20 @@ def process_webhook(repo, config, payload):
               "X-SentinelScope-Signature":"sha256="+signature,
             }
         )
+        cap=16_384;chunks=[];total=0;truncated=False
+        for chunk in response.iter_content(4096,decode_unicode=False):
+            total+=len(chunk)
+            if total>cap:
+                remaining=max(0,cap-sum(len(x) for x in chunks))
+                if remaining:chunks.append(chunk[:remaining])
+                truncated=True;break
+            chunks.append(chunk)
+        body=b"".join(chunks).decode(response.encoding or "utf-8",errors="replace")
+        if truncated:body+="\n[SentinelScope: response body truncated at 16384 bytes]"
         if response.status_code<200 or response.status_code>=300:
-            repo.mark_webhook_delivery_failure(delivery["id"],f"HTTP {response.status_code}",response.status_code,response.text)
+            repo.mark_webhook_delivery_failure(delivery["id"],f"HTTP {response.status_code}",response.status_code,body)
             raise ValueError(f"Webhook endpoint returned HTTP {response.status_code}")
-        repo.mark_webhook_delivery_success(delivery["id"],response.status_code,response.text)
+        repo.mark_webhook_delivery_success(delivery["id"],response.status_code,body)
     except Exception as e:
         current=repo.get_webhook_delivery(delivery["id"])
         if current and current.get("status")!="DELIVERED":
