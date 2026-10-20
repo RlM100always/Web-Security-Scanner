@@ -1069,7 +1069,10 @@ def create_blueprint():
             return {'error':'Verify your email before running recurring assessments'},403
         schedule=repo().get_schedule(schedule_id,ident['organization_id'])
         if not schedule:return {'error':'Schedule not found'},404
-        mode=schedule.get('scan_profile_name') and (repo().get_scan_profile(schedule.get('scan_profile_id')) or {}).get('scan_mode') or schedule.get('profile','standard')
+        named_profile=repo().get_scan_profile(schedule.get('scan_profile_id')) if schedule.get('scan_profile_id') else None
+        if schedule.get('scan_profile_id') and (not named_profile or not named_profile.get('active')):
+            return {'error':'This schedule is bound to an inactive or missing scan profile; rebind it before running'},409
+        mode=named_profile['scan_mode'] if named_profile else schedule.get('profile','standard')
         target=repo().get_target(schedule['target_id'],ident['organization_id'])
         if not target:return {'error':'Target not found'},404
         if not target.get('authorized'):return {'error':'Target is not authorized'},403
