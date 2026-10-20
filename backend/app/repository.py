@@ -326,6 +326,7 @@ class Repository:
             c.execute("delete from memberships where user_id=?",(user_id,))
             c.execute("delete from notifications where user_id=?",(user_id,))
             c.execute("delete from auth_tokens where user_id=?",(user_id,))
+            c.execute("delete from api_keys where user_id=?",(user_id,))
             c.execute("delete from users where id=?",(user_id,))
 
     def export_workspace(self,org_id):
@@ -753,7 +754,7 @@ class Repository:
         with self.conn() as c:
             scan_ids=[r[0] for r in c.execute("select id from scans where completed_at is not null and completed_at<?",(cutoff,))]
             for sid in scan_ids:
-                c.execute("delete from assets where scan_id=?",(sid,));c.execute("delete from findings where scan_id=?",(sid,));c.execute("delete from scan_events where scan_id=?",(sid,));c.execute("delete from zap_imports where scan_id=?",(sid,))
+                c.execute("delete from assets where scan_id=?",(sid,));c.execute("delete from remediation_verifications where scan_id=?",(sid,));c.execute("delete from findings where scan_id=?",(sid,));c.execute("delete from scan_events where scan_id=?",(sid,));c.execute("delete from zap_imports where scan_id=?",(sid,))
                 c.execute("delete from scans where id=?",(sid,))
             return len(scan_ids)
 
