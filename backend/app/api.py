@@ -2,13 +2,19 @@ import json
 import secrets
 import time
 from datetime import datetime, timezone
-from flask import Blueprint,current_app,request,jsonify,Response,stream_with_context
+from flask import Blueprint,current_app,request,jsonify,Response,stream_with_context,send_file
 from .security.targets import validate_target,TargetValidationError
 from .reports import as_json,as_html,as_pdf
 from .auth import current_identity,require_auth,require_role,ROLES
 from .crypto import hash_password,verify_password,token_hash
 from .verification import make_verification,check_file,check_dns
 from .zap import parse_zap_json,compare_with_scanner
+from .mailer import send_email
+from .backup import create_sqlite_backup,restore_sqlite_backup
+from .metrics import snapshot,prometheus
+import os
+import tempfile
+import pyotp
 
 def create_blueprint():
     bp=Blueprint('api',__name__)
@@ -27,6 +33,13 @@ def create_blueprint():
                 secure=current_app.config["SESSION_COOKIE_SECURE"],samesite=current_app.config["SESSION_COOKIE_SAMESITE"],path="/")
         return response
 
+    def send_token_email(user,purpose,token,subject,path):
+        link=current_app.config["PUBLIC_APP_URL"].rstrip("/")+"/"+path+"?token="+token
+        result=send_email(current_app.config,user["email"],subject,subject+"\n\n"+link)
+        if not result.get("delivered"):
+            repo().add_notification(None,user["id"],"auth",subject,link,{"development_link":link})
+        return result,link
+
     # Authentication
     @bp.post('/auth/signup')
     def signup():
@@ -43,7 +56,13 @@ def create_blueprint():
         sess=repo().create_session(created['user_id'],created['organization_id'],token_hash(raw),csrf,current_app.config['SESSION_TTL_HOURS'],request.headers.get('User-Agent','')[:300],ip_addr())
         repo().audit(created['organization_id'],created['user_id'],'ACCOUNT_SIGNUP','user',created['user_id'],{'email':email},ip_addr())
         ident=repo().session_identity(token_hash(raw))
-        return cookie_response({'user':ident,'csrf_token':csrf},201,raw,current_app.config['SESSION_TTL_HOURS']*3600)
+        verify_raw=secrets.token_urlsafe(40)
+        repo().create_auth_token(created['user_id'],'email_verify',token_hash(verify_raw),current_app.config['EMAIL_VERIFY_TTL_MINUTES'])
+        userrow=repo().get_user_by_id(created['user_id'])
+        delivery,dev_link=send_token_email(userrow,'email_verify',verify_raw,'Verify your SentinelScope email','verify-email')
+        payload={'user':ident,'csrf_token':csrf,'verification_sent':True}
+        if delivery.get('mode')=='outbox':payload['development_verification_link']=dev_link
+        return cookie_response(payload,201,raw,current_app.config['SESSION_TTL_HOURS']*3600)
 
     @bp.post('/auth/login')
     def login():
@@ -60,6 +79,11 @@ def create_blueprint():
         if not ok:
             if user:repo().set_login_failure(user['id'],repo().recent_failed_attempts(email,ip_addr())>=5)
             return {'error':'Invalid email or password'},401
+        if user.get('mfa_enabled'):
+            code=str(d.get('mfa_code') or '').replace(' ','')
+            if not code:return {'error':'MFA code required','mfa_required':True},401
+            if not pyotp.TOTP(user.get('mfa_secret') or '').verify(code,valid_window=1):
+                return {'error':'Invalid MFA code','mfa_required':True},401
         repo().set_login_success(user['id'])
         memberships=repo().list_memberships_for_user(user['id'])
         if not memberships:return {'error':'Account has no active workspace'},403
@@ -68,6 +92,94 @@ def create_blueprint():
         repo().create_session(user['id'],org_id,token_hash(raw),csrf,current_app.config['SESSION_TTL_HOURS'],request.headers.get('User-Agent','')[:300],ip_addr())
         ident=repo().session_identity(token_hash(raw));repo().audit(org_id,user['id'],'LOGIN','user',user['id'],{},ip_addr())
         return cookie_response({'user':ident,'csrf_token':csrf,'workspaces':memberships},200,raw,current_app.config['SESSION_TTL_HOURS']*3600)
+
+    @bp.post('/auth/email-verification/request')
+    @require_auth
+    def email_verification_request():
+        ident=current_identity();user=repo().get_user_by_id(ident['user_id'])
+        if user.get('email_verified'):return {'ok':True,'already_verified':True}
+        raw=secrets.token_urlsafe(40)
+        repo().create_auth_token(user['id'],'email_verify',token_hash(raw),current_app.config['EMAIL_VERIFY_TTL_MINUTES'])
+        delivery,link=send_token_email(user,'email_verify',raw,'Verify your SentinelScope email','verify-email')
+        out={'ok':True,'sent':delivery.get('delivered',False)}
+        if delivery.get('mode')=='outbox':out['development_verification_link']=link
+        return out
+
+    @bp.post('/auth/email-verification/confirm')
+    def email_verification_confirm():
+        d=request.get_json(force=True) or {};raw=d.get('token') or ''
+        row=repo().consume_auth_token('email_verify',token_hash(raw))
+        if not row:return {'error':'Verification link is invalid or expired'},400
+        repo().set_email_verified(row['user_id'],True)
+        return {'ok':True}
+
+    @bp.post('/auth/forgot-password')
+    def forgot_password():
+        d=request.get_json(force=True) or {};email=(d.get('email') or '').strip().lower()
+        user=repo().get_user_by_email(email)
+        dev_link=None
+        if user and user.get('active'):
+            raw=secrets.token_urlsafe(40)
+            repo().create_auth_token(user['id'],'password_reset',token_hash(raw),current_app.config['PASSWORD_RESET_TTL_MINUTES'])
+            delivery,link=send_token_email(user,'password_reset',raw,'Reset your SentinelScope password','reset-password')
+            if delivery.get('mode')=='outbox':dev_link=link
+        payload={'ok':True,'message':'If the account exists, reset instructions have been sent.'}
+        if dev_link:payload['development_reset_link']=dev_link
+        return payload
+
+    @bp.post('/auth/reset-password')
+    def reset_password():
+        d=request.get_json(force=True) or {};raw=d.get('token') or '';new=d.get('new_password') or ''
+        if len(new)<12:return {'error':'New password must be at least 12 characters'},400
+        row=repo().consume_auth_token('password_reset',token_hash(raw))
+        if not row:return {'error':'Reset link is invalid or expired'},400
+        repo().update_user_password(row['user_id'],hash_password(new))
+        repo().revoke_other_sessions(row['user_id'],'')
+        return {'ok':True}
+
+    @bp.post('/auth/mfa/setup')
+    @require_auth
+    def mfa_setup():
+        ident=current_identity();secret=pyotp.random_base32()
+        repo().create_auth_token(ident['user_id'],'mfa_setup',token_hash(secret),10,{'secret':secret})
+        uri=pyotp.TOTP(secret).provisioning_uri(name=ident['email'],issuer_name=current_app.config['MFA_ISSUER'])
+        return {'secret':secret,'otpauth_uri':uri}
+
+    @bp.post('/auth/mfa/confirm')
+    @require_auth
+    def mfa_confirm():
+        ident=current_identity();d=request.get_json(force=True) or {};secret=d.get('secret') or '';code=str(d.get('code') or '').replace(' ','')
+        if not secret or not pyotp.TOTP(secret).verify(code,valid_window=1):return {'error':'Invalid authenticator code'},400
+        repo().set_mfa(ident['user_id'],True,secret);audit('MFA_ENABLED','user',ident['user_id']);return {'ok':True}
+
+    @bp.post('/auth/mfa/disable')
+    @require_auth
+    def mfa_disable():
+        ident=current_identity();d=request.get_json(force=True) or {};user=repo().get_user_by_id(ident['user_id'])
+        if not verify_password(d.get('password') or '',user['password_hash']):return {'error':'Password is incorrect'},400
+        repo().set_mfa(ident['user_id'],False,None);audit('MFA_DISABLED','user',ident['user_id']);return {'ok':True}
+
+    @bp.post('/auth/workspace')
+    @require_auth
+    def switch_workspace():
+        ident=current_identity();org=(request.get_json(force=True) or {}).get('organization_id')
+        if not repo().switch_session_workspace(ident['session_id'],ident['user_id'],org):return {'error':'Workspace not available'},404
+        return {'ok':True}
+
+    @bp.post('/auth/invitations/accept')
+    def invitation_accept():
+        d=request.get_json(force=True) or {};raw=d.get('token') or '';name=(d.get('name') or '').strip();password=d.get('password') or ''
+        if len(name)<2 or len(password)<12:return {'error':'Name and a 12+ character password are required'},400
+        invite=repo().consume_invitation(token_hash(raw))
+        if not invite:return {'error':'Invitation is invalid or expired'},400
+        user=repo().get_user_by_email(invite['email'])
+        if user:uid=user['id']
+        else:
+            uid=repo().add_member(invite['organization_id'],invite['email'],name,hash_password(password),invite['role'])['user_id']
+            repo().set_email_verified(uid,True)
+        if user:
+            repo().add_member(invite['organization_id'],invite['email'],user['name'],user['password_hash'],invite['role'])
+        return {'ok':True}
 
     @bp.post('/auth/logout')
     @require_auth
@@ -131,6 +243,39 @@ def create_blueprint():
         if role not in {'admin','analyst','viewer'}:return {'error':'Invalid role'},400
         repo().update_member_role(current_identity()['organization_id'],user_id,role);audit('TEAM_ROLE_CHANGED','user',user_id,{'role':role})
         return {'ok':True,'role':role}
+
+    @bp.post('/team/invitations')
+    @require_role('admin')
+    def create_team_invitation():
+        ident=current_identity();d=request.get_json(force=True) or {};email=(d.get('email') or '').strip().lower();role=d.get('role','viewer')
+        if '@' not in email or role not in {'admin','analyst','viewer'}:return {'error':'Valid email and role required'},400
+        raw=secrets.token_urlsafe(40)
+        inv=repo().create_invitation(ident['organization_id'],email,role,token_hash(raw),ident['user_id'],current_app.config['INVITE_TTL_HOURS'])
+        dummy={'id':'invite','email':email}
+        result,link=send_token_email(dummy,'invite',raw,'You are invited to SentinelScope','accept-invite')
+        audit('INVITATION_CREATED','invitation',inv['id'],{'email':email,'role':role})
+        out={'id':inv['id'],'email':email,'role':role,'sent':result.get('delivered',False)}
+        if result.get('mode')=='outbox':out['development_invite_link']=link
+        return out,201
+
+    @bp.get('/team/invitations')
+    @require_role('admin')
+    def team_invitations():
+        return jsonify(repo().list_invitations(current_identity()['organization_id']))
+
+    @bp.patch('/team/<user_id>/active')
+    @require_role('admin')
+    def team_active(user_id):
+        ident=current_identity();active=bool((request.get_json(force=True) or {}).get('active'))
+        if not repo().deactivate_member(ident['organization_id'],user_id,active):return {'error':'Member cannot be changed'},400
+        audit('TEAM_MEMBER_ACTIVE_CHANGED','user',user_id,{'active':active});return {'ok':True,'active':active}
+
+    @bp.delete('/team/<user_id>')
+    @require_role('admin')
+    def team_remove(user_id):
+        ident=current_identity()
+        if not repo().remove_member(ident['organization_id'],user_id):return {'error':'Member cannot be removed'},400
+        audit('TEAM_MEMBER_REMOVED','user',user_id);return {'ok':True}
 
     # Projects
     @bp.route('/projects',methods=['GET','POST'])
@@ -301,6 +446,56 @@ def create_blueprint():
         if fmt=='html':return Response(as_html(s,f,comp),mimetype='text/html')
         if fmt=='pdf':return Response(as_pdf(s,f,comp),mimetype='application/pdf',headers={'Content-Disposition':f'attachment; filename=scan-{scan_id}.pdf'})
         return {'error':'Unsupported format'},404
+
+    @bp.get('/notifications')
+    @require_auth
+    def notifications():
+        ident=current_identity();return jsonify(repo().list_notifications(ident['organization_id'],ident['user_id']))
+
+    @bp.post('/notifications/<notification_id>/read')
+    @require_auth
+    def notification_read(notification_id):
+        ident=current_identity();repo().mark_notification_read(notification_id,ident['user_id']);return {'ok':True}
+
+    @bp.post('/backups')
+    @require_role('owner')
+    def backup_create():
+        ident=current_identity();path,size=create_sqlite_backup(repo().path,current_app.config['BACKUP_DIR'])
+        repo().record_backup(ident['organization_id'],ident['user_id'],os.path.basename(path),size);audit('BACKUP_CREATED','backup',os.path.basename(path),{'size_bytes':size})
+        return {'filename':os.path.basename(path),'size_bytes':size},201
+
+    @bp.get('/backups')
+    @require_role('owner')
+    def backup_list():
+        return jsonify(repo().list_backups(current_identity()['organization_id']))
+
+    @bp.get('/backups/<filename>')
+    @require_role('owner')
+    def backup_download(filename):
+        safe=os.path.basename(filename);path=os.path.join(current_app.config['BACKUP_DIR'],safe)
+        if not os.path.exists(path):return {'error':'Backup not found'},404
+        return send_file(path,as_attachment=True,download_name=safe)
+
+    @bp.post('/backups/restore')
+    @require_role('owner')
+    def backup_restore():
+        upload=request.files.get('file')
+        if not upload:return {'error':'SQLite backup file is required'},400
+        fd,tmp=tempfile.mkstemp(suffix='.sqlite3');os.close(fd);upload.save(tmp)
+        try:restore_sqlite_backup(repo().path,tmp)
+        except Exception as e:
+            if os.path.exists(tmp):os.remove(tmp)
+            return {'error':str(e)},400
+        if os.path.exists(tmp):os.remove(tmp)
+        return {'ok':True,'message':'Backup restored. Restart API and worker services before continuing.'}
+
+    @bp.get('/metrics')
+    @require_role('admin')
+    def metrics_json():return snapshot(repo())
+
+    @bp.get('/metrics/prometheus')
+    @require_role('admin')
+    def metrics_text():return Response(prometheus(repo()),mimetype='text/plain')
 
     @bp.get('/audit')
     @require_role('admin')
