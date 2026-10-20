@@ -35,7 +35,18 @@ test('deep scan policy and API key workflow works',async({page},testInfo)=>{
 
   await page.getByRole('button',{name:'Scan policy'}).click();
   await expect(page.getByLabel('Maximum pages')).toHaveValue('37');
-  await expect(page.getByLabel('Exclude path regex — one per line')).toHaveValue('^/logout$\\n^/billing/export');
+  const persistedExclude=await page.getByLabel('Exclude path regex — one per line').inputValue();
+  expect(persistedExclude.split('\n')).toEqual(['^/logout
+  await page.getByRole('button',{name:'Cancel'}).click();
+
+  await openNav(page,'Settings');
+  await page.getByRole('button',{name:'New API key'}).click();
+  await page.getByLabel('Key name').fill('CI Integration');
+  await page.getByLabel('Expires in days').fill('30');
+  await page.getByRole('button',{name:'Create key'}).click();
+  await expect(page.locator('.codeBox')).toContainText('wss_');
+});
+,'^/billing/export']);
   await page.getByRole('button',{name:'Cancel'}).click();
 
   await openNav(page,'Settings');
