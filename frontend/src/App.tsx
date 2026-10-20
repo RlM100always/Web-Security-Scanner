@@ -56,7 +56,7 @@ export default function App(){
   if(['/verify-email','/reset-password','/accept-invite'].includes(specialPath))return <SpecialAuthFlow path={specialPath}/>;
   if(authLoading)return <div className="splash"><ShieldCheck/><b>SentinelScope</b><span>Loading secure workspace…</span></div>;
   if(!user){
-    const publicPaths=['/','/product','/features','/solutions','/enterprise','/workflow','/security','/standards','/research','/responsible-use','/deployment','/docs','/about','/trust','/integrations','/api','/architecture','/scanner-checks','/reports','/developers','/status','/asset-inventory','/scan-profiles','/vulnerability-management','/continuous-monitoring','/governance','/getting-started','/methodology'];
+    const publicPaths=['/','/product','/features','/solutions','/enterprise','/workflow','/security','/standards','/research','/responsible-use','/deployment','/docs','/about','/trust','/integrations','/api','/architecture','/scanner-checks','/reports','/developers','/status','/exposure-management','/asset-inventory','/scan-profiles','/vulnerability-management','/continuous-monitoring','/governance','/getting-started','/methodology'];
     if(publicPaths.includes(specialPath))return <PublicSite path={specialPath}/>;
     const routedMode=specialPath==='/signup'?'signup':specialPath==='/login'?'login':authMode;
     return <AuthScreen mode={routedMode} setMode={setAuthMode} onAuth={(u:User,c:string)=>{setCsrfToken(c);setUser(u)}} setErr={setErr} err={err}/>;
