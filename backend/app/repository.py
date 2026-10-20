@@ -114,6 +114,10 @@ class Repository:
         return {"user_id":uid,"organization_id":oid}
     def create_bootstrap_owner(self,email,name,password_hash):
         return self.create_signup(email,name,password_hash,"Default Workspace")
+    def get_user_by_id(self,user_id):
+        with self.conn() as c:r=c.execute("select * from users where id=?",(user_id,)).fetchone()
+        return dict(r) if r else None
+
     def get_user_by_email(self,email):
         with self.conn() as c:r=c.execute("select * from users where lower(email)=lower(?)",(email,)).fetchone()
         return dict(r) if r else None
