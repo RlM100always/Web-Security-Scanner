@@ -1102,6 +1102,28 @@ class Repository:
         with self.conn() as c:r=c.execute("select cancel_requested from scans where id=?",(scan_id,)).fetchone()
         return bool(r and r['cancel_requested'])
 
+    def recover_stale_jobs(self,stale_minutes=10):
+        cutoff=(datetime.now(timezone.utc)-timedelta(minutes=max(1,int(stale_minutes)))).isoformat();recovered=[];failed=[]
+        with self.conn() as c:
+            c.execute("begin immediate")
+            rows=[dict(r) for r in c.execute("""select * from jobs where status='RUNNING' and locked_at is not null and locked_at<?""",(cutoff,))]
+            for job in rows:
+                next_status='QUEUED' if int(job['attempts'])<int(job['max_attempts']) else 'FAILED'
+                c.execute("""update jobs set status=?,run_after=?,locked_by=null,locked_at=null,last_error=?,completed_at=?
+                  where id=? and status='RUNNING'""",(next_status,self.now(),'Recovered after stale worker lease',None if next_status=='QUEUED' else self.now(),job['id']))
+                try:payload=json.loads(job['payload_json'] or '{}')
+                except Exception:payload={}
+                scan_id=payload.get('scan_id')
+                if scan_id:
+                    if next_status=='QUEUED':
+                        c.execute("update scans set status='QUEUED',stage='RECOVERED',progress=0,error=null where id=? and status='SCANNING'",(scan_id,))
+                        c.execute("insert into scan_events(scan_id,event_type,stage,progress,message,data_json,created_at) values(?,?,?,?,?,?,?)",(scan_id,'STATE','RECOVERED',0,'Stale worker lease recovered; scan re-queued','{}',self.now()))
+                    else:
+                        c.execute("update scans set status='FAILED',stage='FAILED',progress=100,error=?,completed_at=? where id=? and status in ('SCANNING','QUEUED')",('Worker lease expired and retry limit was reached',self.now(),scan_id))
+                (recovered if next_status=='QUEUED' else failed).append(job['id'])
+            c.commit()
+        return {'recovered':recovered,'failed':failed,'checked':len(rows)}
+
     def admin_list_jobs(self,limit=500):
         with self.conn() as c:rows=[dict(r) for r in c.execute("select * from jobs order by created_at desc limit ?",(limit,))]
         for r in rows:
