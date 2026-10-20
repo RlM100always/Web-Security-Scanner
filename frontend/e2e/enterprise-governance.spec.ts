@@ -19,7 +19,7 @@ test('workspace remediation governance persists on desktop and mobile',async({pa
   await openNav(page,'Settings');
   await expect(page.getByText('Remediation governance')).toBeVisible();
   await page.getByLabel('HIGH SLA days').fill('11');
-  await page.getByText('Owner approval for accepted risk').click();
+  await page.getByLabel('Owner approval for accepted risk').check();
   await Promise.all([
     page.waitForResponse(r=>r.url().includes('/workspace/security-policy')&&r.request().method()==='PUT'&&r.status()===200),
     page.getByRole('button',{name:'Save remediation policy'}).click()
@@ -29,6 +29,5 @@ test('workspace remediation governance persists on desktop and mobile',async({pa
   await openNav(page,'Dashboard');
   await openNav(page,'Settings');
   await expect(page.getByLabel('HIGH SLA days')).toHaveValue('11');
-  const ownerApproval=page.getByText('Owner approval for accepted risk').locator('..').getByRole('checkbox');
-  await expect(ownerApproval).toBeChecked();
+  await expect(page.getByLabel('Owner approval for accepted risk')).toBeChecked();
 });
