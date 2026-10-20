@@ -1263,7 +1263,8 @@ def create_blueprint():
             updates['url']=normalized
         if d.get('rotate_secret'):
             raw='whsec_'+secrets.token_urlsafe(32)
-            updates['secret_ciphertext']=encrypt_secret(raw,current_app.config.get('APP_ENCRYPTION_KEY'))
+            try:updates['secret_ciphertext']=encrypt_secret(raw,current_app.config.get('APP_ENCRYPTION_KEY'))
+            except Exception as e:return {'error':'Webhook secret encryption failed: '+str(e)},500
         else:raw=None
         row=repo().update_webhook_endpoint(endpoint_id,ident['organization_id'],updates)
         if not row:return {'error':'Webhook endpoint not found'},404
