@@ -236,6 +236,8 @@ def create_blueprint():
                 'latest_scan':latest,'recent_scans':scans[:8],'queue':repo().queue_stats(),
                 'members':len(repo().list_members(ident['organization_id'])),'schedules':len(repo().list_schedules(ident['organization_id'])),
                 'finding_states':{k:sum(1 for f in lifecycle if f['state']==k) for k in ['OPEN','ACKNOWLEDGED','IN_PROGRESS','ACCEPTED_RISK','FALSE_POSITIVE','REMEDIATED']},
+                'issue_portfolio':repo().finding_portfolio_summary(ident['organization_id']),
+                'asset_portfolio':repo().asset_portfolio_summary(ident['organization_id']),
                 'scan_usage':usage,'scan_quota_per_day':repo().system_setting('scan_quota_per_day',100)}
 
     # Team / RBAC
@@ -440,6 +442,25 @@ def create_blueprint():
                     yield f"event: terminal\ndata: {json.dumps({'status':current['status']})}\n\n";break
                 time.sleep(1)
         return Response(stream(),mimetype='text/event-stream',headers={'Cache-Control':'no-cache','X-Accel-Buffering':'no'})
+
+    @bp.get('/assets')
+    @require_auth
+    def asset_inventory():
+        ident=current_identity()
+        rows=repo().latest_assets_for_org(ident['organization_id'],min(int(request.args.get('limit',2000)),5000))
+        q=(request.args.get('q') or '').strip().lower();kind=(request.args.get('kind') or '').strip().lower()
+        if q:rows=[r for r in rows if q in (r.get('url') or '').lower() or q in (r.get('title') or '').lower() or q in (r.get('target_name') or '').lower() or q in (r.get('project_name') or '').lower()]
+        if kind:rows=[r for r in rows if (r.get('kind') or '').lower()==kind]
+        return {'summary':repo().asset_portfolio_summary(ident['organization_id']),'items':rows}
+
+    @bp.get('/portfolio/issues')
+    @require_auth
+    def issue_portfolio():
+        ident=current_identity();rows=repo().list_finding_states(ident['organization_id'],request.args.get('state'),request.args.get('target_id'),5000)
+        q=(request.args.get('q') or '').strip().lower();assignee=request.args.get('assignee_user_id')
+        if q:rows=[r for r in rows if q in (r.get('title') or '').lower() or q in (r.get('target_name') or '').lower() or q in (r.get('project_name') or '').lower() or q in (r.get('check_id') or '').lower()]
+        if assignee:rows=[r for r in rows if r.get('assignee_user_id')==assignee]
+        return {'summary':repo().finding_portfolio_summary(ident['organization_id']),'items':rows}
 
     # Finding lifecycle and remediation workflow
     @bp.get('/finding-states')
