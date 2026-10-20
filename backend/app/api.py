@@ -1,11 +1,12 @@
 import json
+import re
 import secrets
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from flask import Blueprint,current_app,request,jsonify,Response,stream_with_context,send_file
 from .security.targets import validate_target,TargetValidationError
 from .reports import as_json,as_html,as_pdf
-from .auth import current_identity,require_auth,require_role,ROLES
+from .auth import current_identity,require_auth,require_role,require_scope,ROLES
 from .crypto import hash_password,verify_password,token_hash
 from .verification import make_verification,check_file,check_dns
 from .zap import parse_zap_json,compare_with_scanner
@@ -230,9 +231,12 @@ def create_blueprint():
     @require_auth
     def dashboard():
         ident=current_identity();scans=repo().list_scans(30,ident['organization_id']);completed=[s for s in scans if s['status']=='COMPLETED'];latest=completed[0] if completed else None
+        lifecycle=repo().list_finding_states(ident['organization_id'],limit=500);usage=repo().organization_scan_usage(ident['organization_id'])
         return {'projects':len(repo().list_projects(ident['organization_id'])),'targets':len(repo().list_targets(org_id=ident['organization_id'])),
                 'latest_scan':latest,'recent_scans':scans[:8],'queue':repo().queue_stats(),
-                'members':len(repo().list_members(ident['organization_id'])),'schedules':len(repo().list_schedules(ident['organization_id']))}
+                'members':len(repo().list_members(ident['organization_id'])),'schedules':len(repo().list_schedules(ident['organization_id'])),
+                'finding_states':{k:sum(1 for f in lifecycle if f['state']==k) for k in ['OPEN','ACKNOWLEDGED','IN_PROGRESS','ACCEPTED_RISK','FALSE_POSITIVE','REMEDIATED']},
+                'scan_usage':usage,'scan_quota_per_day':repo().system_setting('scan_quota_per_day',100)}
 
     # Team / RBAC
     @bp.get('/team')
@@ -308,6 +312,30 @@ def create_blueprint():
         if not ok:return {'error':'Project not found'},404
         audit('PROJECT_DELETED','project',project_id);return {'ok':True}
 
+    @bp.route('/projects/<project_id>/policy',methods=['GET','PUT'])
+    @require_auth
+    def project_policy(project_id):
+        ident=current_identity();project=repo().get_project(project_id,ident['organization_id'])
+        if not project:return {'error':'Project not found'},404
+        if request.method=='GET':return repo().get_project_policy(project_id)
+        if ROLES.get(ident['role'],0)<ROLES['analyst']:return {'error':'Analyst role required'},403
+        if ident.get('auth_method')=='api_key' and 'write' not in set(ident.get('api_scopes') or []) and 'admin' not in set(ident.get('api_scopes') or []):
+            return {'error':'API key write scope required'},403
+        d=request.get_json(force=True) or {}
+        try:
+            policy={
+              'max_pages':max(1,min(int(d.get('max_pages',20)),200)),
+              'max_depth':max(0,min(int(d.get('max_depth',2)),5)),
+              'request_delay_ms':max(0,min(int(d.get('request_delay_ms',100)),5000)),
+              'include_paths':[str(x)[:200] for x in d.get('include_paths',[])][:30],
+              'exclude_paths':[str(x)[:200] for x in d.get('exclude_paths',[])][:30],
+              'disabled_checks':[str(x)[:120] for x in d.get('disabled_checks',[])][:100],
+            }
+            for pattern in policy['include_paths']+policy['exclude_paths']:re.compile(pattern)
+        except Exception as e:return {'error':'Invalid scan policy: '+str(e)},400
+        saved=repo().set_project_policy(project_id,policy,ident['user_id'])
+        audit('PROJECT_SCAN_POLICY_UPDATED','project',project_id,saved);return saved
+
     # Targets
     @bp.route('/targets',methods=['GET','POST'])
     @require_auth
@@ -369,15 +397,26 @@ def create_blueprint():
         profile=d.get('profile','standard')
         if profile not in {'quick','standard','lab'}:return {'error':'Invalid profile'},400
         if profile=='lab' and not t.get('verified'):return {'error':'Lab profile requires verified ownership'},403
-        s=repo().create_scan(t['id'],t['url'],profile,ident['user_id']);job=repo().enqueue_job('scan',{'scan_id':s['id'],'target_id':t['id']})
-        audit('SCAN_QUEUED','scan',s['id'],{'profile':profile,'job_id':job['id']});s['job_id']=job['id'];return s,202
+        if ident.get('auth_method')=='api_key' and 'scan' not in set(ident.get('api_scopes') or []) and 'admin' not in set(ident.get('api_scopes') or []):
+            return {'error':'API key scan scope required'},403
+        usage=repo().organization_scan_usage(ident['organization_id'])
+        quota=max(1,int(repo().system_setting('scan_quota_per_day',100)))
+        concurrent=max(1,int(repo().system_setting('max_concurrent_scans_per_org',3)))
+        if usage['last_24h']>=quota:return {'error':'Daily scan quota reached','quota':quota,'usage':usage},429
+        if usage['active']>=concurrent:return {'error':'Concurrent scan limit reached','limit':concurrent,'usage':usage},429
+        policy=repo().get_project_policy(t['project_id'])
+        override=d.get('policy') if isinstance(d.get('policy'),dict) else {}
+        for key in ['max_pages','max_depth','request_delay_ms','include_paths','exclude_paths','disabled_checks']:
+            if key in override:policy[key]=override[key]
+        s=repo().create_scan(t['id'],t['url'],profile,ident['user_id'],policy);job=repo().enqueue_job('scan',{'scan_id':s['id'],'target_id':t['id']})
+        audit('SCAN_QUEUED','scan',s['id'],{'profile':profile,'job_id':job['id'],'policy':policy});s['job_id']=job['id'];s['usage']=usage;return s,202
 
     @bp.get('/scans/<scan_id>')
     @require_auth
     def scan_get(scan_id):
         ident=current_identity();s=repo().get_scan(scan_id,ident['organization_id'])
         if not s:return {'error':'Scan not found'},404
-        s['findings']=repo().findings(scan_id);s['comparison']=repo().comparison(scan_id);s['zap']=repo().latest_zap_import(scan_id);return s
+        s['findings']=repo().findings(scan_id);s['assets']=repo().assets(scan_id);s['policy']=repo().scan_policy(scan_id);s['comparison']=repo().comparison(scan_id);s['zap']=repo().latest_zap_import(scan_id);return s
 
     @bp.get('/scans/<scan_id>/events')
     @require_auth
@@ -401,6 +440,59 @@ def create_blueprint():
                     yield f"event: terminal\ndata: {json.dumps({'status':current['status']})}\n\n";break
                 time.sleep(1)
         return Response(stream(),mimetype='text/event-stream',headers={'Cache-Control':'no-cache','X-Accel-Buffering':'no'})
+
+    # Finding lifecycle and remediation workflow
+    @bp.get('/finding-states')
+    @require_auth
+    def finding_states():
+        ident=current_identity();return jsonify(repo().list_finding_states(ident['organization_id'],request.args.get('state'),request.args.get('target_id')))
+
+    @bp.get('/finding-states/<state_id>')
+    @require_auth
+    def finding_state_get(state_id):
+        ident=current_identity();row=repo().get_finding_state(state_id,ident['organization_id'])
+        if not row:return {'error':'Finding state not found'},404
+        row['comments']=repo().finding_comments(state_id,ident['organization_id']);row['verifications']=repo().remediation_history(state_id,ident['organization_id']);return row
+
+    @bp.patch('/finding-states/<state_id>')
+    @require_role('analyst')
+    def finding_state_update(state_id):
+        ident=current_identity();d=request.get_json(force=True) or {}
+        state=d.get('state')
+        if state and state not in {'OPEN','ACKNOWLEDGED','IN_PROGRESS','ACCEPTED_RISK','FALSE_POSITIVE','REMEDIATED'}:return {'error':'Invalid finding lifecycle state'},400
+        if state in {'ACCEPTED_RISK','FALSE_POSITIVE'} and not (d.get('risk_reason') or '').strip():return {'error':'A reason is required for risk acceptance or false-positive classification'},400
+        if d.get('assignee_user_id') and d.get('assignee_user_id') not in {m['id'] for m in repo().list_members(ident['organization_id'])}:return {'error':'Assignee must be a workspace member'},400
+        row=repo().update_finding_state(state_id,ident['organization_id'],d,ident['user_id'])
+        if not row:return {'error':'Finding state not found'},404
+        audit('FINDING_STATE_UPDATED','finding_state',state_id,d);return row
+
+    @bp.route('/finding-states/<state_id>/comments',methods=['GET','POST'])
+    @require_auth
+    def finding_state_comments(state_id):
+        ident=current_identity()
+        if request.method=='GET':return jsonify(repo().finding_comments(state_id,ident['organization_id']))
+        if ROLES.get(ident['role'],0)<ROLES['analyst']:return {'error':'Analyst role required'},403
+        body=((request.get_json(force=True) or {}).get('body') or '').strip()
+        if not body:return {'error':'Comment body is required'},400
+        row=repo().add_finding_comment(state_id,ident['organization_id'],ident['user_id'],body[:4000])
+        if not row:return {'error':'Finding state not found'},404
+        audit('FINDING_COMMENT_ADDED','finding_state',state_id);return row,201
+
+    @bp.post('/finding-states/<state_id>/verify')
+    @require_role('analyst')
+    def finding_verify(state_id):
+        ident=current_identity();state=repo().get_finding_state(state_id,ident['organization_id'])
+        if not state:return {'error':'Finding state not found'},404
+        t=repo().get_target(state['target_id'],ident['organization_id'])
+        policy=repo().get_project_policy(t['project_id'])
+        usage=repo().organization_scan_usage(ident['organization_id'])
+        concurrent=max(1,int(repo().system_setting('max_concurrent_scans_per_org',3)))
+        if usage['active']>=concurrent:return {'error':'Concurrent scan limit reached'},429
+        scan=repo().create_scan(t['id'],t['url'],'standard',ident['user_id'],policy)
+        job=repo().enqueue_job('scan',{'scan_id':scan['id'],'target_id':t['id'],'purpose':'remediation_verification'})
+        verification=repo().create_remediation_verification(state_id,scan['id'],ident['user_id'])
+        audit('REMEDIATION_VERIFICATION_QUEUED','finding_state',state_id,{'scan_id':scan['id']})
+        return {'verification':verification,'scan':scan,'job_id':job['id']},202
 
     # Schedules
     @bp.route('/schedules',methods=['GET','POST'])
@@ -459,6 +551,30 @@ def create_blueprint():
         if fmt=='html':return Response(as_html(s,f,comp),mimetype='text/html')
         if fmt=='pdf':return Response(as_pdf(s,f,comp),mimetype='application/pdf',headers={'Content-Disposition':f'attachment; filename=scan-{scan_id}.pdf'})
         return {'error':'Unsupported format'},404
+
+    # Personal API keys
+    @bp.route('/api-keys',methods=['GET','POST'])
+    @require_auth
+    def api_keys():
+        ident=current_identity()
+        if ident.get('auth_method')=='api_key':return {'error':'Manage API keys from an interactive session'},403
+        if request.method=='GET':return jsonify(repo().list_api_keys(ident['user_id'],ident['organization_id']))
+        d=request.get_json(force=True) or {};name=(d.get('name') or '').strip()
+        scopes=[s for s in d.get('scopes',['read']) if s in {'read','scan','write','admin'}]
+        if not name or not scopes:return {'error':'Name and at least one valid scope are required'},400
+        days=int(d.get('expires_in_days') or 90);days=max(1,min(days,365))
+        raw='wss_'+secrets.token_urlsafe(36);prefix=raw[:12];expires=(datetime.now(timezone.utc)+timedelta(days=days)).isoformat()
+        row=repo().create_api_key(ident['user_id'],ident['organization_id'],name,token_hash(raw),prefix,scopes,expires)
+        audit('API_KEY_CREATED','api_key',row['id'],{'name':name,'scopes':scopes})
+        return {**row,'token':raw},201
+
+    @bp.delete('/api-keys/<key_id>')
+    @require_auth
+    def api_key_revoke(key_id):
+        ident=current_identity()
+        if ident.get('auth_method')=='api_key':return {'error':'Manage API keys from an interactive session'},403
+        if not repo().revoke_api_key(key_id,ident['user_id'],ident['organization_id']):return {'error':'API key not found or already revoked'},404
+        audit('API_KEY_REVOKED','api_key',key_id);return {'ok':True}
 
     @bp.get('/notifications')
     @require_auth
