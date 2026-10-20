@@ -221,3 +221,26 @@ def test_schedule_cannot_bypass_verified_lab_or_archived_project_controls():
         edit=client.patch("/api/v1/schedules/"+sid,json={"interval_minutes":10080},headers=headers)
         assert run.status_code==409
         assert edit.status_code==409
+
+
+def test_workspace_scan_cancel_and_rerun_preserve_policy_and_scope():
+    with tempfile.TemporaryDirectory() as d:
+        app=build(os.path.join(d,"scan-ops.sqlite3"));client=app.test_client()
+        signup=client.post("/api/v1/auth/signup",json={"name":"Owner","email":"owner@example.com","password":"correct-horse-battery","organization_name":"Acme"})
+        body=signup.get_json();csrf=body["csrf_token"];headers={"X-CSRF-Token":csrf}
+        p=client.post("/api/v1/projects",json={"name":"Production"},headers=headers).get_json()
+        t=client.post("/api/v1/targets",json={"project_id":p["id"],"name":"Portal","url":"https://example.com/","authorized":True},headers=headers).get_json()
+        first=client.post("/api/v1/scans",json={"target_id":t["id"],"profile":"standard","policy":{"max_pages":7,"max_depth":1,"request_delay_ms":250}},headers=headers)
+        assert first.status_code==202
+        scan=first.get_json()
+        cancelled=client.post("/api/v1/scans/"+scan["id"]+"/cancel",json={},headers=headers)
+        assert cancelled.status_code==200
+        stored=app.extensions["repo"].get_scan(scan["id"])
+        assert stored["status"]=="CANCELLED"
+
+        rerun=client.post("/api/v1/scans/"+scan["id"]+"/rerun",json={},headers=headers)
+        assert rerun.status_code==202
+        rerun_body=rerun.get_json()
+        assert rerun_body["rerun_of"]==scan["id"]
+        policy=app.extensions["repo"].scan_policy(rerun_body["id"])
+        assert policy["max_pages"]==7 and policy["max_depth"]==1 and policy["request_delay_ms"]==250
