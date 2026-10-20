@@ -2,10 +2,11 @@ import json
 import os
 import platform
 import sys
+import tempfile
 from flask import Blueprint,current_app,request,jsonify,Response,send_file
 from .auth import current_identity,require_system_admin
 from .mailer import send_email
-from .backup import create_sqlite_backup
+from .backup import create_sqlite_backup,restore_sqlite_backup
 from .metrics import snapshot,prometheus
 
 def create_admin_blueprint():
@@ -199,6 +200,44 @@ def create_admin_blueprint():
         safe=os.path.basename(filename);path=os.path.join(current_app.config["BACKUP_DIR"],safe)
         if not os.path.exists(path):return {"error":"Backup not found"},404
         return send_file(path,as_attachment=True,download_name=safe)
+
+    @bp.post("/backups/restore")
+    @require_system_admin
+    def backup_restore():
+        if not repo().system_setting("maintenance_mode",False):
+            return {"error":"Enable maintenance mode before restoring the platform database"},409
+        online=[w for w in repo().admin_list_workers() if w.get("online")]
+        if online:
+            return {"error":"Stop all worker processes before restoring the platform database","workers":[w.get("worker_id") for w in online]},409
+        queue=repo().queue_stats()
+        if queue.get("RUNNING",0) or queue.get("QUEUED",0):
+            return {"error":"The scan/webhook queue must have no RUNNING or QUEUED jobs before restore","queue":queue},409
+        upload=request.files.get("file")
+        if not upload:
+            return {"error":"SQLite backup file is required"},400
+        max_bytes=int(current_app.config.get("MAX_BACKUP_UPLOAD_BYTES",512*1024*1024))
+        fd,tmp=tempfile.mkstemp(suffix=".sqlite3");os.close(fd)
+        total=0
+        try:
+            with open(tmp,"wb") as out:
+                while True:
+                    chunk=upload.stream.read(1024*1024)
+                    if not chunk:break
+                    total+=len(chunk)
+                    if total>max_bytes:
+                        return {"error":"Backup file exceeds the configured restore upload limit","max_bytes":max_bytes},413
+                    out.write(chunk)
+            restore_sqlite_backup(repo().path,tmp)
+            try:
+                audit("SYSTEM_BACKUP_RESTORED","backup",upload.filename or "uploaded.sqlite3",{"size_bytes":total})
+            except Exception:
+                pass
+            return {"ok":True,"message":"Platform database restored. Restart API and worker services before resuming traffic."}
+        except Exception as e:
+            return {"error":str(e)},400
+        finally:
+            try:os.remove(tmp)
+            except FileNotFoundError:pass
 
     @bp.post("/retention/run")
     @require_system_admin
