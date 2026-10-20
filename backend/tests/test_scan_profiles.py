@@ -82,3 +82,59 @@ def test_workspace_readiness_is_derived_from_real_persisted_state():
         assert ready["completed"] is True and ready["percent"]==100
         hidden=r.set_onboarding_dismissed(owner["user_id"],owner["organization_id"],True)
         assert hidden["dismissed"] is True
+
+
+def test_profile_version_ledger_restore_and_schedule_drift_guard():
+    with tempfile.TemporaryDirectory() as d:
+        r,owner,p,t=setup(os.path.join(d,"profile-history.sqlite3"))
+        profile=r.create_scan_profile(
+            p["id"],"Release Gate","Governed release profile","standard",
+            {"max_pages":18,"max_depth":2,"request_delay_ms":300,"include_paths":[],"exclude_paths":[],"disabled_checks":[]},
+            True,owner["user_id"])
+        versions=r.scan_profile_versions(profile["id"],p["id"])
+        assert [x["version"] for x in versions]==[1]
+
+        v2=r.update_scan_profile(profile["id"],p["id"],{"policy":{**profile["policy"],"max_pages":28},"change_note":"Increase release coverage"},owner["user_id"])
+        assert v2["version"]==2
+        versions=r.scan_profile_versions(profile["id"],p["id"])
+        assert [x["version"] for x in versions]==[2,1]
+        assert versions[0]["change_note"]=="Increase release coverage"
+
+        restored=r.restore_scan_profile_version(profile["id"],p["id"],1,owner["user_id"])
+        assert restored["version"]==3
+        assert restored["policy"]["max_pages"]==18
+        assert r.scan_profile_versions(profile["id"],p["id"])[0]["change_note"]=="Restored from v1"
+
+        schedule=r.create_schedule(t["id"],"standard",60,owner["user_id"],"Release hourly",True,profile["id"])
+        usage=r.scan_profile_usage(profile["id"],p["id"])
+        assert usage["enabled_schedules"]==1
+        try:
+            r.delete_scan_profile(profile["id"],p["id"],owner["user_id"])
+            assert False,"archive should be blocked while schedule is enabled"
+        except ValueError:
+            pass
+
+        r.set_schedule_enabled(schedule["id"],owner["organization_id"],False)
+        assert r.delete_scan_profile(profile["id"],p["id"],owner["user_id"])
+        archived=r.get_scan_profile(profile["id"])
+        assert archived["active"] is False
+        versions=r.scan_profile_versions(profile["id"],p["id"])
+        assert versions[0]["active"] is False
+
+def test_due_schedule_never_silently_falls_back_from_inactive_named_profile():
+    with tempfile.TemporaryDirectory() as d:
+        r,owner,p,t=setup(os.path.join(d,"schedule-drift.sqlite3"))
+        profile=r.create_scan_profile(
+            p["id"],"Daily Safe","Bound recurring profile","standard",
+            {"max_pages":10,"max_depth":1,"request_delay_ms":500,"include_paths":[],"exclude_paths":[],"disabled_checks":[]},
+            True,owner["user_id"])
+        schedule=r.create_schedule(t["id"],"standard",60,owner["user_id"],"Daily Safe",True,profile["id"])
+        r.update_scan_profile(profile["id"],p["id"],{"active":False,"change_note":"Test drift guard"},owner["user_id"])
+        with r.conn() as db:db.execute("update schedules set next_run_at=? where id=?",("2000-01-01T00:00:00+00:00",schedule["id"]))
+        before=len(r.list_scans(100,owner["organization_id"]))
+        r.enqueue_due_schedules()
+        after=len(r.list_scans(100,owner["organization_id"]))
+        current=r.get_schedule(schedule["id"],owner["organization_id"])
+        assert after==before
+        assert current["failure_count"]==1
+        assert "inactive or missing" in current["last_error"]
