@@ -402,8 +402,8 @@ class Repository:
         return True
 
     def get_notification_preferences(self,user_id,org_id):
-        defaults={'in_app_scan_completed':True,'in_app_scan_failed':True,'in_app_schedule_failure':True,
-                  'email_scan_completed':True,'email_scan_failed':False,'email_schedule_failure':True}
+        defaults={'in_app_scan_completed':True,'in_app_scan_failed':True,'in_app_schedule_failure':True,'in_app_finding_overdue':True,
+                  'email_scan_completed':True,'email_scan_failed':False,'email_schedule_failure':True,'email_finding_overdue':True}
         with self.conn() as c:r=c.execute("select preferences_json from notification_preferences where user_id=? and organization_id=?",(user_id,org_id)).fetchone()
         if not r:return defaults
         try:stored=json.loads(r['preferences_json'] or '{}')
