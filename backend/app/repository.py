@@ -107,7 +107,8 @@ class Repository:
     def create_signup(self,email,name,password_hash,org_name):
         uid,oid,mid=self._id(),self._id(),self._id(); now=self.now()
         with self.conn() as c:
-            c.execute("insert into users values(?,?,?,?,1,1,0,null,null,?)",(uid,email.lower(),name,password_hash,now))
+            c.execute("""insert into users(id,email,name,password_hash,active,email_verified,failed_logins,locked_until,last_login_at,created_at,mfa_enabled,mfa_secret)
+            values(?,?,?,?,1,0,0,null,null,?,0,null)""",(uid,email.lower(),name,password_hash,now))
             c.execute("insert into organizations values(?,?,?)",(oid,org_name,now))
             c.execute("insert into memberships values(?,?,?,?,?)",(mid,oid,uid,"owner",now))
         return {"user_id":uid,"organization_id":oid}
@@ -135,7 +136,7 @@ class Repository:
     def session_identity(self,token_hash):
         now=self.now()
         with self.conn() as c:
-            r=c.execute("""select s.id session_id,s.csrf_token,s.expires_at,u.id user_id,u.email,u.name,m.organization_id,m.role,o.name organization_name
+            r=c.execute("""select s.id session_id,s.csrf_token,s.expires_at,u.id user_id,u.email,u.name,u.email_verified,u.mfa_enabled,m.organization_id,m.role,o.name organization_name
             from sessions s join users u on u.id=s.user_id join memberships m on m.user_id=u.id and m.organization_id=s.organization_id
             join organizations o on o.id=m.organization_id
             where s.token_hash=? and s.revoked_at is null and s.expires_at>? and u.active=1""",(token_hash,now)).fetchone()
@@ -166,7 +167,8 @@ class Repository:
         user=self.get_user_by_email(email);now=self.now()
         with self.conn() as c:
             if not user:
-                uid=self._id();c.execute("insert into users values(?,?,?,?,1,1,0,null,null,?)",(uid,email.lower(),name,password_hash,now))
+                uid=self._id();c.execute("""insert into users(id,email,name,password_hash,active,email_verified,failed_logins,locked_until,last_login_at,created_at,mfa_enabled,mfa_secret)
+                values(?,?,?,?,1,0,0,null,null,?,0,null)""",(uid,email.lower(),name,password_hash,now))
             else:uid=user["id"]
             c.execute("insert or replace into memberships(id,organization_id,user_id,role,created_at) values(?,?,?,?,?)",(self._id(),org_id,uid,role,now))
         return {"user_id":uid,"email":email.lower(),"role":role}
