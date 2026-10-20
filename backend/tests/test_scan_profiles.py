@@ -138,3 +138,29 @@ def test_due_schedule_never_silently_falls_back_from_inactive_named_profile():
         assert after==before
         assert current["failure_count"]==1
         assert "inactive or missing" in current["last_error"]
+
+
+def test_user_notifications_do_not_leak_between_workspaces():
+    with tempfile.TemporaryDirectory() as d:
+        r=Repository(os.path.join(d,"notification-isolation.sqlite3"));r.init_schema()
+        owner=r.create_signup("owner@example.com","Owner",hash_password("correct-horse-battery"),"Workspace A")
+        org_a=owner["organization_id"];uid=owner["user_id"]
+        org_b="org-secondary";membership="membership-secondary"
+        with r.conn() as db:
+            db.execute("insert into organizations(id,name,created_at,active) values(?,?,?,1)",(org_b,"Workspace B",r.now()))
+            db.execute("insert into memberships(id,organization_id,user_id,role,created_at,active) values(?,?,?,?,?,1)",(membership,org_b,uid,"admin",r.now()))
+        nid=r.add_notification(org_a,uid,"scan_failed","A-only alert","Only Workspace A should see this")
+        assert nid
+        assert any(x["id"]==nid for x in r.list_notifications(org_a,uid))
+        assert not any(x["id"]==nid for x in r.list_notifications(org_b,uid))
+
+def test_schedule_rebind_clears_configuration_drift_error():
+    with tempfile.TemporaryDirectory() as d:
+        r,owner,p,t=setup(os.path.join(d,"schedule-rebind.sqlite3"))
+        p1=r.create_scan_profile(p["id"],"Profile A","A","standard",{"max_pages":8,"max_depth":1,"request_delay_ms":200,"include_paths":[],"exclude_paths":[],"disabled_checks":[]},True,owner["user_id"])
+        p2=r.create_scan_profile(p["id"],"Profile B","B","standard",{"max_pages":12,"max_depth":1,"request_delay_ms":250,"include_paths":[],"exclude_paths":[],"disabled_checks":[]},False,owner["user_id"])
+        s=r.create_schedule(t["id"],"standard",60,owner["user_id"],"Recurring",True,p1["id"])
+        with r.conn() as db:db.execute("update schedules set last_error=? where id=?",("Schedule blocked: bound scan profile is inactive or missing",s["id"]))
+        r.update_schedule(s["id"],owner["organization_id"],{"scan_profile_id":p2["id"],"profile":"standard"})
+        current=r.get_schedule(s["id"],owner["organization_id"])
+        assert current["last_error"] is None
