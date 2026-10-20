@@ -1,7 +1,10 @@
 FROM python:3.13-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY backend ./backend
-ENV PYTHONPATH=/app/backend
-CMD ["python","backend/run.py"]
+RUN mkdir -p /data && useradd -r -u 10001 appuser && chown -R appuser:appuser /app /data
+USER appuser
+ENV PYTHONPATH=/app/backend DATABASE_PATH=/data/scanner.sqlite3
+CMD ["gunicorn","--workers=2","--threads=4","--timeout=120","--bind=0.0.0.0:5000","backend.wsgi:app"]
