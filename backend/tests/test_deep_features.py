@@ -98,6 +98,8 @@ def test_scoped_api_key_and_scan_quota():
         bearer={"Authorization":"Bearer "+raw}
         assert app.test_client().get("/api/v1/projects",headers=bearer).status_code==200
         assert app.test_client().post("/api/v1/projects",json={"name":"Blocked"},headers=bearer).status_code==403
+        # Explicit bearer auth must take precedence even when this browser client still has an owner session cookie.
+        assert client.post("/api/v1/projects",json={"name":"Still blocked"},headers=bearer).status_code==403
 
         scan_key=client.post("/api/v1/api-keys",json={"name":"Scanner","scopes":["read","scan"],"expires_in_days":30},headers={"X-CSRF-Token":csrf})
         raw_scan=scan_key.get_json()["token"];headers={"Authorization":"Bearer "+raw_scan}
