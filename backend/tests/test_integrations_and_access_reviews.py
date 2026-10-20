@@ -5,6 +5,7 @@ from cryptography.fernet import Fernet
 from app.repository import Repository
 from app.crypto import hash_password,encrypt_secret
 from app.worker import process_webhook
+from app.scanner.models import Finding
 
 class FakeResponse:
     status_code=204
@@ -87,3 +88,25 @@ def test_report_export_ledger_preserves_hash_actor_and_scan_context():
         assert history[0]["id"]==row["id"]
         assert history[0]["sha256"]=="a"*64 and history[0]["size_bytes"]==4096
         assert history[0]["user_email"]=="owner@example.com" and history[0]["target_url"]=="https://example.com/"
+
+
+def test_overdue_finding_escalation_is_daily_deduplicated():
+    with tempfile.TemporaryDirectory() as d:
+        r,owner,analyst=setup_repo(os.path.join(d,"sla.sqlite3"))
+        p=r.create_project("Production","",owner["organization_id"],owner["user_id"])
+        t=r.create_target(p["id"],"https://example.com/","Portal",True,True,owner["user_id"])
+        scan=r.create_scan(t["id"],t["url"],"standard",owner["user_id"],{})
+        finding=Finding("header.csp","Content Security Policy","Headers","FAIL","HIGH","HIGH",t["url"],"missing",
+                        "Checks CSP","Weak browser policy","Deploy CSP",["OWASP ASVS V14"],"sla-fingerprint",{})
+        r.add_findings(scan["id"],[finding]);r.sync_finding_states(scan["id"])
+        state=r.list_finding_states(owner["organization_id"])[0]
+        r.update_finding_state(state["id"],owner["organization_id"],{
+            "assignee_user_id":analyst["user_id"],"due_at":"2020-01-01","state":"IN_PROGRESS"
+        },owner["user_id"])
+        first=r.process_overdue_finding_escalations()
+        second=r.process_overdue_finding_escalations()
+        recipients={x["user_id"] for x in first}
+        assert owner["user_id"] in recipients and analyst["user_id"] in recipients
+        assert second==[]
+        history=r.list_finding_escalations(owner["organization_id"])
+        assert len(history)==2 and all(x["finding_state_id"]==state["id"] for x in history)
