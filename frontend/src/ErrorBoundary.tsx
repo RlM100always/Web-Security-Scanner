@@ -2,7 +2,8 @@ import React from 'react';
 import{AlertTriangle,RefreshCw,ShieldCheck}from'lucide-react';
 
 type State={failed:boolean};
-export default class ErrorBoundary extends React.Component<React.PropsWithChildren,State>{
+type Props=React.PropsWithChildren<{}>;
+export default class ErrorBoundary extends React.Component<Props,State>{
   state:State={failed:false};
   static getDerivedStateFromError(){return{failed:true}}
   componentDidCatch(error:unknown,info:unknown){
