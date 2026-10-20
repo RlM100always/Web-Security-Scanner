@@ -30,15 +30,21 @@ SentinelScope is a production-oriented Flask + React security assessment platfor
 - Audit log for privileged and security-relevant actions
 
 ### Projects, targets and authorisation
-- Multiple projects and targets
+- Multiple projects and targets with active/archive lifecycle
 - Explicit ownership/permission acknowledgement
 - DNS TXT ownership verification
 - Well-known-file ownership verification
 - Verified-target requirement for Lab profile
+- Business criticality, environment, tags, accountable owner and operational notes
+- Guided workspace-readiness journey derived from persisted project/target/profile/scan state
 - Target and project lifecycle management
 
 ### Scanner
-- Quick, Standard and verified Lab profiles
+- Quick, Standard and verified Lab execution modes
+- Named, reusable and versioned project scan profiles
+- Default profile selection, clone/activate/deactivate/delete lifecycle
+- Manual and recurring assessments reuse the same named profile
+- Immutable per-scan profile name/version and exact policy provenance
 - SSRF-aware URL validation
 - Loopback/private/link-local/reserved/metadata blocking by default
 - Redirect destination re-validation
@@ -97,7 +103,7 @@ GitHub Actions validates:
 2. Strict TypeScript + Vite production build
 3. Playwright browser E2E on Desktop Chrome and Pixel 7 emulation
 
-The E2E flow validates real signup, authenticated workspace loading and project creation.
+The E2E suite validates public product pages, signup/authenticated workspace loading, guided readiness, project creation, scan-policy persistence, reusable scan-profile management, API-key creation, governance/integration flows, system administration and responsive Desktop Chrome + Pixel 7 journeys.
 
 A bounded non-destructive load smoke utility is included at `tools/load_smoke.py`.
 
@@ -343,4 +349,44 @@ The unauthenticated site explains the complete product before signup:
 - `/docs`
 - `/about`
 
+Additional deep product routes include:
+
+- `/asset-inventory`
+- `/scan-profiles`
+- `/vulnerability-management`
+- `/continuous-monitoring`
+- `/governance`
+- `/getting-started`
+- `/methodology`
+
 Desktop and mobile use intentionally different information layouts. Mobile uses a compact context header, bottom navigation dock, stacked operational cards and sheet-style detail/modals rather than scaling the desktop console down.
+
+
+### Reusable scan profiles and configuration provenance
+
+Projects have two configuration layers:
+
+1. a project base scan policy; and
+2. named reusable scan profiles such as **Production Baseline**, **Release Gate**, **Low-impact Daily** or **Verified Lab Regression**.
+
+A named profile stores the execution mode plus bounded crawl/pacing/check configuration. Updating a profile increments its version for future runs. Manual scans and recurring schedules can both reference the same profile.
+
+Queued/completed scans preserve:
+- the selected profile ID;
+- immutable profile name;
+- immutable profile version;
+- exact policy snapshot used at execution time.
+
+Profile edits therefore never rewrite historical evidence. One-run overrides can alter the queued scan snapshot without mutating the reusable profile.
+
+### Workspace readiness
+
+The Dashboard readiness journey is derived from real persisted state rather than browser flags. It guides new workspaces through:
+- email verification;
+- active project creation;
+- authorised target registration;
+- accountable target ownership;
+- reusable scan-profile establishment;
+- first completed assessment baseline.
+
+The guide can be dismissed without changing security state, and Lab readiness remains separately indicated by ownership verification.
