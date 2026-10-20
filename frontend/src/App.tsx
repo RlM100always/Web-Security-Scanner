@@ -23,7 +23,7 @@ export default function App(){
   const load=async(opts?:{refresh?:boolean})=>{if(!user)return;const isInitial=!dash&&!projects.length&&!targets.length&&!scans.length;if(isInitial)setWorkspaceLoading(true);if(opts?.refresh)setRefreshing(true);setErr('');try{
     const requests=[api('/dashboard'),api('/projects'),api('/targets'),api('/scans'),api('/team'),api('/schedules')];
     const[d,p,t,s,m,sch]=await Promise.all(requests);setDash(d);setProjects(p);setTargets(t);setScans(s);setTeam(m);setSchedules(sch);
-    if(can(user,'admin')){try{setAudit(await api('/audit'))}catch{}try{setInvitations(await api('/team/invitations'))}catch{}}
+    if(can(user,'admin')){try{setAudit(await api('/audit'))}catch{}try{setInvitations(await api('/team/invitations'))}catch{}try{setAccessReviews(await api('/access-reviews'))}catch{}}
     try{setSessions(await api('/auth/sessions'))}catch{}
     try{setOnboarding(await api('/onboarding'))}catch{}
     try{const n=await api('/notifications');setNotifications(n.items||[]);setNotificationSummary(n.summary||{total:0,unread:0})}catch{}
