@@ -9,7 +9,7 @@ async function openNav(page:any,name:string){
 test('deep scan policy and API key workflow works',async({page},testInfo)=>{
   const email='deep-'+testInfo.project.name+'-'+Date.now()+'@example.com';
 
-  await page.goto('/');
+  await page.goto('/signup');
   await page.getByRole('button',{name:'Create account'}).click();
   await page.getByLabel('Full name').fill('Deep Feature Owner');
   await page.getByLabel('Workspace name').fill('Deep Feature Workspace');
