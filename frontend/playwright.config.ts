@@ -14,7 +14,7 @@ export default defineConfig({
       cwd:'..',
       port:5000,
       reuseExistingServer:false,
-      env:{DATABASE_PATH:'e2e.sqlite3',SCANNER_ALLOW_PRIVATE:'0',SESSION_COOKIE_SECURE:'0'}
+      env:{DATABASE_PATH:'e2e.sqlite3',SCANNER_ALLOW_PRIVATE:'0',SESSION_COOKIE_SECURE:'0',SYSTEM_ADMIN_EMAILS:'e2e-admin-chromium@example.com,e2e-admin-mobile-chromium@example.com'}
     },
     {
       command:'npm run dev -- --host 127.0.0.1',
