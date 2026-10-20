@@ -45,7 +45,8 @@ def test_project_delete_cascades_profiles_and_enterprise_evidence():
             (state_id,t["id"],"fp","check.id","Issue",r.now(),r.now(),scan["id"],r.now()))
             c.execute("insert into finding_activity values(?,?,?,?,?,?)",("act",state_id,owner["user_id"],"CREATED","{}",r.now()))
             c.execute("insert into finding_escalations values(?,?,?,?,?,?)",("esc",state_id,owner["organization_id"],owner["user_id"],"overdue:test",r.now()))
-            c.execute("insert into report_exports values(?,?,?,?,?,?,?)",("rep",owner["organization_id"],scan["id"],"json",owner["user_id"],"abc",10,r.now()))
+            c.execute("""insert into report_exports(id,organization_id,scan_id,format,user_id,sha256,size_bytes,created_at)
+              values(?,?,?,?,?,?,?,?)""",("rep",owner["organization_id"],scan["id"],"json",owner["user_id"],"abc",10,r.now()))
         assert r.delete_project(p["id"],owner["organization_id"])
         with r.conn() as c:
             assert c.execute("select count(*) from scan_profiles where project_id=?",(p["id"],)).fetchone()[0]==0
