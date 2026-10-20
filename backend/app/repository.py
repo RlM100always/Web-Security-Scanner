@@ -91,6 +91,14 @@ class Repository:
               created_at text not null);
             create table if not exists scan_policies(
               project_id text primary key,policy_json text not null,updated_by text,updated_at text not null);
+            create table if not exists scan_profiles(
+              id text primary key,project_id text not null,name text not null,description text not null default '',
+              scan_mode text not null default 'standard',policy_json text not null,version integer not null default 1,
+              is_default integer not null default 0,active integer not null default 1,created_by text,updated_by text,
+              created_at text not null,updated_at text not null);
+            create table if not exists sla_policies(
+              organization_id text not null,severity text not null,due_hours integer not null,updated_by text,updated_at text not null,
+              primary key(organization_id,severity));
             create table if not exists assets(
               id text primary key,scan_id text not null,target_id text not null,url text not null,kind text not null,
               status_code integer,content_type text,title text,depth integer not null,size_bytes integer not null,
@@ -147,6 +155,11 @@ class Repository:
             self._ensure_column(c,"projects","tags_json","text not null default '[]'")
             self._ensure_column(c,"projects","created_by","text")
             self._ensure_column(c,"targets","created_by","text")
+            self._ensure_column(c,"targets","environment","text not null default 'production'")
+            self._ensure_column(c,"targets","criticality","text not null default 'medium'")
+            self._ensure_column(c,"targets","owner_user_id","text")
+            self._ensure_column(c,"targets","tags_json","text not null default '[]'")
+            self._ensure_column(c,"targets","notes","text not null default ''")
             self._ensure_column(c,"targets","criticality","text not null default 'medium'")
             self._ensure_column(c,"targets","environment","text not null default 'production'")
             self._ensure_column(c,"targets","tags_json","text not null default '[]'")
@@ -189,6 +202,7 @@ class Repository:
             c.execute("create index if not exists idx_access_review_items_review on access_review_items(review_id,decision)")
             c.execute("create index if not exists idx_webhooks_org on webhook_endpoints(organization_id,active)")
             c.execute("create index if not exists idx_webhook_deliveries_endpoint on webhook_deliveries(endpoint_id,created_at)")
+            c.execute("create index if not exists idx_scan_profiles_project on scan_profiles(project_id,active)")
             c.execute("create index if not exists idx_assets_scan on assets(scan_id)")
             c.execute("create index if not exists idx_assets_target on assets(target_id,url)")
             c.execute("create index if not exists idx_finding_states_target on finding_states(target_id,state,last_seen_at)")
@@ -622,6 +636,86 @@ class Repository:
 
     def set_target_verified(self,target_id,verified=True):
         with self.conn() as c:c.execute("update targets set verified=? where id=?",(int(verified),target_id))
+    # asset governance and reusable scan profiles
+    def update_target_metadata(self,target_id,org_id,updates):
+        allowed={'name','environment','criticality','owner_user_id','notes'}
+        sets=[];vals=[]
+        for k,v in updates.items():
+            if k in allowed:sets.append(k+"=?");vals.append(v)
+        if 'tags' in updates:
+            sets.append("tags_json=?");vals.append(json.dumps(sorted(set(str(x)[:64] for x in updates.get('tags',[]) if str(x).strip()))[:30]))
+        if not sets:return self.get_target(target_id,org_id)
+        with self.conn() as c:
+            row=c.execute("""select t.id from targets t join projects p on p.id=t.project_id
+              where t.id=? and p.organization_id=?""",(target_id,org_id)).fetchone()
+            if not row:return None
+            vals.append(target_id);c.execute("update targets set "+",".join(sets)+" where id=?",vals)
+        return self.get_target(target_id,org_id)
+
+    def create_scan_profile(self,project_id,name,description,scan_mode,policy,is_default,user_id):
+        now=self.now();pid=self._id()
+        with self.conn() as c:
+            if is_default:c.execute("update scan_profiles set is_default=0 where project_id=?",(project_id,))
+            c.execute("""insert into scan_profiles(id,project_id,name,description,scan_mode,policy_json,version,is_default,active,created_by,updated_by,created_at,updated_at)
+              values(?,?,?,?,?,?,1,?,1,?,?,?,?,?)""",(pid,project_id,name,description,scan_mode,json.dumps(policy),int(is_default),user_id,user_id,now,now))
+        return self.get_scan_profile(pid)
+
+    def get_scan_profile(self,profile_id):
+        with self.conn() as c:r=c.execute("select * from scan_profiles where id=?",(profile_id,)).fetchone()
+        if not r:return None
+        d=dict(r);d['policy']=json.loads(d.pop('policy_json') or '{}');d['is_default']=bool(d['is_default']);d['active']=bool(d['active']);return d
+
+    def list_scan_profiles(self,project_id):
+        with self.conn() as c:rows=[dict(r) for r in c.execute("select * from scan_profiles where project_id=? order by is_default desc,updated_at desc",(project_id,))]
+        for d in rows:
+            d['policy']=json.loads(d.pop('policy_json') or '{}');d['is_default']=bool(d['is_default']);d['active']=bool(d['active'])
+        return rows
+
+    def update_scan_profile(self,profile_id,project_id,updates,user_id):
+        current=self.get_scan_profile(profile_id)
+        if not current or current['project_id']!=project_id:return None
+        name=updates.get('name',current['name']);description=updates.get('description',current['description'])
+        scan_mode=updates.get('scan_mode',current['scan_mode']);policy=updates.get('policy',current['policy'])
+        is_default=bool(updates.get('is_default',current['is_default']));active=bool(updates.get('active',current['active']))
+        with self.conn() as c:
+            if is_default:c.execute("update scan_profiles set is_default=0 where project_id=? and id<>?",(project_id,profile_id))
+            c.execute("""update scan_profiles set name=?,description=?,scan_mode=?,policy_json=?,version=version+1,is_default=?,active=?,updated_by=?,updated_at=?
+              where id=? and project_id=?""",(name,description,scan_mode,json.dumps(policy),int(is_default),int(active),user_id,self.now(),profile_id,project_id))
+        return self.get_scan_profile(profile_id)
+
+    def clone_scan_profile(self,profile_id,project_id,user_id):
+        current=self.get_scan_profile(profile_id)
+        if not current or current['project_id']!=project_id:return None
+        return self.create_scan_profile(project_id,current['name']+" Copy",current['description'],current['scan_mode'],current['policy'],False,user_id)
+
+    def delete_scan_profile(self,profile_id,project_id):
+        with self.conn() as c:
+            r=c.execute("select is_default from scan_profiles where id=? and project_id=?",(profile_id,project_id)).fetchone()
+            if not r:return False
+            c.execute("delete from scan_profiles where id=?",(profile_id,))
+        return True
+
+    def ensure_default_scan_profile(self,project_id,user_id):
+        rows=self.list_scan_profiles(project_id)
+        if rows:return next((x for x in rows if x['is_default']),rows[0])
+        return self.create_scan_profile(project_id,"Standard Baseline","Reusable default project assessment profile","standard",self.get_project_policy(project_id),True,user_id)
+
+    def get_sla_policy(self,org_id):
+        defaults={'CRITICAL':24,'HIGH':72,'MEDIUM':168,'LOW':720}
+        with self.conn() as c:rows=c.execute("select severity,due_hours from sla_policies where organization_id=?",(org_id,))
+        for r in rows:defaults[r['severity']]=r['due_hours']
+        return defaults
+
+    def set_sla_policy(self,org_id,rules,user_id):
+        now=self.now()
+        with self.conn() as c:
+            for severity,hours in rules.items():
+                if severity not in {'CRITICAL','HIGH','MEDIUM','LOW'}:continue
+                c.execute("""insert into sla_policies(organization_id,severity,due_hours,updated_by,updated_at) values(?,?,?,?,?)
+                  on conflict(organization_id,severity) do update set due_hours=excluded.due_hours,updated_by=excluded.updated_by,updated_at=excluded.updated_at""",
+                  (org_id,severity,max(1,min(int(hours),8760)),user_id,now))
+        return self.get_sla_policy(org_id)
+
     # verification
     def create_verification(self,target_id,method,token,instructions,created_by):
         x={'id':self._id(),'target_id':target_id,'method':method,'token':token,'instructions':instructions,'status':'PENDING','evidence':None,'created_by':created_by,'created_at':self.now(),'verified_at':None}
