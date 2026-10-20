@@ -7,3 +7,13 @@ def test_private_blocked():
     try: validate_target('http://127.0.0.1',False); assert False
     except TargetValidationError: pass
 def test_same_origin(): assert same_origin('https://a.test/x','https://a.test/y')
+
+def test_malformed_port_fails_closed():
+    try:
+        normalize_url('https://example.com:not-a-port/')
+        assert False
+    except TargetValidationError as e:
+        assert 'Malformed target URL' in str(e)
+
+def test_same_origin_rejects_malformed_discovered_url():
+    assert same_origin('https://example.com/','https://example.com:not-a-port/path') is False
