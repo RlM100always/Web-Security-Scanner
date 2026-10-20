@@ -191,6 +191,14 @@ def create_admin_blueprint():
         if not os.path.exists(path):return {"error":"Backup not found"},404
         return send_file(path,as_attachment=True,download_name=safe)
 
+    @bp.post("/retention/run")
+    @require_system_admin
+    def retention_run():
+        days=max(1,int(repo().system_setting("scan_retention_days",90)))
+        removed=repo().purge_retention(days)
+        audit("SYSTEM_RETENTION_RUN","scan",None,{"days":days,"removed_scans":removed})
+        return {"ok":True,"days":days,"removed_scans":removed}
+
     @bp.get("/metrics")
     @require_system_admin
     def metrics_json():
