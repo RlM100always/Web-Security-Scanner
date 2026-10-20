@@ -30,8 +30,8 @@ def test_access_review_snapshot_decisions_and_enforcement():
         assert completed["status"]=="COMPLETED" and completed["summary"]["revoke"]==1
 
         members={m["id"]:m for m in r.list_members(owner["organization_id"])}
-        assert members[analyst["user_id"]]["membership_active"]==0
-        assert members[owner["user_id"]]["membership_active"]==1
+        assert members[analyst["user_id"]]["active"]==0
+        assert members[owner["user_id"]]["active"]==1
 
 def test_access_review_owner_cannot_be_revoked():
     with tempfile.TemporaryDirectory() as d:
