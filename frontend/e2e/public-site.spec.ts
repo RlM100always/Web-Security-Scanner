@@ -50,6 +50,10 @@ test('public product site explains platform and routes to signup',async({page})=
   await page.goto('/reports');
   await expect(page.getByRole('heading',{name:/Reports that preserve the context/i})).toBeVisible();
 
+  await page.goto('/status');
+  await expect(page.getByRole('heading',{name:/Operational transparency/i})).toBeVisible();
+  await expect(page.getByText(/All public platform checks operational/i)).toBeVisible();
+
   await page.goto('/signup');
   await expect(page.getByRole('heading',{name:/Start your security workspace/i})).toBeVisible();
 });
