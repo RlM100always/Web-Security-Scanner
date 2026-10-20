@@ -121,6 +121,12 @@ class Repository:
         return dict(r) if r else None
     def revoke_session(self,session_id):
         with self.conn() as c:c.execute("update sessions set revoked_at=? where id=?",(self.now(),session_id))
+    def list_memberships_for_user(self,user_id):
+        with self.conn() as c:
+            return [dict(r) for r in c.execute("""select m.organization_id,m.role,o.name organization_name
+            from memberships m join organizations o on o.id=m.organization_id
+            where m.user_id=? order by m.created_at""",(user_id,))]
+
     def list_members(self,org_id):
         with self.conn() as c:return [dict(r) for r in c.execute("""select u.id,u.email,u.name,u.active,m.role,m.created_at from memberships m join users u on u.id=m.user_id where m.organization_id=? order by m.created_at""",(org_id,))]
     def add_member(self,org_id,email,name,password_hash,role):
