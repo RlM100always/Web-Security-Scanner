@@ -604,6 +604,15 @@ def create_blueprint():
         if kind:rows=[r for r in rows if (r.get('kind') or '').lower()==kind]
         return {'summary':repo().asset_portfolio_summary(ident['organization_id']),'items':rows}
 
+    @bp.get('/assets/history')
+    @require_auth
+    def asset_history():
+        ident=current_identity();target_id=(request.args.get('target_id') or '').strip();url=(request.args.get('url') or '').strip()
+        if not target_id or not url:return {'error':'target_id and url are required'},400
+        row=repo().asset_history(ident['organization_id'],target_id,url,min(int(request.args.get('limit',100)),500))
+        if row is None:return {'error':'Asset or target not found'},404
+        return row
+
     @bp.get('/portfolio/issues')
     @require_auth
     def issue_portfolio():
