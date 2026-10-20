@@ -264,6 +264,16 @@ class Repository:
         since=(datetime.now(timezone.utc)-timedelta(minutes=minutes)).isoformat()
         with self.conn() as c:
             return c.execute("select count(*) from auth_attempts where success=0 and created_at>=? and (lower(email)=lower(?) or ip=?)",(since,email,ip)).fetchone()[0]
+
+    def recent_failed_email_attempts(self,email,minutes=15):
+        since=(datetime.now(timezone.utc)-timedelta(minutes=minutes)).isoformat()
+        with self.conn() as c:
+            return c.execute("select count(*) from auth_attempts where success=0 and created_at>=? and lower(email)=lower(?)",(since,email)).fetchone()[0]
+
+    def recent_failed_ip_attempts(self,ip,minutes=15):
+        since=(datetime.now(timezone.utc)-timedelta(minutes=minutes)).isoformat()
+        with self.conn() as c:
+            return c.execute("select count(*) from auth_attempts where success=0 and created_at>=? and ip=?",(since,ip)).fetchone()[0]
     def set_login_success(self,user_id):
         with self.conn() as c:c.execute("update users set failed_logins=0,locked_until=null,last_login_at=? where id=?",(self.now(),user_id))
     def set_login_failure(self,user_id,lock=False):
