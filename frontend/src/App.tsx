@@ -47,7 +47,7 @@ export default function App(){
   const notify=(m:string)=>{setToast(m);setTimeout(()=>setToast(''),2800)};
 
   if(authLoading)return <div className="splash"><ShieldCheck/><b>SentinelScope</b><span>Loading secure workspace…</span></div>;
-  if(!user)return <AuthScreen mode={authMode} setMode={setAuthMode} onAuth={(u,c)=>{csrf=c;setUser(u)}} setErr={setErr} err={err}/>;
+  if(!user)return <AuthScreen mode={authMode} setMode={setAuthMode} onAuth={(u:User,c:string)=>{csrf=c;setUser(u)}} setErr={setErr} err={err}/>;
 
   const navItems:any[]=[['Dashboard',LayoutDashboard],['Projects',FolderKanban],['Scans',Radar],['Findings',TriangleAlert],['Reports',FileText],['Schedules',CalendarClock],['Team',Users],...(can(user,'admin')?[['Audit',History]]:[]),['Settings',Settings]];
 
