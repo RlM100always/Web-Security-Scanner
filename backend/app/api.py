@@ -210,20 +210,26 @@ def create_blueprint():
         if not repo().switch_session_workspace(ident['session_id'],ident['user_id'],org):return {'error':'Workspace not available'},404
         return {'ok':True}
 
+    @bp.get('/auth/invitations/info')
+    def invitation_info():
+        raw=request.args.get('token') or ''
+        info=repo().invitation_info(token_hash(raw)) if raw else None
+        if not info:return {'error':'Invitation is invalid or expired'},404
+        return info
+
     @bp.post('/auth/invitations/accept')
     def invitation_accept():
         d=request.get_json(force=True) or {};raw=d.get('token') or '';name=(d.get('name') or '').strip();password=d.get('password') or ''
-        if len(name)<2 or len(password)<12:return {'error':'Name and a 12+ character password are required'},400
-        invite=repo().consume_invitation(token_hash(raw))
-        if not invite:return {'error':'Invitation is invalid or expired'},400
-        user=repo().get_user_by_email(invite['email'])
-        if user:uid=user['id']
-        else:
-            uid=repo().add_member(invite['organization_id'],invite['email'],name,hash_password(password),invite['role'])['user_id']
-            repo().set_email_verified(uid,True)
-        if user:
-            repo().add_member(invite['organization_id'],invite['email'],user['name'],user['password_hash'],invite['role'])
-        return {'ok':True}
+        info=repo().invitation_info(token_hash(raw)) if raw else None
+        if not info:return {'error':'Invitation is invalid or expired'},400
+        password_digest=None
+        if not info.get('existing_account'):
+            if len(name)<2 or len(password)<12:return {'error':'Name and a 12+ character password are required for a new account'},400
+            password_digest=hash_password(password)
+        try:accepted=repo().accept_invitation(token_hash(raw),name,password_digest)
+        except ValueError as e:return {'error':str(e)},409
+        if not accepted:return {'error':'Invitation is invalid, expired, or already accepted'},409
+        return {'ok':True,**accepted}
 
     @bp.post('/auth/logout')
     @require_auth
