@@ -287,6 +287,13 @@ def create_blueprint():
     @require_role('viewer')
     def team_list():return jsonify(repo().list_members(current_identity()['organization_id']))
 
+    @bp.get('/team/<user_id>/activity')
+    @require_role('admin')
+    def team_member_activity(user_id):
+        ident=current_identity();rows=repo().member_activity(ident['organization_id'],user_id,min(int(request.args.get('limit',100)),500))
+        if rows is None:return {'error':'Team member not found'},404
+        return jsonify(rows)
+
     @bp.post('/team')
     @require_role('admin')
     def team_add():
