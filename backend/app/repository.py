@@ -81,6 +81,11 @@ class Repository:
             create table if not exists backup_history(
               id text primary key,organization_id text,user_id text,filename text not null,size_bytes integer not null,
               created_at text not null);
+            create table if not exists system_settings(
+              key text primary key,value_json text not null,updated_by text,updated_at text not null);
+            create table if not exists worker_heartbeats(
+              worker_id text primary key,hostname text,pid integer,status text,current_job_id text,
+              started_at text not null,last_seen_at text not null);
             """)
             self._ensure_column(c,"projects","organization_id","text")
             self._ensure_column(c,"projects","created_by","text")
@@ -88,6 +93,9 @@ class Repository:
             self._ensure_column(c,"scans","created_by","text")
             self._ensure_column(c,"users","mfa_enabled","integer not null default 0")
             self._ensure_column(c,"users","mfa_secret","text")
+            self._ensure_column(c,"users","system_admin","integer not null default 0")
+            self._ensure_column(c,"organizations","active","integer not null default 1")
+            self._ensure_column(c,"scans","cancel_requested","integer not null default 0")
             self._ensure_column(c,"audit_logs","organization_id","text")
             self._ensure_column(c,"audit_logs","user_id","text")
             self._ensure_column(c,"audit_logs","resource_type","text")
@@ -101,6 +109,11 @@ class Repository:
             c.execute("create index if not exists idx_auth_tokens on auth_tokens(user_id,purpose,expires_at)")
             c.execute("create index if not exists idx_invites_org on invitations(organization_id,status)")
             c.execute("create index if not exists idx_notifications_user on notifications(user_id,created_at)")
+            c.execute("insert or ignore into system_settings(key,value_json,updated_by,updated_at) values('registration_enabled','true',null,?)",(self.now(),))
+            c.execute("insert or ignore into system_settings(key,value_json,updated_by,updated_at) values('maintenance_mode','false',null,?)",(self.now(),))
+            c.execute("insert or ignore into system_settings(key,value_json,updated_by,updated_at) values('maintenance_message',?,null,?)",(json.dumps("SentinelScope is temporarily under maintenance."),self.now()))
+            c.execute("insert or ignore into system_settings(key,value_json,updated_by,updated_at) values('platform_name',?,null,?)",(json.dumps("SentinelScope"),self.now()))
+            c.execute("insert or ignore into system_settings(key,value_json,updated_by,updated_at) values('admin_banner',?,null,?)",(json.dumps(""),self.now()))
     # auth / org
     def user_count(self):
         with self.conn() as c:return c.execute("select count(*) from users").fetchone()[0]
@@ -140,7 +153,7 @@ class Repository:
     def session_identity(self,token_hash):
         now=self.now()
         with self.conn() as c:
-            r=c.execute("""select s.id session_id,s.csrf_token,s.expires_at,u.id user_id,u.email,u.name,u.email_verified,u.mfa_enabled,m.organization_id,m.role,o.name organization_name
+            r=c.execute("""select s.id session_id,s.csrf_token,s.expires_at,u.id user_id,u.email,u.name,u.email_verified,u.mfa_enabled,u.system_admin,m.organization_id,m.role,o.name organization_name,o.active organization_active
             from sessions s join users u on u.id=s.user_id join memberships m on m.user_id=u.id and m.organization_id=s.organization_id
             join organizations o on o.id=m.organization_id
             where s.token_hash=? and s.revoked_at is null and s.expires_at>? and u.active=1""",(token_hash,now)).fetchone()
@@ -250,7 +263,7 @@ class Repository:
         return row['id']
 
     def list_notifications(self,org_id,user_id,limit=50):
-        with self.conn() as c:rows=[dict(r) for r in c.execute("select * from notifications where organization_id=? and (user_id=? or user_id is null) order by created_at desc limit ?",(org_id,user_id,limit))]
+        with self.conn() as c:rows=[dict(r) for r in c.execute("select * from notifications where (organization_id=? or organization_id is null) and (user_id=? or user_id is null) order by created_at desc limit ?",(org_id,user_id,limit))]
         for r in rows:r['meta']=json.loads(r.pop('meta_json') or '{}')
         return rows
 
@@ -481,3 +494,174 @@ class Repository:
         with self.conn() as c:rows=[dict(r) for r in c.execute("select * from audit_logs where organization_id=? order by created_at desc limit ?",(org_id,limit))]
         for r in rows:r['details']=json.loads(r.pop('details_json') or '{}')
         return rows
+
+
+    # system administration
+    def set_system_admin(self,user_id,enabled=True):
+        with self.conn() as c:c.execute("update users set system_admin=? where id=?",(int(enabled),user_id))
+
+    def sync_system_admin_emails(self,emails):
+        cleaned=[e.strip().lower() for e in emails if e and e.strip()]
+        if not cleaned:return 0
+        placeholders=",".join("?" for _ in cleaned)
+        with self.conn() as c:
+            cur=c.execute(f"update users set system_admin=1 where lower(email) in ({placeholders})",cleaned)
+            return cur.rowcount
+
+    def system_admin_count(self):
+        with self.conn() as c:return c.execute("select count(*) from users where system_admin=1 and active=1").fetchone()[0]
+
+    def admin_overview(self):
+        with self.conn() as c:
+            counts={
+                'users':c.execute("select count(*) from users").fetchone()[0],
+                'active_users':c.execute("select count(*) from users where active=1").fetchone()[0],
+                'organizations':c.execute("select count(*) from organizations").fetchone()[0],
+                'active_organizations':c.execute("select count(*) from organizations where active=1").fetchone()[0],
+                'projects':c.execute("select count(*) from projects").fetchone()[0],
+                'targets':c.execute("select count(*) from targets").fetchone()[0],
+                'verified_targets':c.execute("select count(*) from targets where verified=1").fetchone()[0],
+                'scans':c.execute("select count(*) from scans").fetchone()[0],
+                'findings':c.execute("select count(*) from findings").fetchone()[0],
+                'sessions':c.execute("select count(*) from sessions where revoked_at is null and expires_at>?",(self.now(),)).fetchone()[0],
+                'failed_logins_24h':c.execute("select count(*) from auth_attempts where success=0 and created_at>=?",((datetime.now(timezone.utc)-timedelta(hours=24)).isoformat(),)).fetchone()[0],
+            }
+            severities={r['severity']:r['n'] for r in c.execute("select severity,count(*) n from findings where status in ('FAIL','WARNING','ERROR') group by severity")}
+            scan_statuses={r['status']:r['n'] for r in c.execute("select status,count(*) n from scans group by status")}
+        return {'counts':counts,'severities':severities,'scan_statuses':scan_statuses,'queue':self.queue_stats()}
+
+    def admin_list_users(self,limit=500):
+        with self.conn() as c:
+            return [dict(r) for r in c.execute("""select u.id,u.email,u.name,u.active,u.email_verified,u.mfa_enabled,u.system_admin,
+              u.failed_logins,u.locked_until,u.last_login_at,u.created_at,count(m.id) workspace_count
+              from users u left join memberships m on m.user_id=u.id
+              group by u.id order by u.created_at desc limit ?""",(limit,))]
+
+    def admin_set_user_active(self,user_id,active):
+        with self.conn() as c:
+            c.execute("update users set active=? where id=?",(int(active),user_id))
+            if not active:c.execute("update sessions set revoked_at=? where user_id=? and revoked_at is null",(self.now(),user_id))
+            return c.total_changes>0
+
+    def admin_list_organizations(self,limit=500):
+        with self.conn() as c:
+            return [dict(r) for r in c.execute("""select o.id,o.name,o.active,o.created_at,
+              count(distinct m.user_id) member_count,count(distinct p.id) project_count,
+              count(distinct t.id) target_count,count(distinct s.id) scan_count
+              from organizations o
+              left join memberships m on m.organization_id=o.id
+              left join projects p on p.organization_id=o.id
+              left join targets t on t.project_id=p.id
+              left join scans s on s.target_id=t.id
+              group by o.id order by o.created_at desc limit ?""",(limit,))]
+
+    def admin_set_organization_active(self,org_id,active):
+        with self.conn() as c:
+            cur=c.execute("update organizations set active=? where id=?",(int(active),org_id))
+            if not active:c.execute("update sessions set revoked_at=? where organization_id=? and revoked_at is null",(self.now(),org_id))
+            return cur.rowcount>0
+
+    def admin_list_scans(self,limit=500):
+        with self.conn() as c:
+            return [dict(r) for r in c.execute("""select s.*,t.name target_name,p.name project_name,o.name organization_name,o.id organization_id
+              from scans s join targets t on t.id=s.target_id join projects p on p.id=t.project_id
+              join organizations o on o.id=p.organization_id order by s.created_at desc limit ?""",(limit,))]
+
+    def request_scan_cancel(self,scan_id):
+        with self.conn() as c:
+            r=c.execute("select status from scans where id=?",(scan_id,)).fetchone()
+            if not r or r['status'] not in ('QUEUED','SCANNING'):return False
+            c.execute("update scans set cancel_requested=1 where id=?",(scan_id,))
+            if r['status']=='QUEUED':
+                c.execute("update scans set status='CANCELLED',stage='CANCELLED',progress=100,completed_at=? where id=?",(self.now(),scan_id))
+                rows=[dict(x) for x in c.execute("select id,payload_json from jobs where status='QUEUED' and kind='scan'")]
+                for job in rows:
+                    try:
+                        if json.loads(job['payload_json']).get('scan_id')==scan_id:
+                            c.execute("update jobs set status='CANCELLED',completed_at=? where id=?",(self.now(),job['id']))
+                    except Exception:pass
+            return True
+
+    def scan_cancel_requested(self,scan_id):
+        with self.conn() as c:r=c.execute("select cancel_requested from scans where id=?",(scan_id,)).fetchone()
+        return bool(r and r['cancel_requested'])
+
+    def admin_list_jobs(self,limit=500):
+        with self.conn() as c:rows=[dict(r) for r in c.execute("select * from jobs order by created_at desc limit ?",(limit,))]
+        for r in rows:
+            try:r['payload']=json.loads(r.pop('payload_json'))
+            except Exception:r['payload']={}
+        return rows
+
+    def admin_retry_job(self,job_id):
+        with self.conn() as c:
+            cur=c.execute("""update jobs set status='QUEUED',run_after=?,locked_by=null,locked_at=null,last_error=null,completed_at=null
+            where id=? and status in ('FAILED','CANCELLED')""",(self.now(),job_id))
+            return cur.rowcount>0
+
+    def admin_cancel_job(self,job_id):
+        with self.conn() as c:
+            cur=c.execute("update jobs set status='CANCELLED',completed_at=? where id=? and status='QUEUED'",(self.now(),job_id))
+            return cur.rowcount>0
+
+    def admin_purge_jobs(self):
+        with self.conn() as c:
+            cur=c.execute("delete from jobs where status in ('COMPLETED','CANCELLED') and completed_at<?",((datetime.now(timezone.utc)-timedelta(days=7)).isoformat(),))
+            return cur.rowcount
+
+    def worker_heartbeat(self,worker_id,hostname,pid,status='IDLE',current_job_id=None,started_at=None):
+        now=self.now();started=started_at or now
+        with self.conn() as c:c.execute("""insert into worker_heartbeats(worker_id,hostname,pid,status,current_job_id,started_at,last_seen_at)
+          values(?,?,?,?,?,?,?) on conflict(worker_id) do update set status=excluded.status,current_job_id=excluded.current_job_id,last_seen_at=excluded.last_seen_at""",
+          (worker_id,hostname,pid,status,current_job_id,started,now))
+
+    def admin_list_workers(self):
+        cutoff=datetime.now(timezone.utc)-timedelta(seconds=30)
+        with self.conn() as c:rows=[dict(r) for r in c.execute("select * from worker_heartbeats order by last_seen_at desc")]
+        for r in rows:
+            try:r['online']=datetime.fromisoformat(r['last_seen_at'])>=cutoff
+            except Exception:r['online']=False
+        return rows
+
+    def get_system_settings(self):
+        with self.conn() as c:rows=c.execute("select key,value_json,updated_by,updated_at from system_settings order by key")
+        out={}
+        for r in rows:
+            try:value=json.loads(r['value_json'])
+            except Exception:value=r['value_json']
+            out[r['key']]={'value':value,'updated_by':r['updated_by'],'updated_at':r['updated_at']}
+        return out
+
+    def system_setting(self,key,default=None):
+        with self.conn() as c:r=c.execute("select value_json from system_settings where key=?",(key,)).fetchone()
+        if not r:return default
+        try:return json.loads(r['value_json'])
+        except Exception:return default
+
+    def set_system_setting(self,key,value,user_id):
+        allowed={'registration_enabled','maintenance_mode','maintenance_message','platform_name','admin_banner'}
+        if key not in allowed:raise ValueError("Unsupported system setting")
+        with self.conn() as c:c.execute("""insert into system_settings(key,value_json,updated_by,updated_at) values(?,?,?,?)
+          on conflict(key) do update set value_json=excluded.value_json,updated_by=excluded.updated_by,updated_at=excluded.updated_at""",
+          (key,json.dumps(value),user_id,self.now()))
+
+    def admin_security_events(self,limit=300):
+        with self.conn() as c:
+            attempts=[dict(r) for r in c.execute("select * from auth_attempts order by created_at desc limit ?",(limit,))]
+            locked=[dict(r) for r in c.execute("""select id,email,name,failed_logins,locked_until,last_login_at from users
+              where locked_until is not null order by locked_until desc limit 100""")]
+        return {'login_attempts':attempts,'locked_users':locked}
+
+    def admin_list_audit(self,limit=1000):
+        with self.conn() as c:rows=[dict(r) for r in c.execute("""select a.*,u.email user_email,o.name organization_name
+          from audit_logs a left join users u on u.id=a.user_id left join organizations o on o.id=a.organization_id
+          order by a.created_at desc limit ?""",(limit,))]
+        for r in rows:
+            try:r['details']=json.loads(r.pop('details_json') or '{}')
+            except Exception:r['details']={}
+        return rows
+
+    def admin_list_backups(self,limit=500):
+        with self.conn() as c:return [dict(r) for r in c.execute("""select b.*,u.email user_email,o.name organization_name
+          from backup_history b left join users u on u.id=b.user_id left join organizations o on o.id=b.organization_id
+          order by b.created_at desc limit ?""",(limit,))]
