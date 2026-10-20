@@ -16,6 +16,22 @@ test('public product site explains platform and routes to signup',async({page})=
   await page.goto('/docs');
   await expect(page.getByRole('heading',{name:/Understand how the platform behaves/i})).toBeVisible();
 
+  await page.goto('/enterprise');
+  await expect(page.getByRole('heading',{name:/Govern security work/i})).toBeVisible();
+  await expect(page.getByText(/Governed issue operations/i)).toBeVisible();
+
+  await page.goto('/workflow');
+  await expect(page.getByRole('heading',{name:/authorised scope to verified remediation/i})).toBeVisible();
+
+  await page.goto('/research');
+  await expect(page.getByRole('heading',{name:/scanner claims can be measured/i})).toBeVisible();
+
+  await page.goto('/responsible-use');
+  await expect(page.getByRole('heading',{name:/Authorisation and bounded behaviour/i})).toBeVisible();
+
+  await page.goto('/deployment');
+  await expect(page.getByRole('heading',{name:/single-node architecture/i})).toBeVisible();
+
   await page.goto('/signup');
   await expect(page.getByRole('heading',{name:/Start your security workspace/i})).toBeVisible();
 });
