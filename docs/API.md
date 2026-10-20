@@ -73,16 +73,12 @@ Manual scan creation reuses a compatible recent preflight or runs one server-sid
 - `GET /api/v1/audit`
 
 ## Backup, export and operations
-- `POST /api/v1/backups`
-- `GET /api/v1/backups`
-- `GET /api/v1/backups/:filename`
-- `POST /api/v1/backups/restore`
-- `GET /api/v1/export/workspace.json`
-- `GET /api/v1/metrics`
-- `GET /api/v1/metrics/prometheus`
-- `GET /health`
+- `GET /api/v1/export/workspace.json` — Owner-only, tenant-scoped JSON portability
+- `GET /health` — public-safe service health
 
-Lab scans require a verified target. Backup/restore/export are owner-only; metrics require Admin or Owner.
+The legacy workspace routes under `/api/v1/backups*` and `/api/v1/metrics*` return **403**. Raw SQLite backups/restores and platform-wide operational metrics are global resources and therefore belong to the System Admin boundary, not a workspace Owner/Admin boundary.
+
+Lab scans require a verified target.
 
 ## System administration
 
@@ -109,8 +105,11 @@ All routes below require `system_admin=1` on the authenticated user.
 - `GET /api/v1/admin/backups`
 - `POST /api/v1/admin/backups`
 - `GET /api/v1/admin/backups/:filename`
+- `POST /api/v1/admin/backups/restore`
 - `GET /api/v1/admin/metrics`
 - `GET /api/v1/admin/metrics/prometheus`
+
+Database restore is deliberately gated. The System Admin must first enable maintenance mode, stop every worker process, and leave no `RUNNING` or `QUEUED` persistent jobs. Restore uploads are size-capped and integrity-checked before the database file is replaced.
 
 ## Deep assessment workflow APIs
 
