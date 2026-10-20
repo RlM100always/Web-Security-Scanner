@@ -35,7 +35,7 @@ test('deep scan policy and API key workflow works',async({page},testInfo)=>{
 
   await page.getByRole('button',{name:'Scan policy'}).click();
   await expect(page.getByLabel('Maximum pages')).toHaveValue('37');
-  await expect(page.getByLabel('Exclude path regex — one per line')).toContainText('');
+  await expect(page.getByLabel('Exclude path regex — one per line')).toHaveValue('^/logout$\\n^/billing/export');
   await page.getByRole('button',{name:'Cancel'}).click();
 
   await openNav(page,'Settings');
