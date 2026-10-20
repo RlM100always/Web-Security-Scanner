@@ -404,6 +404,53 @@ class Repository:
             c.execute("insert into invitations values(?,?,?,?,?,?,?,?,?,?)",tuple(row.values()))
         return row
 
+    def invitation_info(self,token_hash):
+        now=self.now()
+        with self.conn() as c:
+            r=c.execute("""select i.id,i.organization_id,i.email,i.role,i.expires_at,o.name organization_name,o.active organization_active,
+              case when u.id is null then 0 else 1 end existing_account
+              from invitations i join organizations o on o.id=i.organization_id
+              left join users u on lower(u.email)=lower(i.email)
+              where i.token_hash=? and i.status='PENDING' and i.expires_at>?""",(token_hash,now)).fetchone()
+        if not r:return None
+        d=dict(r)
+        email=d['email'];local,_,domain=email.partition('@')
+        d['email_masked']=(local[:2]+'***@'+domain) if domain else '***'
+        d.pop('email',None)
+        return d
+
+    def accept_invitation(self,token_hash,name=None,password_hash=None):
+        now=self.now()
+        with self.conn() as c:
+            c.execute("begin immediate")
+            invite=c.execute("""select i.*,o.active organization_active from invitations i
+              join organizations o on o.id=i.organization_id
+              where i.token_hash=? and i.status='PENDING' and i.expires_at>?""",(token_hash,now)).fetchone()
+            if not invite:c.rollback();return None
+            if not invite['organization_active']:
+                c.rollback();raise ValueError("This workspace is currently suspended")
+            user=c.execute("select * from users where lower(email)=lower(?)",(invite['email'],)).fetchone()
+            created=False
+            if user:
+                uid=user['id']
+                if not user['active']:
+                    c.rollback();raise ValueError("This account is disabled")
+                c.execute("update users set email_verified=1 where id=?",(uid,))
+            else:
+                if not name or not password_hash:
+                    c.rollback();raise ValueError("Full name and a 12+ character password are required for a new account")
+                uid=self._id();created=True
+                c.execute("""insert into users(id,email,name,password_hash,active,email_verified,failed_logins,locked_until,last_login_at,created_at,mfa_enabled,mfa_secret,system_admin)
+                  values(?,?,?,?,1,1,0,null,null,?,0,null,0)""",(uid,invite['email'].lower(),name,password_hash,now))
+            c.execute("""insert into memberships(id,organization_id,user_id,role,created_at,active) values(?,?,?,?,?,1)
+              on conflict(organization_id,user_id) do update set role=excluded.role,active=1""",
+              (self._id(),invite['organization_id'],uid,invite['role'],now))
+            cur=c.execute("update invitations set status='ACCEPTED',accepted_at=? where id=? and status='PENDING'",(now,invite['id']))
+            if cur.rowcount!=1:
+                c.rollback();return None
+            c.commit()
+        return {'user_id':uid,'organization_id':invite['organization_id'],'role':invite['role'],'existing_account':not created}
+
     def consume_invitation(self,token_hash):
         now=self.now()
         with self.conn() as c:
