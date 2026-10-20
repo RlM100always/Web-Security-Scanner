@@ -41,3 +41,15 @@ def require_role(min_role="viewer"):
             return fn(*args, **kwargs)
         return wrapper
     return decorator
+
+
+def require_system_admin(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        identity=current_identity()
+        if not identity:
+            return {"error":"Authentication required"},401
+        if not identity.get("system_admin"):
+            return {"error":"System administrator access required"},403
+        return fn(*args, **kwargs)
+    return wrapper
