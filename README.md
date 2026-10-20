@@ -80,10 +80,10 @@ SentinelScope is a production-oriented Flask + React security assessment platfor
 - JSON report
 - OWASP ZAP JSON import
 - ZAP/scanner overlap comparison
-- Workspace JSON export
-- SQLite backup creation/download
-- Validated SQLite restore
-- Prometheus-style operational metrics
+- Tenant-scoped workspace JSON export
+- System-Admin-only SQLite backup creation/download
+- Guarded System-Admin database restore (maintenance mode + workers offline + idle queue)
+- System-Admin-only Prometheus-style operational metrics
 
 ### UI
 - React + TypeScript + Vite
@@ -94,7 +94,7 @@ SentinelScope is a production-oriented Flask + React security assessment platfor
 - Live findings and remediation UI
 - Team/RBAC UI
 - Notification center
-- Backup/restore and account-security UI
+- Tenant-safe workspace export plus separate System Admin backup/restore controls
 
 ## Verification and quality gates
 
@@ -232,10 +232,12 @@ The system-admin control center includes:
 - platform name, maintenance message and admin banner settings
 - global in-app broadcast notifications
 - SMTP diagnostic email
-- platform SQLite backup creation/download
+- platform SQLite backup creation/download and guarded restore
 - runtime, database and Prometheus-style metrics
 
 System-admin access is checked by the API, not only hidden in the interface.
+
+Raw platform database access is never granted to a workspace Owner/Admin. Workspace portability uses tenant-scoped JSON export. Full SQLite restore requires maintenance mode, no online workers, and an idle persistent queue before the System Admin API will proceed.
 
 ## Deep assessment workflows
 
