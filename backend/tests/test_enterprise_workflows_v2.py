@@ -114,3 +114,16 @@ def test_asset_history_is_workspace_scoped_and_tracks_changes():
         assert history["summary"]["status_changes"]==1
         other=r.create_signup("other@example.com","Other",hash_password("correct-horse-battery"),"Other")
         assert r.asset_history(other["organization_id"],t["id"],"https://example.com/account") is None
+
+
+def test_member_activity_is_workspace_scoped_and_includes_security_metadata():
+    with tempfile.TemporaryDirectory() as d:
+        r,owner,p,t=setup_repo(os.path.join(d,"member-activity.sqlite3"))
+        member=r.add_member(owner["organization_id"],"analyst@example.com","Analyst",hash_password("analyst-account-secret"),"analyst")
+        r.audit(owner["organization_id"],owner["user_id"],"TEAM_ROLE_CHANGED","user",member["user_id"],{"role":"admin"},"127.0.0.1")
+        rows=r.member_activity(owner["organization_id"],member["user_id"])
+        assert rows and rows[0]["event"]=="TEAM_ROLE_CHANGED"
+        listed={x["id"]:x for x in r.list_members(owner["organization_id"])}
+        assert "email_verified" in listed[member["user_id"]] and "mfa_enabled" in listed[member["user_id"]]
+        other=r.create_signup("other-team@example.com","Other",hash_password("correct-horse-battery"),"Other")
+        assert r.member_activity(other["organization_id"],member["user_id"]) is None
