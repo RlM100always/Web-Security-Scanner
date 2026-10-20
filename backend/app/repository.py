@@ -460,7 +460,7 @@ class Repository:
                 m=c.execute("select organization_id from memberships where user_id=? and active=1 order by created_at limit 1",(user_id,)).fetchone()
                 effective_org=m['organization_id'] if m else None
         if user_id and effective_org and not self.notification_enabled(user_id,effective_org,kind,'in_app'):return None
-        row={'id':self._id(),'organization_id':org_id,'user_id':user_id,'type':kind,'title':title,'body':body,'read_at':None,'meta_json':json.dumps(meta or {}),'created_at':self.now()}
+        row={'id':self._id(),'organization_id':effective_org,'user_id':user_id,'type':kind,'title':title,'body':body,'read_at':None,'meta_json':json.dumps(meta or {}),'created_at':self.now()}
         with self.conn() as c:c.execute("insert into notifications values(?,?,?,?,?,?,?,?,?)",tuple(row.values()))
         return row['id']
 
@@ -1269,6 +1269,7 @@ class Repository:
             if 'interval_minutes' in updates:
                 sets.append("next_run_at=?");vals.append((datetime.now(timezone.utc)+timedelta(minutes=int(updates['interval_minutes']))).isoformat())
             if sets:
+                if any(k in updates for k in {'scan_profile_id','profile'}):sets.append("last_error=null")
                 vals.append(schedule_id);c.execute("update schedules set "+",".join(sets)+" where id=?",vals)
             out=c.execute("select * from schedules where id=?",(schedule_id,)).fetchone()
         return dict(out) if out else None
@@ -1342,7 +1343,7 @@ class Repository:
         scan=self.create_scan(s['target_id'],s['target_url'],mode,user_id,policy,named['id'] if named else None)
         self.enqueue_job('scan',{'scan_id':scan['id'],'target_id':s['target_id'],'schedule_id':schedule_id})
         self.create_schedule_run(schedule_id,scan['id'])
-        with self.conn() as c:c.execute("update schedules set last_run_at=?,last_scan_id=?,run_count=run_count+1 where id=?",(self.now(),scan['id'],schedule_id))
+        with self.conn() as c:c.execute("update schedules set last_run_at=?,last_scan_id=?,run_count=run_count+1,last_error=null where id=?",(self.now(),scan['id'],schedule_id))
         return scan
 
     def enqueue_due_schedules(self):
@@ -1357,7 +1358,8 @@ class Repository:
                 message="Schedule blocked: bound scan profile is inactive or missing"
                 with self.conn() as c:c.execute("update schedules set next_run_at=?,failure_count=failure_count+1,last_error=? where id=?",(nxt,message,s['id']))
                 if s.get('created_by'):
-                    self.add_notification(None,s['created_by'],'schedule_failed','Recurring assessment blocked',message,{'schedule_id':s['id'],'scan_profile_id':s.get('scan_profile_id')})
+                    org_id=self.target_organization(t['id'])
+                    self.add_notification(org_id,s['created_by'],'schedule_failure','Recurring assessment blocked',message,{'schedule_id':s['id'],'scan_profile_id':s.get('scan_profile_id')})
                 continue
             policy=named['policy'] if named else self.get_project_policy(t['project_id'])
             mode=named['scan_mode'] if named else s['profile']
@@ -1365,7 +1367,7 @@ class Repository:
             self.enqueue_job('scan',{'scan_id':scan['id'],'target_id':t['id'],'schedule_id':s['id']})
             self.create_schedule_run(s['id'],scan['id'])
             nxt=(datetime.now(timezone.utc)+timedelta(minutes=s['interval_minutes'])).isoformat()
-            with self.conn() as c:c.execute("update schedules set next_run_at=?,last_run_at=?,last_scan_id=?,run_count=run_count+1 where id=?",(nxt,self.now(),scan['id'],s['id']))
+            with self.conn() as c:c.execute("update schedules set next_run_at=?,last_run_at=?,last_scan_id=?,run_count=run_count+1,last_error=null where id=?",(nxt,self.now(),scan['id'],s['id']))
         return len(rows)
     # ZAP / audit
     def save_zap_import(self,scan_id,filename,items,comparison,created_by):
