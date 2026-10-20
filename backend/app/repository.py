@@ -592,6 +592,47 @@ class Repository:
         for r in rows:
             r['standards']=json.loads(r.pop('standards_json'));r['metadata']=json.loads(r.pop('metadata_json'))
         return rows
+    def latest_assets_for_org(self,org_id,limit=2000):
+        with self.conn() as c:
+            rows=[dict(r) for r in c.execute("""select a.*,t.name target_name,t.url target_url,p.name project_name,s.score scan_score,s.completed_at scan_completed_at
+              from assets a join scans s on s.id=a.scan_id join targets t on t.id=a.target_id join projects p on p.id=t.project_id
+              where p.organization_id=? and s.status='COMPLETED' and s.id=(
+                select s2.id from scans s2 where s2.target_id=a.target_id and s2.status='COMPLETED'
+                order by s2.created_at desc limit 1
+              )
+              order by p.name,t.name,a.depth,a.url limit ?""",(org_id,limit))]
+        for r in rows:
+            try:r['metadata']=json.loads(r.pop('metadata_json') or '{}')
+            except Exception:r['metadata']={}
+        return rows
+
+    def asset_portfolio_summary(self,org_id):
+        assets=self.latest_assets_for_org(org_id,10000)
+        return {
+          'total':len(assets),
+          'html':sum(1 for a in assets if a.get('kind')=='html'),
+          'json':sum(1 for a in assets if a.get('kind')=='json'),
+          'redirected':sum(1 for a in assets if (a.get('metadata') or {}).get('redirects')),
+          'truncated':sum(1 for a in assets if (a.get('metadata') or {}).get('truncated')),
+          'targets':len({a.get('target_id') for a in assets}),
+          'projects':len({a.get('project_name') for a in assets}),
+        }
+
+    def finding_portfolio_summary(self,org_id):
+        rows=self.list_finding_states(org_id,limit=5000)
+        counts={}
+        for r in rows:counts[r['state']]=counts.get(r['state'],0)+1
+        overdue=0;now=datetime.now(timezone.utc)
+        for r in rows:
+            due=r.get('due_at')
+            if due and r.get('state') not in {'REMEDIATED','FALSE_POSITIVE'}:
+                try:
+                    parsed=datetime.fromisoformat(due if 'T' in due else due+'T23:59:59+00:00')
+                    if parsed.tzinfo is None:parsed=parsed.replace(tzinfo=timezone.utc)
+                    if parsed<now:overdue+=1
+                except Exception:pass
+        return {'total':len(rows),'states':counts,'overdue':overdue,'assigned':sum(1 for r in rows if r.get('assignee_user_id'))}
+
     def asset_comparison(self,scan_id):
         current=self.get_scan(scan_id)
         if not current:return {}
