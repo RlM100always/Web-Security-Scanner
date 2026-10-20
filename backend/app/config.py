@@ -28,3 +28,5 @@ class Config:
     INVITE_TTL_HOURS=int(os.getenv("INVITE_TTL_HOURS","48"))
     MFA_ISSUER=os.getenv("MFA_ISSUER","SentinelScope")
     BACKUP_DIR=os.getenv("BACKUP_DIR", str(BASE_DIR / "instance" / "backups"))
+
+    SYSTEM_ADMIN_EMAILS=[x.strip().lower() for x in os.getenv("SYSTEM_ADMIN_EMAILS","").split(",") if x.strip()]
