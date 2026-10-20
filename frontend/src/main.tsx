@@ -1,1 +1,3 @@
-import React from 'react';import{createRoot}from'react-dom/client';import App from'./App';import ErrorBoundary from'./ErrorBoundary';import'./styles.css';import'./premium.css';import'./enterprise.css';createRoot(document.getElementById('root')!).render(<React.StrictMode><ErrorBoundary><App/></ErrorBoundary></React.StrictMode>);
+import React from 'react';import{createRoot}from'react-dom/client';import App from'./App';import ErrorBoundary from'./ErrorBoundary';import'./styles.css';import'./premium.css';import'./enterprise.css';
+if('serviceWorker'in navigator&&import.meta.env.PROD){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{})})}
+createRoot(document.getElementById('root')!).render(<React.StrictMode><ErrorBoundary><App/></ErrorBoundary></React.StrictMode>);
