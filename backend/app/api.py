@@ -766,6 +766,48 @@ def create_blueprint():
         if row is None:return {'error':'Asset or target not found'},404
         return row
 
+    @bp.get('/exposure-map')
+    @require_auth
+    def exposure_map():
+        ident=current_identity();org_id=ident['organization_id']
+        projects=repo().list_projects(org_id)
+        targets=repo().list_targets(org_id=org_id)
+        assets=repo().latest_assets_for_org(org_id,3000)
+        issues=repo().list_finding_states(org_id,limit=5000)
+        members=repo().list_members(org_id)
+        active_issues=[x for x in issues if x.get('state') not in {'REMEDIATED','FALSE_POSITIVE'}]
+        nodes=[];edges=[];seen=set()
+        def add_node(node):
+            if node['id'] not in seen:
+                seen.add(node['id']);nodes.append(node)
+        for p in projects:
+            add_node({'id':'project:'+p['id'],'type':'project','label':p.get('name') or 'Project','status':p.get('status') or 'active'})
+        for t in targets:
+            tid='target:'+t['id'];add_node({'id':tid,'type':'target','label':t.get('name') or t.get('url'),'subtitle':t.get('url'),'criticality':t.get('criticality') or 'medium','environment':t.get('environment') or 'production','verified':bool(t.get('verified')),'owner_user_id':t.get('owner_user_id')})
+            edges.append({'source':'project:'+t['project_id'],'target':tid,'type':'contains'})
+        for a in assets:
+            aid='asset:'+a['id'];add_node({'id':aid,'type':'asset','label':a.get('title') or a.get('url'),'subtitle':a.get('url'),'kind':a.get('kind'),'status_code':a.get('status_code'),'depth':a.get('depth')})
+            edges.append({'source':'target:'+a['target_id'],'target':aid,'type':'discovered'})
+        for x in active_issues:
+            xid='issue:'+x['id'];risk=int(x.get('risk_score') or 0);severity=x.get('effective_severity') or x.get('base_severity') or 'INFO'
+            add_node({'id':xid,'type':'issue','label':x.get('title') or x.get('check_id'),'severity':severity,'risk_score':risk,'state':x.get('state'),'overdue':bool(x.get('overdue')),'assignee_user_id':x.get('assignee_user_id')})
+            edges.append({'source':'target:'+x['target_id'],'target':xid,'type':'has_issue'})
+            if x.get('assignee_user_id'):
+                uid='user:'+x['assignee_user_id'];member=next((m for m in members if m['id']==x['assignee_user_id']),None)
+                add_node({'id':uid,'type':'owner','label':member.get('name') if member else 'Assigned member','subtitle':member.get('email') if member else None})
+                edges.append({'source':xid,'target':uid,'type':'owned_by'})
+        risk_by_target={}
+        for x in active_issues:
+            row=risk_by_target.setdefault(x['target_id'],{'target_id':x['target_id'],'risk_score':0,'issues':0,'critical':0,'high':0,'overdue':0})
+            row['risk_score']=max(row['risk_score'],int(x.get('risk_score') or 0));row['issues']+=1
+            sev=(x.get('effective_severity') or x.get('base_severity') or '').upper()
+            if sev=='CRITICAL':row['critical']+=1
+            if sev=='HIGH':row['high']+=1
+            if x.get('overdue'):row['overdue']+=1
+        top_targets=sorted(risk_by_target.values(),key=lambda x:(-x['risk_score'],-x['issues']))[:8]
+        summary={'projects':len(projects),'targets':len(targets),'assets':len(assets),'active_issues':len(active_issues),'assigned_issues':sum(1 for x in active_issues if x.get('assignee_user_id')),'overdue_issues':sum(1 for x in active_issues if x.get('overdue')),'critical_high':sum(1 for x in active_issues if (x.get('effective_severity') or x.get('base_severity')) in {'CRITICAL','HIGH'})}
+        return {'nodes':nodes,'edges':edges,'summary':summary,'top_targets':top_targets}
+
     @bp.get('/portfolio/issues')
     @require_auth
     def issue_portfolio():
