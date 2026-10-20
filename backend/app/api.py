@@ -206,6 +206,15 @@ def create_blueprint():
         for r in rows:r['current']=r['id']==ident['session_id']
         return jsonify(rows)
 
+    @bp.delete('/auth/account')
+    @require_auth
+    def delete_account():
+        ident=current_identity();d=request.get_json(force=True) or {};user=repo().get_user_by_id(ident['user_id'])
+        if not verify_password(d.get('password') or '',user['password_hash']):return {'error':'Password is incorrect'},400
+        try:repo().delete_account(ident['user_id'])
+        except ValueError as e:return {'error':str(e)},400
+        response=jsonify({'ok':True});response.delete_cookie('wss_session',path='/');return response
+
     @bp.get('/auth/me')
     @require_auth
     def me():
@@ -488,6 +497,13 @@ def create_blueprint():
             return {'error':str(e)},400
         if os.path.exists(tmp):os.remove(tmp)
         return {'ok':True,'message':'Backup restored. Restart API and worker services before continuing.'}
+
+    @bp.get('/export/workspace.json')
+    @require_role('owner')
+    def export_workspace():
+        ident=current_identity()
+        payload=repo().export_workspace(ident['organization_id'])
+        return Response(json.dumps(payload,indent=2),mimetype='application/json',headers={'Content-Disposition':'attachment; filename=sentinelscope-workspace-export.json'})
 
     @bp.get('/metrics')
     @require_role('admin')
