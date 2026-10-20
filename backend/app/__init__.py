@@ -23,7 +23,14 @@ def create_app(config_object=None):
     @app.before_request
     def csrf_guard():
         if request.path.startswith("/api/v1/") and request.method not in {"GET","HEAD","OPTIONS"}:
-            if request.path in {"/api/v1/auth/login","/api/v1/auth/signup"}:
+            if request.path in {
+                "/api/v1/auth/login",
+                "/api/v1/auth/signup",
+                "/api/v1/auth/forgot-password",
+                "/api/v1/auth/reset-password",
+                "/api/v1/auth/email-verification/confirm",
+                "/api/v1/auth/invitations/accept"
+            }:
                 return None
             identity=current_identity()
             if identity:
