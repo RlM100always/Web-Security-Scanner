@@ -2,7 +2,7 @@ import React,{useState}from'react';
 import{ShieldCheck,Menu,X,ArrowRight,CheckCircle2,Radar,FolderKanban,TriangleAlert,History,KeyRound,Database,Users,FileText,Globe2,LockKeyhole,Workflow,Search,Activity,Braces,BookOpen,ChevronRight,ServerCog,GitCompareArrows}from'lucide-react';
 import'./public.css';import'./public-enterprise.css';
 
-const links=[['Product','/product'],['Solutions','/solutions'],['Enterprise','/enterprise'],['Security','/security'],['Docs','/docs'],['About','/about']];
+const links=[['Product','/product'],['Solutions','/solutions'],['Enterprise','/enterprise'],['Security','/security'],['Developers','/developers'],['Docs','/docs']];
 
 export default function PublicSite({path='/'}:{path?:string}){
   const[open,setOpen]=useState(false);
@@ -14,7 +14,7 @@ export default function PublicSite({path='/'}:{path?:string}){
       <div className="publicActions"><a className="textLink" href="/login">Sign in</a><a className="publicPrimary" href="/signup">Start workspace <ArrowRight/></a><button className="publicMenu" onClick={()=>setOpen(!open)} aria-label="Toggle navigation">{open?<X/>:<Menu/>}</button></div>
     </header>
     {page==='home'?<Home/>:<StaticPage page={page}/>}
-    <footer className="publicFooter"><div><a className="publicBrand" href="/"><span><ShieldCheck/></span><div><b>SentinelScope</b><small>Authorised, non-destructive assessment</small></div></a><p>Designed for explainable web-security assessment, remediation tracking and repeatable evidence.</p></div><div className="footerGrid"><div><b>Platform</b><a href="/product">Product</a><a href="/features">Features</a><a href="/workflow">Workflow</a><a href="/solutions">Solutions</a></div><div><b>Enterprise</b><a href="/enterprise">Enterprise controls</a><a href="/deployment">Deployment model</a><a href="/standards">Standards</a><a href="/research">Research & evaluation</a></div><div><b>Trust</b><a href="/security">Security model</a><a href="/responsible-use">Responsible use</a><a href="/docs">Documentation</a><a href="/about">About</a></div><div><b>Workspace</b><a href="/login">Sign in</a><a href="/signup">Create account</a></div></div><small className="footerNote">Use only against systems you own or are explicitly authorised to assess. SentinelScope intentionally avoids destructive exploitation, credential attacks and denial-of-service behaviour.</small></footer>
+    <footer className="publicFooter"><div><a className="publicBrand" href="/"><span><ShieldCheck/></span><div><b>SentinelScope</b><small>Authorised, non-destructive assessment</small></div></a><p>Designed for explainable web-security assessment, remediation tracking and repeatable evidence.</p></div><div className="footerGrid"><div><b>Platform</b><a href="/product">Product</a><a href="/features">Features</a><a href="/workflow">Workflow</a><a href="/solutions">Solutions</a></div><div><b>Enterprise</b><a href="/enterprise">Enterprise controls</a><a href="/integrations">Integrations</a><a href="/reports">Reporting</a><a href="/deployment">Deployment model</a></div><div><b>Developers</b><a href="/developers">Developer platform</a><a href="/api">API access</a><a href="/architecture">Architecture</a><a href="/scanner-checks">Scanner checks</a></div><div><b>Trust</b><a href="/trust">Trust center</a><a href="/security">Security model</a><a href="/responsible-use">Responsible use</a><a href="/standards">Standards</a></div><div><b>Workspace</b><a href="/login">Sign in</a><a href="/signup">Create account</a></div></div><small className="footerNote">Use only against systems you own or are explicitly authorised to assess. SentinelScope intentionally avoids destructive exploitation, credential attacks and denial-of-service behaviour.</small></footer>
   </div>
 }
 
@@ -118,6 +118,48 @@ function StaticPage({page}:{page:string}){
       ['Worker isolation','Persistent queued scan jobs execute in a separate worker process with heartbeat, retries, cancellation and stale-lease recovery.',ServerCog],
       ['Durable local state','SQLite WAL stores workspace state, evidence, queue data, audit records and lifecycle history; online backups and integrity-aware restore are supported.',Database],
       ['Scaling boundary','For horizontally distributed or multi-region operation, the documented architecture expects database/queue/object-storage components to be replaced without changing the product workflow model.',Activity]
+    ]},
+    trust:{eyebrow:'TRUST CENTER',title:'Security boundaries, operational controls and evidence you can inspect.',intro:'SentinelScope is designed so security teams can understand not only what the product finds, but how the platform itself is controlled, audited and operated.',sections:[
+      ['Identity assurance','Email verification, login throttling, HttpOnly sessions, CSRF protection, TOTP MFA, one-time recovery codes, session revocation and role-aware workspace access.',LockKeyhole],
+      ['Data & secret handling','SQLite WAL persistence, hashed API/session tokens, optional Fernet encryption for protected secrets, integrity-aware backups and explicit retention controls.',Database],
+      ['Scanner safety boundary','SSRF-resistant target validation, same-origin crawling, bounded requests, public-destination validation and an explicit exclusion of destructive exploitation, brute force and denial-of-service behavior.',ShieldCheck],
+      ['Auditability','Administrative actions, issue decisions, assignment changes, scan policy snapshots, delivery attempts and remediation history remain linked to actors and timestamps.',History]
+    ]},
+    integrations:{eyebrow:'INTEGRATIONS',title:'Connect security events to the systems your team already operates.',intro:'Signed outbound webhooks and scoped API keys let SentinelScope participate in ticketing, chat, SIEM and internal automation without turning the scanner into an uncontrolled integration hub.',sections:[
+      ['Signed webhooks','Subscribe HTTPS endpoints to scan, finding, risk and schedule events. Every request carries event, delivery ID and HMAC-SHA256 signature metadata.',Webhook],
+      ['Durable delivery history','Deliveries are queued, attempted by workers, persisted with response metadata and retryable from the workspace UI.',Activity],
+      ['Scoped API access','Expiring bearer keys expose read, scan and write capabilities with server-side scope enforcement and one-time raw secret display.',KeyRound],
+      ['Operational control','Pause endpoints, rotate signing secrets, send test events, review failures and explicitly retry delivery attempts.',ServerCog]
+    ]},
+    api:{eyebrow:'DEVELOPER API',title:'Automate assessments and security operations through explicit, scoped interfaces.',intro:'The REST API mirrors core workspace workflows so integrations can create projects and targets, queue scans, inspect findings, manage lifecycle state and retrieve reports without bypassing governance.',sections:[
+      ['Authentication','Interactive sessions use CSRF-protected cookies; automation uses expiring scoped bearer keys whose stored representation is hashed.',KeyRound],
+      ['Assessment operations','Queue authorised scans, retrieve live state, consume findings/assets/standards summaries and export JSON/HTML/PDF evidence.',Radar],
+      ['Lifecycle operations','Manage persistent issue state, comments, assignment, due dates and remediation verification through workspace-authorised endpoints.',Workflow],
+      ['Administrative boundaries','Role checks, API scopes, verified-target rules, project archive state and system-admin boundaries are enforced by the backend.',ShieldCheck]
+    ]},
+    architecture:{eyebrow:'ARCHITECTURE',title:'A modular single-node architecture with explicit boundaries for future scale.',intro:'The current product intentionally uses SQLite WAL for its deployment scope while preserving clear API, worker, scanner and persistence boundaries that can be replaced independently later.',sections:[
+      ['React product shell','A responsive TypeScript application provides separate desktop and mobile interaction models, command navigation and persistent workflow views.',Braces],
+      ['Flask application API','Authentication, RBAC, governance, reports, integrations and security workflow APIs remain separated from scanner execution.',ServerCog],
+      ['Persistent worker queue','Scans and webhook deliveries are processed through durable SQLite jobs with retries, cancellation, stale-job recovery and worker heartbeats.',Activity],
+      ['Scanner isolation boundary','Target validation, safe HTTP client behavior, crawler scope and check execution are encapsulated from account and administration logic.',ShieldCheck]
+    ]},
+    'scanner-checks':{eyebrow:'SCANNER CHECK CATALOG',title:'Transparent checks with evidence, confidence and bounded behavior.',intro:'SentinelScope favors repeatable, explainable observations over opaque vulnerability claims. Each check records what was observed and how the result should be reviewed.',sections:[
+      ['Transport & TLS','HTTPS, redirects, certificate validation, protocol/cipher evidence, expiry and HSTS presence/quality.',LockKeyhole],
+      ['Browser controls','CSP presence and directive quality, frame protection, MIME sniffing, referrer policy, permissions policy and cross-origin isolation signals.',ShieldCheck],
+      ['Cookies, forms & CORS','Cookie flags, form transport, CSRF heuristics, sensitive GET forms, cross-origin form actions and benign Origin-reflection behavior.',Braces],
+      ['Disclosure & governance','Technology banners, developer markers, mixed content, advertised methods, security.txt and asset-level response metadata.',Search]
+    ]},
+    reports:{eyebrow:'REPORTING',title:'Reports that preserve the context needed to make a decision.',intro:'Exports are generated from persisted scan evidence rather than from a disconnected browser snapshot, so policy, scope, target context and limitations travel with the result.',sections:[
+      ['Executive context','Security score, target identity, business context, active risk and priority findings are summarized for non-specialist review.',FileText],
+      ['Technical evidence','Detailed findings include evidence, confidence, standards references, remediation and affected URLs.',Search],
+      ['Scope & methodology','Report outputs retain scan profile, policy snapshot, assets, drift, methodology and scanner limitations.',Radar],
+      ['Portable formats','PDF supports stakeholder distribution; HTML supports browser review; JSON supports downstream automation and archival.',Braces]
+    ]},
+    developers:{eyebrow:'DEVELOPERS',title:'Build controlled automation around the same workflows the UI uses.',intro:'Developer-facing capabilities are intentionally connected to the platform permission model: automation can accelerate work, but it cannot silently bypass authorisation or scanner safety controls.',sections:[
+      ['REST API','Workspace operations are available through versioned API endpoints with cookie-session or bearer-key authentication.',Braces],
+      ['Webhooks','Subscribe to high-value events and verify each delivery with HMAC-SHA256 using a workspace-managed signing secret.',Webhook],
+      ['Evidence exports','Consume report JSON, issue portfolios, asset inventories, audit records and scan histories for approved internal workflows.',FileText],
+      ['Repository documentation','Architecture, deployment, API, scanner-check, ethics and evaluation documents explain implementation choices and current scaling boundaries.',BookOpen]
     ]},
     about:{eyebrow:'ABOUT THE PROJECT',title:'A transparent security-assessment platform built for explainability.',intro:'SentinelScope focuses on clear methodology, reproducible evidence and safe operation rather than opaque “magic” vulnerability claims.',sections:[
       ['Purpose','Help students, small teams and security practitioners understand repeatable web-security checks and track remediation in a controlled workflow.',ShieldCheck],
