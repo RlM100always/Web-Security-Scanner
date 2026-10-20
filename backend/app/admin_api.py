@@ -14,6 +14,16 @@ def create_admin_blueprint():
 
     def repo(): return current_app.extensions["repo"]
 
+    def bounded_query_int(name,default,minimum,maximum):
+        raw=request.args.get(name)
+        if raw is None or str(raw).strip()=='':
+            return default,None
+        try:value=int(raw)
+        except (TypeError,ValueError):
+            return None,({"error":f"{name} must be a whole number"},400)
+        return max(minimum,min(value,maximum)),None
+
+
     def ip_addr():
         if current_app.config.get("TRUST_PROXY_HEADERS"):
             return (request.headers.get("X-Forwarded-For","").split(",")[0].strip() or request.remote_addr or "")
@@ -49,7 +59,9 @@ def create_admin_blueprint():
     @bp.get("/users")
     @require_system_admin
     def users():
-        return jsonify(repo().admin_list_users(min(int(request.args.get("limit",500)),1000)))
+        limit,error=bounded_query_int("limit",500,1,1000)
+        if error:return error
+        return jsonify(repo().admin_list_users(limit))
 
     @bp.patch("/users/<user_id>")
     @require_system_admin
@@ -72,7 +84,9 @@ def create_admin_blueprint():
     @bp.get("/organizations")
     @require_system_admin
     def organizations():
-        return jsonify(repo().admin_list_organizations(min(int(request.args.get("limit",500)),1000)))
+        limit,error=bounded_query_int("limit",500,1,1000)
+        if error:return error
+        return jsonify(repo().admin_list_organizations(limit))
 
     @bp.patch("/organizations/<org_id>")
     @require_system_admin
@@ -87,7 +101,9 @@ def create_admin_blueprint():
     @bp.get("/scans")
     @require_system_admin
     def scans():
-        return jsonify(repo().admin_list_scans(min(int(request.args.get("limit",500)),1000)))
+        limit,error=bounded_query_int("limit",500,1,1000)
+        if error:return error
+        return jsonify(repo().admin_list_scans(limit))
 
     @bp.post("/scans/<scan_id>/cancel")
     @require_system_admin
@@ -99,7 +115,9 @@ def create_admin_blueprint():
     @bp.get("/jobs")
     @require_system_admin
     def jobs():
-        return jsonify(repo().admin_list_jobs(min(int(request.args.get("limit",500)),1000)))
+        limit,error=bounded_query_int("limit",500,1,1000)
+        if error:return error
+        return jsonify(repo().admin_list_jobs(limit))
 
     @bp.post("/jobs/<job_id>/retry")
     @require_system_admin
@@ -116,7 +134,10 @@ def create_admin_blueprint():
     @bp.post("/jobs/recover-stale")
     @require_system_admin
     def jobs_recover_stale():
-        d=request.get_json(silent=True) or {};minutes=max(1,min(int(d.get("stale_minutes",10)),1440))
+        d=request.get_json(silent=True) or {}
+        try:minutes=int(d.get("stale_minutes",10))
+        except (TypeError,ValueError):return {"error":"stale_minutes must be a whole number"},400
+        minutes=max(1,min(minutes,1440))
         result=repo().recover_stale_jobs(minutes)
         audit("SYSTEM_STALE_JOBS_RECOVERED","job",None,{"stale_minutes":minutes,**{k:len(v) if isinstance(v,list) else v for k,v in result.items()}})
         return {"ok":True,**result}
@@ -135,12 +156,16 @@ def create_admin_blueprint():
     @bp.get("/security-events")
     @require_system_admin
     def security_events():
-        return repo().admin_security_events(min(int(request.args.get("limit",300)),1000))
+        limit,error=bounded_query_int("limit",300,1,1000)
+        if error:return error
+        return repo().admin_security_events(limit)
 
     @bp.get("/audit")
     @require_system_admin
     def audit_log():
-        return jsonify(repo().admin_list_audit(min(int(request.args.get("limit",1000)),5000)))
+        limit,error=bounded_query_int("limit",1000,1,5000)
+        if error:return error
+        return jsonify(repo().admin_list_audit(limit))
 
     @bp.get("/settings")
     @require_system_admin
