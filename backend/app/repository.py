@@ -1073,6 +1073,12 @@ class Repository:
         with self.conn() as c:c.execute("insert into schedule_runs values(?,?,?,?,?,?)",tuple(row.values()))
         return row
 
+    def schedule_notification_context(self,scan_id):
+        with self.conn() as c:r=c.execute("""select sr.schedule_id,s.created_by,s.notify_on_failure,s.name,t.name target_name,p.organization_id
+          from schedule_runs sr join schedules s on s.id=sr.schedule_id join targets t on t.id=s.target_id
+          join projects p on p.id=t.project_id where sr.scan_id=? order by sr.created_at desc limit 1""",(scan_id,)).fetchone()
+        return dict(r) if r else None
+
     def finalize_schedule_run(self,scan_id,status):
         notify=None
         with self.conn() as c:
