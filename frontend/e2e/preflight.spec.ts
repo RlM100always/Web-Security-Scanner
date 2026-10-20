@@ -23,7 +23,7 @@ test('target setup preflight is visible before assessment',async({page})=>{
   await page.getByLabel('Display name').fill('Public Portal');
   await page.getByLabel('Target URL').fill('https://example.com/');
   await page.getByLabel(/I own this target/).check();
-  await page.getByRole('button',{name:'Add target',exact:true}).click();
+  await page.getByRole('dialog',{name:'Add authorised target'}).getByRole('button',{name:'Add target',exact:true}).click();
   await expect(page.getByText('Public Portal')).toBeVisible();
 
   const targetIdResponse=await page.request.get('/api/v1/targets');
