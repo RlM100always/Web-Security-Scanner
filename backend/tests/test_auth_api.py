@@ -49,7 +49,7 @@ def test_signup_session_csrf_and_project_rbac():
         assert member.status_code==201
 
 
-def test_email_verification_and_password_reset():
+def test_email_verification_and_password_reset(monkeypatch):
     with tempfile.TemporaryDirectory() as d:
         app=build(os.path.join(d,"api.sqlite3"));app.testing=True
         client=app.test_client()
@@ -58,8 +58,17 @@ def test_email_verification_and_password_reset():
         token=payload["development_verification_link"].split("token=",1)[1]
         verified=client.post("/api/v1/auth/email-verification/confirm",json={"token":token})
         assert verified.status_code==200
+        captured={}
+        def fake_send(config,to_address,subject,text_body):
+            captured.update({"to":to_address,"subject":subject,"body":text_body})
+            return {"delivered":True,"mode":"smtp"}
+        import app.api as api_module
+        monkeypatch.setattr(api_module,"send_email",fake_send)
         forgot=client.post("/api/v1/auth/forgot-password",json={"email":"owner@example.com"})
-        reset_token=forgot.get_json()["development_reset_link"].split("token=",1)[1]
+        assert forgot.status_code==200 and "development_reset_link" not in forgot.get_json()
+        unknown=client.post("/api/v1/auth/forgot-password",json={"email":"missing@example.com"})
+        assert unknown.get_json()==forgot.get_json()
+        reset_token=captured["body"].split("token=",1)[1].strip()
         reset=client.post("/api/v1/auth/reset-password",json={"token":reset_token,"new_password":"new-secure-password-123"})
         assert reset.status_code==200
         login=client.post("/api/v1/auth/login",json={"email":"owner@example.com","password":"new-secure-password-123"})
