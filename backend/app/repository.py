@@ -1271,7 +1271,12 @@ class Repository:
             c.commit();row=c.execute("select * from jobs where id=?",(r['id'],)).fetchone()
         d=dict(row);d['payload']=json.loads(d.pop('payload_json'));return d
     def finish_job(self,id):
-        with self.conn() as c:c.execute("update jobs set status='COMPLETED',completed_at=?,locked_by=null where id=?",(self.now(),id))
+        with self.conn() as c:c.execute("update jobs set status='COMPLETED',completed_at=?,locked_by=null,locked_at=null where id=?",(self.now(),id))
+    def cancel_job(self,id,reason='Cancelled'):
+        with self.conn() as c:
+            cur=c.execute("""update jobs set status='CANCELLED',completed_at=?,locked_by=null,locked_at=null,last_error=?
+              where id=? and status in ('QUEUED','RUNNING')""",(self.now(),reason[:1000],id))
+            return cur.rowcount>0
     def fail_job(self,id,error,retry=True):
         with self.conn() as c:
             r=c.execute("select attempts,max_attempts from jobs where id=?",(id,)).fetchone()
