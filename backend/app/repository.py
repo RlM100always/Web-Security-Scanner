@@ -357,9 +357,18 @@ class Repository:
             tids=[r[0] for r in c.execute("select id from targets where project_id=?",(id,))]
             for tid in tids:
                 sids=[r[0] for r in c.execute("select id from scans where target_id=?",(tid,))]
+                state_ids=[r[0] for r in c.execute("select id from finding_states where target_id=?",(tid,))]
+                for state_id in state_ids:
+                    c.execute("delete from finding_comments where finding_state_id=?",(state_id,))
+                    c.execute("delete from remediation_verifications where finding_state_id=?",(state_id,))
+                c.execute("delete from finding_states where target_id=?",(tid,))
                 for sid in sids:
-                    c.execute("delete from findings where scan_id=?",(sid,));c.execute("delete from scan_events where scan_id=?",(sid,));c.execute("delete from scans where id=?",(sid,))
+                    c.execute("delete from assets where scan_id=?",(sid,))
+                    c.execute("delete from remediation_verifications where scan_id=?",(sid,))
+                    c.execute("delete from findings where scan_id=?",(sid,));c.execute("delete from scan_events where scan_id=?",(sid,));c.execute("delete from zap_imports where scan_id=?",(sid,));c.execute("delete from scans where id=?",(sid,))
+                c.execute("delete from schedules where target_id=?",(tid,))
                 c.execute("delete from target_verifications where target_id=?",(tid,));c.execute("delete from targets where id=?",(tid,))
+            c.execute("delete from scan_policies where project_id=?",(id,))
             c.execute("delete from projects where id=?",(id,))
         return True
     def create_target(self,project_id,url,name,authorized=False,verified=False,created_by=None):
@@ -386,7 +395,14 @@ class Repository:
             where t.id=? and p.organization_id=?""",(target_id,org_id)).fetchone()
             if not row:return False
             scan_ids=[r[0] for r in c.execute("select id from scans where target_id=?",(target_id,))]
+            state_ids=[r[0] for r in c.execute("select id from finding_states where target_id=?",(target_id,))]
+            for state_id in state_ids:
+                c.execute("delete from finding_comments where finding_state_id=?",(state_id,))
+                c.execute("delete from remediation_verifications where finding_state_id=?",(state_id,))
+            c.execute("delete from finding_states where target_id=?",(target_id,))
             for sid in scan_ids:
+                c.execute("delete from assets where scan_id=?",(sid,))
+                c.execute("delete from remediation_verifications where scan_id=?",(sid,))
                 c.execute("delete from findings where scan_id=?",(sid,))
                 c.execute("delete from scan_events where scan_id=?",(sid,))
                 c.execute("delete from zap_imports where scan_id=?",(sid,))
