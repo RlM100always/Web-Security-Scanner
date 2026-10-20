@@ -53,25 +53,29 @@ def run_scan(target,profile="standard",allow_private=False,progress=None,policy=
     start=time.perf_counter();target=validate_target(target,allow_private);emit=progress or (lambda *a,**k:None)
     policy=normalize_policy(profile,policy)
     client=SafeHttpClient(allow_private=allow_private)
-    findings=[];assets=[];emit("VALIDATING_TARGET",5,"Target validated")
-    findings.extend(run_transport_checks(target,client));emit("DISCOVERING",15,"Transport checks complete")
-    if profile!="quick":findings.extend(run_origin_checks(target,client))
-    emit("DISCOVERING",22,"Origin-level configuration checks complete")
-    pages=crawl(target,client,policy["max_pages"],policy["max_depth"],policy["include_paths"],policy["exclude_paths"],policy["request_delay_ms"])
-    emit("SCANNING",30,f"Discovered {len(pages)} in-scope asset(s)")
-    if not pages:
-        findings.append(mk("availability.http","Target Reachability","Availability","ERROR","HIGH","HIGH",target,"No page could be retrieved","Checks whether the target can be retrieved safely.","A scan cannot assess an unreachable target.","Verify the URL, network access and target availability.",["NIST SP 800-115"]))
-    for idx,(url,resp,depth,source) in enumerate(pages,1):
-        assets.append(_asset(url,resp,depth,source))
-        findings.extend(run_page_checks(url,resp))
-        emit("SCANNING",30+int(50*idx/max(1,len(pages))),f"Checked {url}")
-    disabled=policy["disabled_checks"]
-    if disabled:findings=[f for f in findings if f.check_id not in disabled]
-    seen=set();unique=[]
-    for f in findings:
-        if f.fingerprint not in seen:seen.add(f.fingerprint);unique.append(f)
-    emit("ANALYZING",88,"Normalizing findings and asset inventory")
-    score=calculate_score(unique);duration=round((time.perf_counter()-start)*1000)
-    emit("GENERATING_REPORT",96,"Preparing result")
-    serial_policy={k:(sorted(v) if isinstance(v,set) else v) for k,v in policy.items()}
-    return ScanResult(target,profile,len(pages),duration,score,unique,len(unique),assets,serial_policy)
+    try:
+        findings=[];assets=[];emit("VALIDATING_TARGET",5,"Target validated")
+        findings.extend(run_transport_checks(target,client));emit("DISCOVERING",15,"Transport checks complete")
+        if profile!="quick":findings.extend(run_origin_checks(target,client))
+        emit("DISCOVERING",22,"Origin-level configuration checks complete")
+        pages=crawl(target,client,policy["max_pages"],policy["max_depth"],policy["include_paths"],policy["exclude_paths"],policy["request_delay_ms"])
+        emit("SCANNING",30,f"Discovered {len(pages)} in-scope asset(s)")
+        if not pages:
+            findings.append(mk("availability.http","Target Reachability","Availability","ERROR","HIGH","HIGH",target,"No page could be retrieved","Checks whether the target can be retrieved safely.","A scan cannot assess an unreachable target.","Verify the URL, network access and target availability.",["NIST SP 800-115"]))
+        for idx,(url,resp,depth,source) in enumerate(pages,1):
+            assets.append(_asset(url,resp,depth,source))
+            findings.extend(run_page_checks(url,resp))
+            emit("SCANNING",30+int(50*idx/max(1,len(pages))),f"Checked {url}")
+        disabled=policy["disabled_checks"]
+        if disabled:findings=[f for f in findings if f.check_id not in disabled]
+        seen=set();unique=[]
+        for f in findings:
+            if f.fingerprint not in seen:seen.add(f.fingerprint);unique.append(f)
+        emit("ANALYZING",88,"Normalizing findings and asset inventory")
+        score=calculate_score(unique);duration=round((time.perf_counter()-start)*1000)
+        emit("GENERATING_REPORT",96,"Preparing result")
+        serial_policy={k:(sorted(v) if isinstance(v,set) else v) for k,v in policy.items()}
+        return ScanResult(target,profile,len(pages),duration,score,unique,len(unique),assets,serial_policy)
+    finally:
+        client.close()
+
