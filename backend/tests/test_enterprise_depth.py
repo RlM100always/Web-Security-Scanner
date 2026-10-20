@@ -177,3 +177,25 @@ def test_encrypted_secret_round_trip_and_schedule_failure_notification():
         assert r.finalize_schedule_run(scan["id"],"FAILED")
         notifications=r.list_notifications(owner["organization_id"],owner["user_id"])
         assert any(n["type"]=="schedule_failure" and "failed" in n["title"].lower() for n in notifications)
+
+
+def test_stale_worker_lease_recovery_requeues_interrupted_scan():
+    with tempfile.TemporaryDirectory() as d:
+        r=Repository(os.path.join(d,"recovery.sqlite3"));r.init_schema()
+        owner=r.create_signup("owner@example.com","Owner",hash_password("correct-horse-battery"),"Acme")
+        p=r.create_project("Production","",owner["organization_id"],owner["user_id"])
+        t=r.create_target(p["id"],"https://example.com/","Portal",True,True,owner["user_id"])
+        scan=r.create_scan(t["id"],t["url"],"quick",owner["user_id"],{})
+        job=r.enqueue_job("scan",{"scan_id":scan["id"],"target_id":t["id"]})
+        claimed=r.claim_job("dead-worker:123")
+        assert claimed and claimed["id"]==job["id"]
+        stale=(datetime.now(timezone.utc)-timedelta(minutes=30)).isoformat()
+        with r.conn() as conn:
+            conn.execute("update jobs set locked_at=? where id=?",(stale,job["id"]))
+            conn.execute("update scans set status='SCANNING',stage='SCANNING',progress=50 where id=?",(scan["id"],))
+        result=r.recover_stale_jobs(10)
+        assert job["id"] in result["recovered"]
+        jobs=r.admin_list_jobs()
+        recovered=next(x for x in jobs if x["id"]==job["id"])
+        assert recovered["status"]=="QUEUED" and recovered["locked_by"] is None
+        assert r.get_scan(scan["id"])["stage"]=="RECOVERED"
