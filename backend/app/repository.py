@@ -661,7 +661,7 @@ class Repository:
         with self.conn() as c:
             if is_default:c.execute("update scan_profiles set is_default=0 where project_id=?",(project_id,))
             c.execute("""insert into scan_profiles(id,project_id,name,description,scan_mode,policy_json,version,is_default,active,created_by,updated_by,created_at,updated_at)
-              values(?,?,?,?,?,?,1,?,1,?,?,?,?,?)""",(pid,project_id,name,description,scan_mode,json.dumps(policy),int(is_default),user_id,user_id,now,now))
+              values(?,?,?,?,?,?,1,?,1,?,?,?,?)""",(pid,project_id,name,description,scan_mode,json.dumps(policy),int(is_default),user_id,user_id,now,now))
         return self.get_scan_profile(pid)
 
     def get_scan_profile(self,profile_id):
