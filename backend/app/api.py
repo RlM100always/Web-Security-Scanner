@@ -1194,7 +1194,9 @@ def create_blueprint():
     @require_role('admin')
     def webhook_delete(endpoint_id):
         ident=current_identity()
-        if not repo().delete_webhook_endpoint(endpoint_id,ident['organization_id']):return {'error':'Webhook endpoint not found'},404
+        try:deleted=repo().delete_webhook_endpoint(endpoint_id,ident['organization_id'])
+        except ValueError as e:return {'error':str(e)},409
+        if not deleted:return {'error':'Webhook endpoint not found'},404
         audit('WEBHOOK_DELETED','webhook',endpoint_id);return {'ok':True}
 
     @bp.get('/integrations/webhooks/deliveries')
