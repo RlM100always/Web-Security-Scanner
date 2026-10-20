@@ -257,6 +257,7 @@ def test_exposure_map_is_real_and_workspace_scoped():
         s=repo.create_scan(t["id"],t["url"],"standard",ident["user_id"],{})
         repo.add_assets(s["id"],t["id"],[Asset("https://example.com/account","html",200,"text/html","Account",1,1200,"https://example.com/",{})])
         repo.add_findings(s["id"],[issue()]);repo.sync_finding_states(s["id"])
+        repo.update_scan(s["id"],status="COMPLETED",stage="COMPLETED",progress=100,score=72,completed_at=repo.now())
         response=owner_client.get("/api/v1/exposure-map")
         assert response.status_code==200
         data=response.get_json()
