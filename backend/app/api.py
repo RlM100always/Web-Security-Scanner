@@ -664,10 +664,12 @@ def create_blueprint():
     def report(scan_id,fmt):
         ident=current_identity();s=repo().get_scan(scan_id,ident['organization_id'])
         if not s:return {'error':'Scan not found'},404
-        f=repo().findings(scan_id);comp=repo().comparison(scan_id)
-        if fmt=='json':return Response(as_json(s,f,comp),mimetype='application/json')
-        if fmt=='html':return Response(as_html(s,f,comp),mimetype='text/html')
-        if fmt=='pdf':return Response(as_pdf(s,f,comp),mimetype='application/pdf',headers={'Content-Disposition':f'attachment; filename=scan-{scan_id}.pdf'})
+        f=repo().findings(scan_id);comp=repo().comparison(scan_id);target=repo().get_target(s['target_id'],ident['organization_id'])
+        context={'assets':repo().assets(scan_id),'asset_comparison':repo().asset_comparison(scan_id),'standards_summary':repo().standards_summary(scan_id),
+                 'policy':repo().scan_policy(scan_id),'target':target or {},'zap':repo().latest_zap_import(scan_id)}
+        if fmt=='json':return Response(as_json(s,f,comp,context),mimetype='application/json',headers={'Content-Disposition':f'attachment; filename=sentinelscope-{scan_id}.json'})
+        if fmt=='html':return Response(as_html(s,f,comp,context),mimetype='text/html',headers={'Content-Disposition':f'inline; filename=sentinelscope-{scan_id}.html'})
+        if fmt=='pdf':return Response(as_pdf(s,f,comp,context),mimetype='application/pdf',headers={'Content-Disposition':f'attachment; filename=sentinelscope-{scan_id}.pdf'})
         return {'error':'Unsupported format'},404
 
     # Personal API keys
