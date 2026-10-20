@@ -795,7 +795,9 @@ def create_blueprint():
         if existing and existing.get('project_status')=='archived':return {'error':'Archived projects cannot modify recurring assessments'},409
         saved=repo().update_schedule(schedule_id,ident['organization_id'],updates)
         if not saved:return {'error':'Schedule not found'},404
-        audit('SCHEDULE_UPDATED','schedule',schedule_id,updates);return saved
+        audit('SCHEDULE_UPDATED','schedule',schedule_id,updates)
+        repo().emit_webhook_event(ident['organization_id'],'schedule.updated',{'schedule_id':schedule_id,'changes':updates,'updated_by':ident['user_id']})
+        return saved
 
     @bp.post('/schedules/<schedule_id>/run-now')
     @require_role('analyst')
