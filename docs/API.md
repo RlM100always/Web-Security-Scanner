@@ -168,3 +168,16 @@ Up to 250 selected persistent issues can be updated in one governed operation. S
 `GET /api/v1/finding-states/:state_id` includes `activity` in addition to comments, scan-detection timeline and remediation-verification history.
 
 Activity captures events such as issue creation, reopen, automatic remediation, comments and triage changes.
+
+## Asset provenance
+
+- `GET /api/v1/assets/history?target_id=:target_id&url=:url`
+
+Returns workspace-scoped target context, the latest observation, scan-by-scan asset history and summary counts for first/last seen, status-code changes and content-type changes.
+
+## Notification preferences
+
+- `GET /api/v1/notification-preferences`
+- `PUT /api/v1/notification-preferences`
+
+Preferences are stored per user **and per workspace**. Supported channels currently cover in-app/email delivery for scan completion, scan failure and recurring-assessment failure.
