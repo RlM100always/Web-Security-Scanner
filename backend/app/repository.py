@@ -81,6 +81,25 @@ class Repository:
             create table if not exists backup_history(
               id text primary key,organization_id text,user_id text,filename text not null,size_bytes integer not null,
               created_at text not null);
+            create table if not exists scan_policies(
+              project_id text primary key,policy_json text not null,updated_by text,updated_at text not null);
+            create table if not exists assets(
+              id text primary key,scan_id text not null,target_id text not null,url text not null,kind text not null,
+              status_code integer,content_type text,title text,depth integer not null,size_bytes integer not null,
+              source_url text,metadata_json text not null,created_at text not null);
+            create table if not exists finding_states(
+              id text primary key,target_id text not null,fingerprint text not null,check_id text not null,title text not null,
+              state text not null default 'OPEN',severity_override text,assignee_user_id text,due_at text,risk_reason text,
+              first_seen_at text not null,last_seen_at text not null,occurrences integer not null default 1,
+              last_scan_id text,updated_by text,updated_at text not null,unique(target_id,fingerprint));
+            create table if not exists finding_comments(
+              id text primary key,finding_state_id text not null,user_id text not null,body text not null,created_at text not null);
+            create table if not exists remediation_verifications(
+              id text primary key,finding_state_id text not null,scan_id text not null,requested_by text not null,
+              status text not null default 'QUEUED',created_at text not null,completed_at text);
+            create table if not exists api_keys(
+              id text primary key,user_id text not null,organization_id text not null,name text not null,token_hash text not null unique,
+              prefix text not null,scopes_json text not null,expires_at text,last_used_at text,revoked_at text,created_at text not null);
             create table if not exists system_settings(
               key text primary key,value_json text not null,updated_by text,updated_at text not null);
             create table if not exists worker_heartbeats(
@@ -96,6 +115,7 @@ class Repository:
             self._ensure_column(c,"users","system_admin","integer not null default 0")
             self._ensure_column(c,"organizations","active","integer not null default 1")
             self._ensure_column(c,"scans","cancel_requested","integer not null default 0")
+            self._ensure_column(c,"scans","policy_json","text")
             self._ensure_column(c,"audit_logs","organization_id","text")
             self._ensure_column(c,"audit_logs","user_id","text")
             self._ensure_column(c,"audit_logs","resource_type","text")
@@ -109,11 +129,20 @@ class Repository:
             c.execute("create index if not exists idx_auth_tokens on auth_tokens(user_id,purpose,expires_at)")
             c.execute("create index if not exists idx_invites_org on invitations(organization_id,status)")
             c.execute("create index if not exists idx_notifications_user on notifications(user_id,created_at)")
+            c.execute("create index if not exists idx_assets_scan on assets(scan_id)")
+            c.execute("create index if not exists idx_assets_target on assets(target_id,url)")
+            c.execute("create index if not exists idx_finding_states_target on finding_states(target_id,state,last_seen_at)")
+            c.execute("create index if not exists idx_finding_comments_state on finding_comments(finding_state_id,created_at)")
+            c.execute("create index if not exists idx_remediation_scan on remediation_verifications(scan_id,status)")
+            c.execute("create index if not exists idx_api_keys_org on api_keys(organization_id,revoked_at)")
             c.execute("insert or ignore into system_settings(key,value_json,updated_by,updated_at) values('registration_enabled','true',null,?)",(self.now(),))
             c.execute("insert or ignore into system_settings(key,value_json,updated_by,updated_at) values('maintenance_mode','false',null,?)",(self.now(),))
             c.execute("insert or ignore into system_settings(key,value_json,updated_by,updated_at) values('maintenance_message',?,null,?)",(json.dumps("SentinelScope is temporarily under maintenance."),self.now()))
             c.execute("insert or ignore into system_settings(key,value_json,updated_by,updated_at) values('platform_name',?,null,?)",(json.dumps("SentinelScope"),self.now()))
             c.execute("insert or ignore into system_settings(key,value_json,updated_by,updated_at) values('admin_banner',?,null,?)",(json.dumps(""),self.now()))
+            c.execute("insert or ignore into system_settings(key,value_json,updated_by,updated_at) values('scan_quota_per_day','100',null,?)",(self.now(),))
+            c.execute("insert or ignore into system_settings(key,value_json,updated_by,updated_at) values('max_concurrent_scans_per_org','3',null,?)",(self.now(),))
+            c.execute("insert or ignore into system_settings(key,value_json,updated_by,updated_at) values('scan_retention_days','90',null,?)",(self.now(),))
     # auth / org
     def user_count(self):
         with self.conn() as c:return c.execute("select count(*) from users").fetchone()[0]
@@ -380,11 +409,44 @@ class Repository:
     def complete_verification(self,id,ok,evidence):
         now=self.now() if ok else None
         with self.conn() as c:c.execute("update target_verifications set status=?,evidence=?,verified_at=? where id=?",("VERIFIED" if ok else "FAILED",evidence,now,id))
+    # deep scan policies
+    def get_project_policy(self,project_id):
+        defaults={'max_pages':20,'max_depth':2,'request_delay_ms':100,'include_paths':[],'exclude_paths':[],'disabled_checks':[]}
+        with self.conn() as c:r=c.execute("select policy_json from scan_policies where project_id=?",(project_id,)).fetchone()
+        if not r:return defaults
+        try:stored=json.loads(r['policy_json'])
+        except Exception:stored={}
+        defaults.update(stored);return defaults
+
+    def set_project_policy(self,project_id,policy,user_id):
+        now=self.now()
+        with self.conn() as c:c.execute("""insert into scan_policies(project_id,policy_json,updated_by,updated_at) values(?,?,?,?)
+          on conflict(project_id) do update set policy_json=excluded.policy_json,updated_by=excluded.updated_by,updated_at=excluded.updated_at""",
+          (project_id,json.dumps(policy),user_id,now))
+        return self.get_project_policy(project_id)
+
+    def scan_policy(self,scan_id):
+        with self.conn() as c:r=c.execute("select policy_json from scans where id=?",(scan_id,)).fetchone()
+        if not r:return {}
+        try:return json.loads(r['policy_json'] or '{}')
+        except Exception:return {}
+
+    def organization_scan_usage(self,org_id):
+        day=(datetime.now(timezone.utc)-timedelta(hours=24)).isoformat()
+        with self.conn() as c:
+            used=c.execute("""select count(*) from scans s join targets t on t.id=s.target_id join projects p on p.id=t.project_id
+              where p.organization_id=? and s.created_at>=?""",(org_id,day)).fetchone()[0]
+            active=c.execute("""select count(*) from scans s join targets t on t.id=s.target_id join projects p on p.id=t.project_id
+              where p.organization_id=? and s.status in ('QUEUED','SCANNING')""",(org_id,)).fetchone()[0]
+        return {'last_24h':used,'active':active}
+
     # scans / findings
-    def create_scan(self,target_id,target_url,profile,created_by=None):
-        x={'id':self._id(),'target_id':target_id,'target_url':target_url,'profile':profile,'status':'QUEUED','progress':0,'stage':'QUEUED','score':None,'pages_scanned':None,'duration_ms':None,'created_by':created_by,'created_at':self.now(),'completed_at':None,'error':None}
-        with self.conn() as c:c.execute("insert into scans(id,target_id,target_url,profile,status,progress,stage,score,pages_scanned,duration_ms,created_by,created_at,completed_at,error) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",tuple(x.values()))
+    def create_scan(self,target_id,target_url,profile,created_by=None,policy=None):
+        x={'id':self._id(),'target_id':target_id,'target_url':target_url,'profile':profile,'status':'QUEUED','progress':0,'stage':'QUEUED','score':None,'pages_scanned':None,'duration_ms':None,'created_by':created_by,'created_at':self.now(),'completed_at':None,'error':None,'cancel_requested':0,'policy_json':json.dumps(policy or {})}
+        with self.conn() as c:c.execute("""insert into scans(id,target_id,target_url,profile,status,progress,stage,score,pages_scanned,duration_ms,created_by,created_at,completed_at,error,cancel_requested,policy_json)
+          values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",(x['id'],x['target_id'],x['target_url'],x['profile'],x['status'],x['progress'],x['stage'],x['score'],x['pages_scanned'],x['duration_ms'],x['created_by'],x['created_at'],x['completed_at'],x['error'],x['cancel_requested'],x['policy_json']))
         self.add_scan_event(x['id'],'STATE','QUEUED',0,'Scan queued')
+        x['policy']=policy or {};x.pop('policy_json',None)
         return x
     def update_scan(self,id,**kw):
         if kw:
@@ -395,6 +457,102 @@ class Repository:
             for f in findings:
                 d=f.to_dict()
                 c.execute("insert into findings values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(self._id(),scan_id,d['fingerprint'],d['check_id'],d['title'],d['category'],d['status'],d['severity'],d['confidence'],d['url'],d['evidence'],d['description'],d['impact'],d['remediation'],json.dumps(d['standards']),json.dumps(d['metadata'])))
+    def add_assets(self,scan_id,target_id,assets):
+        with self.conn() as c:
+            c.execute("delete from assets where scan_id=?",(scan_id,))
+            for asset in assets:
+                d=asset.to_dict() if hasattr(asset,'to_dict') else dict(asset)
+                c.execute("""insert into assets(id,scan_id,target_id,url,kind,status_code,content_type,title,depth,size_bytes,source_url,metadata_json,created_at)
+                  values(?,?,?,?,?,?,?,?,?,?,?,?,?)""",(self._id(),scan_id,target_id,d['url'],d['kind'],d.get('status_code'),d.get('content_type',''),d.get('title',''),int(d.get('depth',0)),int(d.get('size_bytes',0)),d.get('source_url'),json.dumps(d.get('metadata',{})),self.now()))
+
+    def assets(self,scan_id):
+        with self.conn() as c:rows=[dict(r) for r in c.execute("select * from assets where scan_id=? order by depth,url",(scan_id,))]
+        for r in rows:
+            try:r['metadata']=json.loads(r.pop('metadata_json') or '{}')
+            except Exception:r['metadata']={}
+        return rows
+
+    def sync_finding_states(self,scan_id):
+        scan=self.get_scan(scan_id)
+        if not scan:return
+        active=[f for f in self.findings(scan_id,with_lifecycle=False) if f['status'] in {'FAIL','WARNING','ERROR'}]
+        now=self.now();fingerprints={f['fingerprint'] for f in active}
+        with self.conn() as c:
+            for f in active:
+                row=c.execute("select id,state from finding_states where target_id=? and fingerprint=?",(scan['target_id'],f['fingerprint'])).fetchone()
+                if row:
+                    new_state='OPEN' if row['state']=='REMEDIATED' else row['state']
+                    c.execute("""update finding_states set state=?,check_id=?,title=?,last_seen_at=?,occurrences=occurrences+1,last_scan_id=?,updated_at=?
+                      where id=?""",(new_state,f['check_id'],f['title'],now,scan_id,now,row['id']))
+                else:
+                    c.execute("""insert into finding_states(id,target_id,fingerprint,check_id,title,state,severity_override,assignee_user_id,due_at,risk_reason,first_seen_at,last_seen_at,occurrences,last_scan_id,updated_by,updated_at)
+                      values(?,?,?,?,?,'OPEN',null,null,null,null,?,?,1,?,null,?)""",(self._id(),scan['target_id'],f['fingerprint'],f['check_id'],f['title'],now,now,scan_id,now))
+            rows=[dict(r) for r in c.execute("select id,fingerprint,state from finding_states where target_id=?",(scan['target_id'],))]
+            for row in rows:
+                if row['fingerprint'] not in fingerprints and row['state'] in {'OPEN','ACKNOWLEDGED','IN_PROGRESS'}:
+                    c.execute("update finding_states set state='REMEDIATED',updated_at=? where id=?",(now,row['id']))
+
+    def list_finding_states(self,org_id,state=None,target_id=None,limit=500):
+        q="""select fs.*,t.name target_name,t.url target_url,p.name project_name,u.name assignee_name,u.email assignee_email
+          from finding_states fs join targets t on t.id=fs.target_id join projects p on p.id=t.project_id
+          left join users u on u.id=fs.assignee_user_id where p.organization_id=?""";args=[org_id]
+        if state:q+=" and fs.state=?";args.append(state)
+        if target_id:q+=" and fs.target_id=?";args.append(target_id)
+        q+=" order by case fs.state when 'OPEN' then 1 when 'IN_PROGRESS' then 2 when 'ACKNOWLEDGED' then 3 else 4 end,fs.last_seen_at desc limit ?";args.append(limit)
+        with self.conn() as c:return [dict(r) for r in c.execute(q,args)]
+
+    def get_finding_state(self,state_id,org_id=None):
+        q="""select fs.*,t.name target_name,t.url target_url,p.name project_name,p.organization_id
+          from finding_states fs join targets t on t.id=fs.target_id join projects p on p.id=t.project_id where fs.id=?""";args=[state_id]
+        if org_id:q+=" and p.organization_id=?";args.append(org_id)
+        with self.conn() as c:r=c.execute(q,args).fetchone()
+        return dict(r) if r else None
+
+    def update_finding_state(self,state_id,org_id,updates,user_id):
+        allowed={'state','severity_override','assignee_user_id','due_at','risk_reason'}
+        sets=[];vals=[]
+        for k,v in updates.items():
+            if k in allowed:sets.append(k+"=?");vals.append(v)
+        if not sets:return self.get_finding_state(state_id,org_id)
+        with self.conn() as c:
+            exists=c.execute("""select fs.id from finding_states fs join targets t on t.id=fs.target_id join projects p on p.id=t.project_id
+              where fs.id=? and p.organization_id=?""",(state_id,org_id)).fetchone()
+            if not exists:return None
+            vals.extend([user_id,self.now(),state_id]);c.execute("update finding_states set "+",".join(sets)+",updated_by=?,updated_at=? where id=?",vals)
+        return self.get_finding_state(state_id,org_id)
+
+    def add_finding_comment(self,state_id,org_id,user_id,body):
+        if not self.get_finding_state(state_id,org_id):return None
+        row={'id':self._id(),'finding_state_id':state_id,'user_id':user_id,'body':body,'created_at':self.now()}
+        with self.conn() as c:c.execute("insert into finding_comments values(?,?,?,?,?)",tuple(row.values()))
+        return row
+
+    def finding_comments(self,state_id,org_id):
+        if not self.get_finding_state(state_id,org_id):return []
+        with self.conn() as c:return [dict(r) for r in c.execute("""select fc.*,u.name user_name,u.email user_email from finding_comments fc
+          join users u on u.id=fc.user_id where fc.finding_state_id=? order by fc.created_at""",(state_id,))]
+
+    def create_remediation_verification(self,state_id,scan_id,user_id):
+        row={'id':self._id(),'finding_state_id':state_id,'scan_id':scan_id,'requested_by':user_id,'status':'QUEUED','created_at':self.now(),'completed_at':None}
+        with self.conn() as c:c.execute("insert into remediation_verifications values(?,?,?,?,?,?,?)",tuple(row.values()))
+        return row
+
+    def finalize_remediation_verifications(self,scan_id):
+        scan=self.get_scan(scan_id)
+        if not scan:return
+        present={f['fingerprint'] for f in self.findings(scan_id,with_lifecycle=False) if f['status'] in {'FAIL','WARNING','ERROR'}}
+        with self.conn() as c:
+            rows=[dict(r) for r in c.execute("""select rv.id,rv.finding_state_id,fs.fingerprint from remediation_verifications rv
+              join finding_states fs on fs.id=rv.finding_state_id where rv.scan_id=? and rv.status='QUEUED'""",(scan_id,))]
+            for r in rows:
+                fixed=r['fingerprint'] not in present;status='VERIFIED_FIXED' if fixed else 'STILL_PRESENT'
+                c.execute("update remediation_verifications set status=?,completed_at=? where id=?",(status,self.now(),r['id']))
+                if fixed:c.execute("update finding_states set state='REMEDIATED',updated_at=? where id=?",(self.now(),r['finding_state_id']))
+
+    def remediation_history(self,state_id,org_id):
+        if not self.get_finding_state(state_id,org_id):return []
+        with self.conn() as c:return [dict(r) for r in c.execute("select * from remediation_verifications where finding_state_id=? order by created_at desc",(state_id,))]
+
     def get_scan(self,id,org_id=None):
         q="select s.* from scans s join targets t on t.id=s.target_id join projects p on p.id=t.project_id where s.id=?";args=[id]
         if org_id:q+=" and p.organization_id=?";args.append(org_id)
@@ -405,9 +563,16 @@ class Repository:
         if org_id:q+=" where p.organization_id=?";args.append(org_id)
         q+=" order by s.created_at desc limit ?";args.append(limit)
         with self.conn() as c:return [dict(r) for r in c.execute(q,args)]
-    def findings(self,scan_id):
-        with self.conn() as c:rows=[dict(r) for r in c.execute("""select * from findings where scan_id=? order by case severity when 'CRITICAL' then 5 when 'HIGH' then 4 when 'MEDIUM' then 3 when 'LOW' then 2 else 1 end desc,title""",(scan_id,))]
-        for r in rows:r['standards']=json.loads(r.pop('standards_json'));r['metadata']=json.loads(r.pop('metadata_json'))
+    def findings(self,scan_id,with_lifecycle=True):
+        if with_lifecycle:
+            q="""select f.*,fs.id lifecycle_id,fs.state lifecycle_state,fs.severity_override,fs.assignee_user_id,fs.due_at,fs.risk_reason,fs.first_seen_at,fs.last_seen_at,fs.occurrences
+              from findings f join scans s on s.id=f.scan_id left join finding_states fs on fs.target_id=s.target_id and fs.fingerprint=f.fingerprint
+              where f.scan_id=? order by case f.severity when 'CRITICAL' then 5 when 'HIGH' then 4 when 'MEDIUM' then 3 when 'LOW' then 2 else 1 end desc,f.title"""
+        else:
+            q="""select f.* from findings f where f.scan_id=? order by case f.severity when 'CRITICAL' then 5 when 'HIGH' then 4 when 'MEDIUM' then 3 when 'LOW' then 2 else 1 end desc,f.title"""
+        with self.conn() as c:rows=[dict(r) for r in c.execute(q,(scan_id,))]
+        for r in rows:
+            r['standards']=json.loads(r.pop('standards_json'));r['metadata']=json.loads(r.pop('metadata_json'))
         return rows
     def comparison(self,scan_id):
         current=self.get_scan(scan_id)
@@ -495,6 +660,45 @@ class Repository:
         for r in rows:r['details']=json.loads(r.pop('details_json') or '{}')
         return rows
 
+
+    # API keys
+    def create_api_key(self,user_id,org_id,name,token_hash,prefix,scopes,expires_at=None):
+        row={'id':self._id(),'user_id':user_id,'organization_id':org_id,'name':name,'token_hash':token_hash,'prefix':prefix,'scopes_json':json.dumps(scopes),'expires_at':expires_at,'last_used_at':None,'revoked_at':None,'created_at':self.now()}
+        with self.conn() as c:c.execute("insert into api_keys values(?,?,?,?,?,?,?,?,?,?,?)",tuple(row.values()))
+        return {'id':row['id'],'name':name,'prefix':prefix,'scopes':scopes,'expires_at':expires_at,'created_at':row['created_at']}
+
+    def api_key_identity(self,token_hash):
+        now=self.now()
+        with self.conn() as c:
+            r=c.execute("""select k.id api_key_id,k.scopes_json,k.expires_at,u.id user_id,u.email,u.name,u.email_verified,u.mfa_enabled,u.system_admin,
+              m.organization_id,m.role,o.name organization_name,o.active organization_active
+              from api_keys k join users u on u.id=k.user_id join memberships m on m.user_id=u.id and m.organization_id=k.organization_id
+              join organizations o on o.id=m.organization_id
+              where k.token_hash=? and k.revoked_at is null and (k.expires_at is null or k.expires_at>?) and u.active=1""",(token_hash,now)).fetchone()
+            if r:c.execute("update api_keys set last_used_at=? where id=?",(now,r['api_key_id']))
+        if not r:return None
+        d=dict(r);d['api_scopes']=json.loads(d.pop('scopes_json') or '[]');d['auth_method']='api_key';d['csrf_token']=None;d['session_id']=None
+        return d
+
+    def list_api_keys(self,user_id,org_id):
+        with self.conn() as c:rows=[dict(r) for r in c.execute("""select id,name,prefix,scopes_json,expires_at,last_used_at,revoked_at,created_at
+          from api_keys where user_id=? and organization_id=? order by created_at desc""",(user_id,org_id))]
+        for r in rows:r['scopes']=json.loads(r.pop('scopes_json') or '[]')
+        return rows
+
+    def revoke_api_key(self,key_id,user_id,org_id):
+        with self.conn() as c:
+            cur=c.execute("update api_keys set revoked_at=? where id=? and user_id=? and organization_id=? and revoked_at is null",(self.now(),key_id,user_id,org_id))
+            return cur.rowcount>0
+
+    def purge_retention(self,days):
+        cutoff=(datetime.now(timezone.utc)-timedelta(days=max(1,int(days)))).isoformat()
+        with self.conn() as c:
+            scan_ids=[r[0] for r in c.execute("select id from scans where completed_at is not null and completed_at<?",(cutoff,))]
+            for sid in scan_ids:
+                c.execute("delete from assets where scan_id=?",(sid,));c.execute("delete from findings where scan_id=?",(sid,));c.execute("delete from scan_events where scan_id=?",(sid,));c.execute("delete from zap_imports where scan_id=?",(sid,))
+                c.execute("delete from scans where id=?",(sid,))
+            return len(scan_ids)
 
     # system administration
     def set_system_admin(self,user_id,enabled=True):
@@ -639,7 +843,7 @@ class Repository:
         except Exception:return default
 
     def set_system_setting(self,key,value,user_id):
-        allowed={'registration_enabled','maintenance_mode','maintenance_message','platform_name','admin_banner'}
+        allowed={'registration_enabled','maintenance_mode','maintenance_message','platform_name','admin_banner','scan_quota_per_day','max_concurrent_scans_per_org','scan_retention_days'}
         if key not in allowed:raise ValueError("Unsupported system setting")
         with self.conn() as c:c.execute("""insert into system_settings(key,value_json,updated_by,updated_at) values(?,?,?,?)
           on conflict(key) do update set value_json=excluded.value_json,updated_by=excluded.updated_by,updated_at=excluded.updated_at""",
