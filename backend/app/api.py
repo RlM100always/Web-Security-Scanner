@@ -600,14 +600,40 @@ def create_blueprint():
         profile=d.get('profile','standard')
         if profile not in {'quick','standard','lab'}:return {'error':'Invalid profile'},400
         if profile=='lab' and not t.get('verified'):return {'error':'Lab profile requires verified ownership'},403
-        s=repo().create_schedule(t['id'],profile,interval,ident['user_id']);audit('SCHEDULE_CREATED','schedule',s['id'],{'interval_minutes':interval});return s,201
+        s=repo().create_schedule(t['id'],profile,interval,ident['user_id'],d.get('name'),d.get('notify_on_failure',True));audit('SCHEDULE_CREATED','schedule',s['id'],{'interval_minutes':interval,'name':s.get('name')});return s,201
 
     @bp.patch('/schedules/<schedule_id>')
     @require_role('analyst')
-    def schedule_toggle(schedule_id):
-        ident=current_identity();enabled=bool((request.get_json(force=True) or {}).get('enabled'))
-        if not repo().set_schedule_enabled(schedule_id,ident['organization_id'],enabled):return {'error':'Schedule not found'},404
-        audit('SCHEDULE_TOGGLED','schedule',schedule_id,{'enabled':enabled});return {'ok':True,'enabled':enabled}
+    def schedule_update(schedule_id):
+        ident=current_identity();d=request.get_json(force=True) or {};updates={}
+        if 'enabled' in d:updates['enabled']=bool(d['enabled'])
+        if 'name' in d:updates['name']=(d.get('name') or '').strip()[:160] or None
+        if 'notify_on_failure' in d:updates['notify_on_failure']=bool(d['notify_on_failure'])
+        if 'interval_minutes' in d:
+            interval=int(d.get('interval_minutes') or 0)
+            if interval<60 or interval>525600:return {'error':'Schedule interval must be between 60 minutes and one year'},400
+            updates['interval_minutes']=interval
+        if 'profile' in d:
+            if d['profile'] not in {'quick','standard','lab'}:return {'error':'Invalid profile'},400
+            updates['profile']=d['profile']
+        saved=repo().update_schedule(schedule_id,ident['organization_id'],updates)
+        if not saved:return {'error':'Schedule not found'},404
+        audit('SCHEDULE_UPDATED','schedule',schedule_id,updates);return saved
+
+    @bp.post('/schedules/<schedule_id>/run-now')
+    @require_role('analyst')
+    def schedule_run_now(schedule_id):
+        ident=current_identity();usage=repo().organization_scan_usage(ident['organization_id'])
+        concurrent=max(1,int(repo().system_setting('max_concurrent_scans_per_org',3)))
+        if usage['active']>=concurrent:return {'error':'Concurrent scan limit reached','limit':concurrent},429
+        scan=repo().run_schedule_now(schedule_id,ident['organization_id'],ident['user_id'])
+        if not scan:return {'error':'Schedule not found'},404
+        audit('SCHEDULE_RUN_NOW','schedule',schedule_id,{'scan_id':scan['id']});return scan,202
+
+    @bp.get('/schedules/<schedule_id>/history')
+    @require_auth
+    def schedule_history(schedule_id):
+        ident=current_identity();return jsonify(repo().schedule_history(schedule_id,ident['organization_id']))
 
     @bp.delete('/schedules/<schedule_id>')
     @require_role('analyst')
