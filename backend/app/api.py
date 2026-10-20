@@ -311,6 +311,27 @@ def create_blueprint():
     def team_invitations():
         return jsonify(repo().list_invitations(current_identity()['organization_id']))
 
+    @bp.delete('/team/invitations/<invite_id>')
+    @require_role('admin')
+    def team_invitation_revoke(invite_id):
+        ident=current_identity()
+        if not repo().revoke_invitation(invite_id,ident['organization_id']):return {'error':'Pending invitation not found'},404
+        audit('INVITATION_REVOKED','invitation',invite_id);return {'ok':True}
+
+    @bp.post('/team/invitations/<invite_id>/resend')
+    @require_role('admin')
+    def team_invitation_resend(invite_id):
+        ident=current_identity();existing=repo().get_invitation(invite_id,ident['organization_id'])
+        if not existing or existing['status']!='PENDING':return {'error':'Pending invitation not found'},404
+        raw=secrets.token_urlsafe(40)
+        inv=repo().create_invitation(ident['organization_id'],existing['email'],existing['role'],token_hash(raw),ident['user_id'],current_app.config['INVITE_TTL_HOURS'])
+        dummy={'id':'invite','email':existing['email']}
+        result,link=send_token_email(dummy,'invite',raw,'You are invited to SentinelScope','accept-invite')
+        audit('INVITATION_RESENT','invitation',inv['id'],{'email':existing['email'],'role':existing['role']})
+        out={'id':inv['id'],'email':existing['email'],'role':existing['role'],'sent':result.get('delivered',False)}
+        if result.get('mode')=='outbox':out['development_invite_link']=link
+        return out,201
+
     @bp.patch('/team/<user_id>/active')
     @require_role('admin')
     def team_active(user_id):
