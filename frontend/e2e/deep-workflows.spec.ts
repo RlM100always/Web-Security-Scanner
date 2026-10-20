@@ -2,8 +2,12 @@ import {test,expect} from '@playwright/test';
 
 async function openNav(page:any,name:string){
   const menu=page.locator('button.menu');
-  if(await menu.isVisible())await menu.click();
-  await page.getByRole('button',{name,exact:true}).click();
+  if(await menu.isVisible()){
+    await menu.click();
+    await page.locator('aside.side').getByRole('button',{name,exact:true}).click();
+  }else{
+    await page.locator('aside.side').getByRole('button',{name,exact:true}).click();
+  }
 }
 
 test('deep scan policy and API key workflow works',async({page},testInfo)=>{
