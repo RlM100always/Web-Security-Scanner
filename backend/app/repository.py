@@ -584,8 +584,11 @@ class Repository:
         added=sorted(set(cur)-set(old));removed=sorted(set(old)-set(cur));changed=[]
         for url in sorted(set(cur)&set(old)):
             diffs={}
-            for key in ['status_code','content_type','title','size_bytes']:
+            for key in ['status_code','content_type','title']:
                 if cur[url].get(key)!=old[url].get(key):diffs[key]={'before':old[url].get(key),'after':cur[url].get(key)}
+            before_size=int(old[url].get('size_bytes') or 0);after_size=int(cur[url].get('size_bytes') or 0)
+            if abs(after_size-before_size)>=max(512,int(max(1,before_size)*0.10)):
+                diffs['size_bytes']={'before':before_size,'after':after_size}
             if diffs:changed.append({'url':url,'changes':diffs})
         return {'previous_scan_id':prev['id'] if prev else None,'added':added,'removed':removed,'changed':changed,
                 'summary':{'added':len(added),'removed':len(removed),'changed':len(changed),'current_assets':len(cur)}}
@@ -615,7 +618,7 @@ class Repository:
         current=self.get_scan(scan_id)
         if not current:return {}
         with self.conn() as c:prev=c.execute("select id from scans where target_id=? and status='COMPLETED' and id<>? and created_at<? order by created_at desc limit 1",(current['target_id'],scan_id,current['created_at'])).fetchone()
-        cur={x['fingerprint'] for x in self.findings(scan_id)};old={x['fingerprint'] for x in self.findings(prev['id'])} if prev else set()
+        cur={x['fingerprint'] for x in self.findings(scan_id) if x['status'] in {'FAIL','WARNING','ERROR'}};old={x['fingerprint'] for x in self.findings(prev['id']) if x['status'] in {'FAIL','WARNING','ERROR'}} if prev else set()
         return {'previous_scan_id':prev['id'] if prev else None,'new':len(cur-old),'fixed':len(old-cur),'unchanged':len(cur&old)}
     # events / queue / schedules
     def add_scan_event(self,scan_id,event_type,stage,progress,message,data=None):
