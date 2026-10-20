@@ -456,7 +456,8 @@ class Repository:
             c.execute("delete from findings where scan_id=?",(scan_id,))
             for f in findings:
                 d=f.to_dict()
-                c.execute("insert into findings values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(self._id(),scan_id,d['fingerprint'],d['check_id'],d['title'],d['category'],d['status'],d['severity'],d['confidence'],d['url'],d['evidence'],d['description'],d['impact'],d['remediation'],json.dumps(d['standards']),json.dumps(d['metadata'])))
+                c.execute("""insert into findings(id,scan_id,fingerprint,check_id,title,category,status,severity,confidence,url,evidence,description,impact,remediation,standards_json,metadata_json)
+                  values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",(self._id(),scan_id,d['fingerprint'],d['check_id'],d['title'],d['category'],d['status'],d['severity'],d['confidence'],d['url'],d['evidence'],d['description'],d['impact'],d['remediation'],json.dumps(d['standards']),json.dumps(d['metadata'])))
     def add_assets(self,scan_id,target_id,assets):
         with self.conn() as c:
             c.execute("delete from assets where scan_id=?",(scan_id,))
