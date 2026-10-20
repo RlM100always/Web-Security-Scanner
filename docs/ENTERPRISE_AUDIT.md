@@ -17,7 +17,7 @@ This document records the current SentinelScope product architecture, the workfl
 | Public product experience | Home, Product, Features, Security, Standards, Docs and About routes; responsive product narrative; explicit responsible-use boundary |
 | Authentication | Signup/login, email verification, password reset, PBKDF2 password hashing, login throttling, HttpOnly session cookies, CSRF, TOTP MFA, one-time recovery codes, session/device revocation |
 | Secret storage | API/session/token hashes; optional Fernet encryption for MFA secrets using deployment-managed APP_ENCRYPTION_KEY |
-| Workspace isolation | Active per-workspace memberships, Owner/Admin/Analyst/Viewer roles, workspace switching, suspended-workspace enforcement, workspace-scoped member deactivation |
+| Workspace isolation | Active per-workspace memberships, Owner/Admin/Analyst/Viewer roles, workspace switching, suspended-workspace enforcement, workspace-scoped member deactivation, member email/MFA/last-login posture and member-level audit activity drilldown |
 | Invitations | Expiring invitations, resend/revoke lifecycle, role assignment, pending-invitation UI |
 | System administration | Separate system-admin privilege, users/workspaces/scans/jobs/workers/security events/audit/settings/backups/retention/quotas/maintenance/broadcast/SMTP diagnostics |
 | Projects | Editable name/description/tags, active/archive lifecycle, archived-project scan/target enforcement, retained history, safer archive-before-delete workflow |
@@ -25,7 +25,7 @@ This document records the current SentinelScope product architecture, the workfl
 | Scan policy | Project policy plus per-scan bounded overrides, include/exclude regex, disabled checks, request pacing, depth/page caps and immutable per-scan policy snapshot |
 | Scan creation | Three-step target/profile/scope/review wizard with target business context and explicit final authorisation confirmation |
 | Scanner | TLS/certificate/protocol/cipher/expiry, HTTPS/HSTS, CSP quality, browser headers, cookies, CORS reflection, forms, mixed content, methods, disclosure, security.txt and same-origin asset discovery |
-| Asset inventory | Persisted URL/status/type/title/depth/size/source/timing/redirect/truncation metadata; portfolio inventory; latest-target view; added/removed/changed baseline analysis |
+| Asset inventory | Persisted URL/status/type/title/depth/size/source/timing/redirect/truncation metadata; portfolio inventory; latest-target view; added/removed/changed baseline analysis; first/last seen and scan-by-scan provenance drilldown |
 | Findings | Stable fingerprint, first/last seen, occurrence count, effective severity, target criticality context, risk score, assignee, SLA due date, comments, scan detection timeline and immutable workflow activity |
 | Risk decisions | OPEN/ACKNOWLEDGED/IN_PROGRESS/ACCEPTED_RISK/FALSE_POSITIVE/REMEDIATED; saved/private/shared issue views; portfolio filters; bulk triage; rationale requirement; risk-review expiry; optional Owner-only acceptance approval; expired acceptance priority signal |
 | Remediation verification | Queued re-assessment linked to the persistent issue; VERIFIED_FIXED/STILL_PRESENT history |
