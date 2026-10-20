@@ -531,6 +531,10 @@ class Repository:
             try:x['tags']=json.loads(x.pop('tags_json') or '[]')
             except Exception:x['tags']=[]
         return out
+    def target_organization(self,target_id):
+        with self.conn() as c:r=c.execute("""select p.organization_id from targets t join projects p on p.id=t.project_id where t.id=?""",(target_id,)).fetchone()
+        return r['organization_id'] if r else None
+
     def get_target(self,id,org_id=None):
         q="select t.* from targets t join projects p on p.id=t.project_id where t.id=?";args=[id]
         if org_id:q+=" and p.organization_id=?";args.append(org_id)
