@@ -103,6 +103,25 @@ def process_webhook(repo, config, payload):
             repo.mark_webhook_delivery_failure(delivery["id"],str(e),current.get("response_code"),current.get("response_body"))
         raise
 
+
+def process_sla_escalations(repo,config):
+    events=repo.process_overdue_finding_escalations()
+    webhook_groups={}
+    for event in events:
+        uid=event.get('user_id');org_id=event.get('organization_id')
+        user=repo.get_user_by_id(uid) if uid else None
+        if user and repo.notification_enabled(uid,org_id,'finding_overdue','email'):
+            try:send_email(vars(config),user['email'],'SentinelScope issue overdue',event['body'])
+            except Exception:pass
+        key=(org_id,event['finding_state_id'])
+        webhook_groups[key]=event
+    for (org_id,_),event in webhook_groups.items():
+        repo.emit_webhook_event(org_id,'finding.overdue',{
+          'finding_state_id':event['finding_state_id'],'target_id':event['target_id'],'title':event['title'],
+          'severity':event['severity'],'due_at':event['due_at']
+        })
+    return len(events)
+
 def process_one(repo, config, worker_id):
     job=repo.claim_job(worker_id)
     if not job:
@@ -125,11 +144,13 @@ def worker_loop(repo, config, poll_seconds=1.0):
     started=repo.now()
     repo.worker_heartbeat(worker_id,socket.gethostname(),os.getpid(),'STARTING',started_at=started)
     repo.recover_stale_jobs(10)
-    last_recovery=time.monotonic()
+    last_recovery=time.monotonic();last_escalation=0.0
     while True:
         try:
             if time.monotonic()-last_recovery>=60:
                 repo.recover_stale_jobs(10);last_recovery=time.monotonic()
+            if time.monotonic()-last_escalation>=60:
+                process_sla_escalations(repo,config);last_escalation=time.monotonic()
             repo.enqueue_due_schedules()
             if not process_one(repo,config,worker_id):time.sleep(poll_seconds)
         except KeyboardInterrupt:return
