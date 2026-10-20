@@ -351,7 +351,26 @@ def create_blueprint():
         if not project:return {'error':'Project not found'},404
         try:url=validate_target(d.get('url'),current_app.config['SCANNER_ALLOW_PRIVATE'])
         except TargetValidationError as e:return {'error':str(e)},400
-        t=repo().create_target(project['id'],url,d.get('name') or url,True,False,ident['user_id']);audit('TARGET_CREATED','target',t['id'],{'url':url});return t,201
+        t=repo().create_target(project['id'],url,d.get('name') or url,True,False,ident['user_id'],d.get('criticality','medium'),d.get('environment','production'),d.get('tags') if isinstance(d.get('tags'),list) else []);audit('TARGET_CREATED','target',t['id'],{'url':url,'criticality':t.get('criticality'),'environment':t.get('environment')});return t,201
+
+    @bp.patch('/targets/<target_id>')
+    @require_role('analyst')
+    def target_update(target_id):
+        ident=current_identity();t=repo().get_target(target_id,ident['organization_id'])
+        if not t:return {'error':'Target not found'},404
+        d=request.get_json(force=True) or {};updates={}
+        if 'name' in d:updates['name']=(d.get('name') or '').strip()[:160] or t['name']
+        if 'criticality' in d:
+            if d['criticality'] not in {'low','medium','high','critical'}:return {'error':'Invalid target criticality'},400
+            updates['criticality']=d['criticality']
+        if 'environment' in d:
+            if d['environment'] not in {'development','test','staging','production'}:return {'error':'Invalid target environment'},400
+            updates['environment']=d['environment']
+        if 'tags' in d:
+            if not isinstance(d['tags'],list):return {'error':'tags must be an array'},400
+            updates['tags_json']=json.dumps([str(x).strip()[:48] for x in d['tags'] if str(x).strip()][:20])
+        if updates:repo().update_target(target_id,ident['organization_id'],updates)
+        audit('TARGET_METADATA_UPDATED','target',target_id,updates);return repo().get_target(target_id,ident['organization_id'])
 
     @bp.delete('/targets/<target_id>')
     @require_role('admin')
@@ -482,6 +501,8 @@ def create_blueprint():
         state=d.get('state')
         if state and state not in {'OPEN','ACKNOWLEDGED','IN_PROGRESS','ACCEPTED_RISK','FALSE_POSITIVE','REMEDIATED'}:return {'error':'Invalid finding lifecycle state'},400
         if state in {'ACCEPTED_RISK','FALSE_POSITIVE'} and not (d.get('risk_reason') or '').strip():return {'error':'A reason is required for risk acceptance or false-positive classification'},400
+        if state=='ACCEPTED_RISK' and not d.get('risk_expires_at'):return {'error':'Risk acceptance requires a review/expiry date'},400
+        if state=='ACCEPTED_RISK':d['risk_accepted_by']=ident['user_id']
         if d.get('assignee_user_id') and d.get('assignee_user_id') not in {m['id'] for m in repo().list_members(ident['organization_id'])}:return {'error':'Assignee must be a workspace member'},400
         row=repo().update_finding_state(state_id,ident['organization_id'],d,ident['user_id'])
         if not row:return {'error':'Finding state not found'},404
