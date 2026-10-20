@@ -513,7 +513,8 @@ def create_blueprint():
                 }
                 for pattern in updates['policy']['include_paths']+updates['policy']['exclude_paths']:re.compile(pattern)
             except Exception as e:return {'error':'Invalid scan profile policy: '+str(e)},400
-        row=repo().update_scan_profile(profile_id,project_id,updates,ident['user_id'])
+        try:row=repo().update_scan_profile(profile_id,project_id,updates,ident['user_id'])
+        except ValueError as e:return {'error':str(e)},409
         audit('SCAN_PROFILE_UPDATED','scan_profile',profile_id,{'project_id':project_id,'version':row['version'] if row else None})
         return row or ({'error':'Scan profile not found'},404)
 
