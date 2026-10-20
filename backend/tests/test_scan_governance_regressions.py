@@ -148,3 +148,37 @@ def test_read_only_api_key_cannot_trigger_scan_actions(monkeypatch):
         denied=app.test_client().post("/api/v1/scans/"+scan["id"]+"/rerun",json={},headers={"Authorization":"Bearer "+raw})
         assert denied.status_code==403
         assert "scan scope required" in denied.get_json()["error"]
+
+
+def test_schedule_creation_and_update_validate_governance():
+    with tempfile.TemporaryDirectory() as d:
+        app=build(os.path.join(d,"schedule-validation.sqlite3"));client=app.test_client()
+        user,csrf=signup(client);repo=app.extensions["repo"]
+        p=repo.create_project("Production","",user["organization_id"],user["user_id"])
+        t=repo.create_target(p["id"],"https://example.com/","Portal",True,False,user["user_id"])
+
+        malformed=client.post("/api/v1/schedules",json={"target_id":t["id"],"interval_minutes":"tomorrow"},headers={"X-CSRF-Token":csrf})
+        assert malformed.status_code==400
+
+        lab=repo.create_scan_profile(p["id"],"Lab profile","lab","lab",repo.get_project_policy(p["id"]),False,user["user_id"])
+        unverified=client.post("/api/v1/schedules",json={"target_id":t["id"],"scan_profile_id":lab["id"],"interval_minutes":1440},headers={"X-CSRF-Token":csrf})
+        assert unverified.status_code==403
+
+        with repo.conn() as db:db.execute("update targets set verified=1 where id=?",(t["id"],))
+        created=client.post("/api/v1/schedules",json={"target_id":t["id"],"profile":"standard","interval_minutes":1440},headers={"X-CSRF-Token":csrf})
+        assert created.status_code==201
+        schedule_id=created.get_json()["id"]
+
+        with repo.conn() as db:db.execute("update targets set verified=0 where id=?",(t["id"],))
+        bind=client.patch("/api/v1/schedules/"+schedule_id,json={"scan_profile_id":lab["id"]},headers={"X-CSRF-Token":csrf})
+        assert bind.status_code==403
+
+        with repo.conn() as db:db.execute("update targets set authorized=0 where id=?",(t["id"],))
+        unauthorized=client.post("/api/v1/schedules",json={"target_id":t["id"],"profile":"standard","interval_minutes":1440},headers={"X-CSRF-Token":csrf})
+        assert unauthorized.status_code==403
+
+        with repo.conn() as db:
+            db.execute("update targets set authorized=1 where id=?",(t["id"],))
+            db.execute("update projects set status='archived' where id=?",(p["id"],))
+        archived=client.post("/api/v1/schedules",json={"target_id":t["id"],"profile":"standard","interval_minutes":1440},headers={"X-CSRF-Token":csrf})
+        assert archived.status_code==409
