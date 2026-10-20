@@ -15,7 +15,13 @@ def current_identity():
     if not token:
         g.identity = None
         return None
-    g.identity = current_app.extensions["repo"].session_identity(token_hash(token))
+    hashed=token_hash(token)
+    identity=current_app.extensions["repo"].session_identity(hashed)
+    if identity:
+        identity["auth_method"]="session"
+    elif auth.lower().startswith("bearer "):
+        identity=current_app.extensions["repo"].api_key_identity(hashed)
+    g.identity=identity
     return g.identity
 
 
@@ -53,3 +59,18 @@ def require_system_admin(fn):
             return {"error":"System administrator access required"},403
         return fn(*args, **kwargs)
     return wrapper
+
+
+def require_scope(scope):
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args,**kwargs):
+            identity=current_identity()
+            if not identity:return {"error":"Authentication required"},401
+            if identity.get("auth_method")=="api_key":
+                scopes=set(identity.get("api_scopes") or [])
+                if scope not in scopes and "admin" not in scopes:
+                    return {"error":f"API key scope '{scope}' required"},403
+            return fn(*args,**kwargs)
+        return wrapper
+    return decorator
