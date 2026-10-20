@@ -1,5 +1,6 @@
 import React,{useEffect,useMemo,useState}from'react';
-import{ShieldCheck,LayoutDashboard,FolderKanban,Radar,TriangleAlert,FileText,Settings,Plus,RefreshCw,Download,Menu,X,Users,CalendarClock,History,LogOut,CheckCircle2,AlertTriangle,Upload,KeyRound,UserPlus,Globe2,Trash2,Bell,Database,Shield,Mail}from'lucide-react';
+import{ShieldCheck,LayoutDashboard,FolderKanban,Radar,TriangleAlert,FileText,Settings,Plus,RefreshCw,Download,Menu,X,Users,CalendarClock,History,LogOut,CheckCircle2,AlertTriangle,Upload,KeyRound,UserPlus,Globe2,Trash2,Bell,Database,Shield,Mail,Search,Command,Sun,Moon,Boxes,SlidersHorizontal,ChevronRight}from'lucide-react';
+import PublicSite from'./PublicSite';
 
 type User={user_id:string,email:string,name:string,role:string,organization_id:string,organization_name:string,csrf_token:string,email_verified?:number,mfa_enabled?:number,system_admin?:number,organization_active?:number};
 type Project={id:string,name:string,description:string};
@@ -52,7 +53,12 @@ export default function App(){
   const specialPath=window.location.pathname;
   if(['/verify-email','/reset-password','/accept-invite'].includes(specialPath))return <SpecialAuthFlow path={specialPath}/>;
   if(authLoading)return <div className="splash"><ShieldCheck/><b>SentinelScope</b><span>Loading secure workspace…</span></div>;
-  if(!user)return <AuthScreen mode={authMode} setMode={setAuthMode} onAuth={(u:User,c:string)=>{csrf=c;setUser(u)}} setErr={setErr} err={err}/>;
+  if(!user){
+    const publicPaths=['/','/product','/features','/security','/standards','/docs','/about'];
+    if(publicPaths.includes(specialPath))return <PublicSite path={specialPath}/>;
+    const routedMode=specialPath==='/signup'?'signup':specialPath==='/login'?'login':authMode;
+    return <AuthScreen mode={routedMode} setMode={setAuthMode} onAuth={(u:User,c:string)=>{csrf=c;setUser(u)}} setErr={setErr} err={err}/>;
+  }
   if(specialPath==='/admin')return user.system_admin?<SystemAdminPanel user={user}/>:<AdminAccessDenied/>;
 
   const navItems:any[]=[['Dashboard',LayoutDashboard],['Projects',FolderKanban],['Scans',Radar],['Findings',TriangleAlert],['Reports',FileText],['Schedules',CalendarClock],['Team',Users],['Notifications',Bell],...(can(user,'admin')?[['Audit',History]]:[]),['Settings',Settings]];
