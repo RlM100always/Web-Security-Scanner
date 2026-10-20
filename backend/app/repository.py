@@ -117,6 +117,14 @@ class Repository:
               prefix text not null,scopes_json text not null,expires_at text,last_used_at text,revoked_at text,created_at text not null);
             create table if not exists system_settings(
               key text primary key,value_json text not null,updated_by text,updated_at text not null);
+            create table if not exists webhook_endpoints(
+              id text primary key,organization_id text not null,name text not null,url text not null,
+              secret_ciphertext text not null,events_json text not null,active integer not null default 1,
+              created_by text,created_at text not null,updated_at text not null);
+            create table if not exists webhook_deliveries(
+              id text primary key,endpoint_id text not null,event text not null,payload_json text not null,
+              status text not null default 'QUEUED',response_code integer,response_body text,
+              attempts integer not null default 0,last_error text,created_at text not null,completed_at text);
             create table if not exists worker_heartbeats(
               worker_id text primary key,hostname text,pid integer,status text,current_job_id text,
               started_at text not null,last_seen_at text not null);
@@ -162,6 +170,8 @@ class Repository:
             c.execute("create index if not exists idx_mfa_recovery_user on mfa_recovery_codes(user_id,used_at)")
             c.execute("create index if not exists idx_invites_org on invitations(organization_id,status)")
             c.execute("create index if not exists idx_notifications_user on notifications(user_id,created_at)")
+            c.execute("create index if not exists idx_webhooks_org on webhook_endpoints(organization_id,active)")
+            c.execute("create index if not exists idx_webhook_deliveries_endpoint on webhook_deliveries(endpoint_id,created_at)")
             c.execute("create index if not exists idx_assets_scan on assets(scan_id)")
             c.execute("create index if not exists idx_assets_target on assets(target_id,url)")
             c.execute("create index if not exists idx_finding_states_target on finding_states(target_id,state,last_seen_at)")
@@ -1205,6 +1215,106 @@ class Repository:
                 c.execute("delete from assets where scan_id=?",(sid,));c.execute("delete from remediation_verifications where scan_id=?",(sid,));c.execute("delete from findings where scan_id=?",(sid,));c.execute("delete from scan_events where scan_id=?",(sid,));c.execute("delete from zap_imports where scan_id=?",(sid,))
                 c.execute("delete from scans where id=?",(sid,))
             return len(scan_ids)
+
+    # integrations / outbound webhooks
+    def create_webhook_endpoint(self,org_id,name,url,secret_ciphertext,events,created_by):
+        now=self.now();row={'id':self._id(),'organization_id':org_id,'name':name,'url':url,'secret_ciphertext':secret_ciphertext,
+            'events_json':json.dumps(sorted(set(events))),'active':1,'created_by':created_by,'created_at':now,'updated_at':now}
+        with self.conn() as c:c.execute("""insert into webhook_endpoints(id,organization_id,name,url,secret_ciphertext,events_json,active,created_by,created_at,updated_at)
+          values(?,?,?,?,?,?,?,?,?,?)""",(row['id'],org_id,name,url,secret_ciphertext,row['events_json'],1,created_by,now,now))
+        return self.get_webhook_endpoint(row['id'],org_id)
+
+    def get_webhook_endpoint(self,endpoint_id,org_id=None):
+        q="select * from webhook_endpoints where id=?";args=[endpoint_id]
+        if org_id:q+=" and organization_id=?";args.append(org_id)
+        with self.conn() as c:r=c.execute(q,args).fetchone()
+        if not r:return None
+        d=dict(r);d['events']=json.loads(d.pop('events_json') or '[]');d['active']=bool(d['active']);return d
+
+    def list_webhook_endpoints(self,org_id):
+        with self.conn() as c:rows=[dict(r) for r in c.execute("select * from webhook_endpoints where organization_id=? order by created_at desc",(org_id,))]
+        out=[]
+        for d in rows:
+            d['events']=json.loads(d.pop('events_json') or '[]');d['active']=bool(d['active']);d.pop('secret_ciphertext',None);out.append(d)
+        return out
+
+    def update_webhook_endpoint(self,endpoint_id,org_id,updates):
+        allowed={'name','url','active'}
+        sets=[];vals=[]
+        for k,v in updates.items():
+            if k in allowed:
+                sets.append(k+"=?");vals.append(int(bool(v)) if k=='active' else v)
+        if 'events' in updates:
+            sets.append("events_json=?");vals.append(json.dumps(sorted(set(updates['events']))))
+        if 'secret_ciphertext' in updates:
+            sets.append("secret_ciphertext=?");vals.append(updates['secret_ciphertext'])
+        if not sets:return self.get_webhook_endpoint(endpoint_id,org_id)
+        sets.append("updated_at=?");vals.append(self.now());vals.extend([endpoint_id,org_id])
+        with self.conn() as c:
+            cur=c.execute("update webhook_endpoints set "+",".join(sets)+" where id=? and organization_id=?",vals)
+            if cur.rowcount<1:return None
+        return self.get_webhook_endpoint(endpoint_id,org_id)
+
+    def delete_webhook_endpoint(self,endpoint_id,org_id):
+        with self.conn() as c:
+            row=c.execute("select id from webhook_endpoints where id=? and organization_id=?",(endpoint_id,org_id)).fetchone()
+            if not row:return False
+            c.execute("delete from webhook_deliveries where endpoint_id=?",(endpoint_id,))
+            c.execute("delete from webhook_endpoints where id=?",(endpoint_id,))
+        return True
+
+    def create_webhook_delivery(self,endpoint_id,event,payload):
+        row={'id':self._id(),'endpoint_id':endpoint_id,'event':event,'payload_json':json.dumps(payload,separators=(',',':')),
+             'status':'QUEUED','response_code':None,'response_body':None,'attempts':0,'last_error':None,'created_at':self.now(),'completed_at':None}
+        with self.conn() as c:c.execute("""insert into webhook_deliveries(id,endpoint_id,event,payload_json,status,response_code,response_body,attempts,last_error,created_at,completed_at)
+          values(?,?,?,?,?,?,?,?,?,?,?)""",tuple(row.values()))
+        return {'id':row['id'],'endpoint_id':endpoint_id,'event':event,'status':'QUEUED','created_at':row['created_at']}
+
+    def emit_webhook_event(self,org_id,event,payload):
+        queued=[]
+        with self.conn() as c:rows=[dict(r) for r in c.execute("select id,events_json from webhook_endpoints where organization_id=? and active=1",(org_id,))]
+        for r in rows:
+            try:events=json.loads(r['events_json'] or '[]')
+            except Exception:events=[]
+            if event not in events and '*' not in events:continue
+            delivery=self.create_webhook_delivery(r['id'],event,{'event':event,'created_at':self.now(),'data':payload})
+            self.enqueue_job('webhook',{'delivery_id':delivery['id']},max_attempts=5);queued.append(delivery['id'])
+        return queued
+
+    def get_webhook_delivery(self,delivery_id):
+        with self.conn() as c:r=c.execute("""select d.*,e.organization_id,e.url,e.secret_ciphertext,e.active endpoint_active,e.name endpoint_name
+          from webhook_deliveries d join webhook_endpoints e on e.id=d.endpoint_id where d.id=?""",(delivery_id,)).fetchone()
+        if not r:return None
+        d=dict(r)
+        try:d['payload']=json.loads(d.pop('payload_json'))
+        except Exception:d['payload']={}
+        return d
+
+    def list_webhook_deliveries(self,org_id,endpoint_id=None,limit=200):
+        q="""select d.id,d.endpoint_id,d.event,d.status,d.response_code,d.attempts,d.last_error,d.created_at,d.completed_at,e.name endpoint_name,e.url
+          from webhook_deliveries d join webhook_endpoints e on e.id=d.endpoint_id where e.organization_id=?""";args=[org_id]
+        if endpoint_id:q+=" and d.endpoint_id=?";args.append(endpoint_id)
+        q+=" order by d.created_at desc limit ?";args.append(limit)
+        with self.conn() as c:return [dict(r) for r in c.execute(q,args)]
+
+    def mark_webhook_delivery_running(self,delivery_id):
+        with self.conn() as c:c.execute("update webhook_deliveries set status='RUNNING',attempts=attempts+1,last_error=null where id=?",(delivery_id,))
+
+    def mark_webhook_delivery_success(self,delivery_id,status_code,response_body):
+        with self.conn() as c:c.execute("""update webhook_deliveries set status='DELIVERED',response_code=?,response_body=?,last_error=null,completed_at=? where id=?""",
+          (status_code,(response_body or '')[:1000],self.now(),delivery_id))
+
+    def mark_webhook_delivery_failure(self,delivery_id,error,status_code=None,response_body=None):
+        with self.conn() as c:c.execute("""update webhook_deliveries set status='FAILED',response_code=?,response_body=?,last_error=? where id=?""",
+          (status_code,(response_body or '')[:1000],str(error)[:1000],delivery_id))
+
+    def retry_webhook_delivery(self,delivery_id,org_id):
+        with self.conn() as c:
+            row=c.execute("""select d.id from webhook_deliveries d join webhook_endpoints e on e.id=d.endpoint_id
+              where d.id=? and e.organization_id=?""",(delivery_id,org_id)).fetchone()
+            if not row:return False
+            c.execute("update webhook_deliveries set status='QUEUED',response_code=null,response_body=null,last_error=null,completed_at=null where id=?",(delivery_id,))
+        self.enqueue_job('webhook',{'delivery_id':delivery_id},max_attempts=5);return True
 
     # system administration
     def set_system_admin(self,user_id,enabled=True):
