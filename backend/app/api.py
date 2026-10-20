@@ -164,11 +164,18 @@ def create_blueprint():
     @bp.post('/auth/mfa/confirm')
     @require_auth
     def mfa_confirm():
-        ident=current_identity();d=request.get_json(force=True) or {};secret=d.get('secret') or '';code=str(d.get('code') or '').replace(' ','')
-        if not secret or not pyotp.TOTP(secret).verify(code,valid_window=1):return {'error':'Invalid authenticator code'},400
-        try:stored_secret=encrypt_secret(secret,current_app.config.get('APP_ENCRYPTION_KEY'))
-        except Exception as e:return {'error':'Invalid APP_ENCRYPTION_KEY: '+str(e)},500
-        repo().set_mfa(ident['user_id'],True,stored_secret);codes=make_recovery_codes();audit('MFA_ENABLED','user',ident['user_id'],{'recovery_codes':len(codes),'encrypted':stored_secret.startswith('fernet
+        ident=current_identity();d=request.get_json(force=True) or {}
+        secret=d.get('secret') or '';code=str(d.get('code') or '').replace(' ','')
+        if not secret or not pyotp.TOTP(secret).verify(code,valid_window=1):
+            return {'error':'Invalid authenticator code'},400
+        try:
+            stored_secret=encrypt_secret(secret,current_app.config.get('APP_ENCRYPTION_KEY'))
+        except Exception as e:
+            return {'error':'Invalid APP_ENCRYPTION_KEY: '+str(e)},500
+        repo().set_mfa(ident['user_id'],True,stored_secret)
+        codes=make_recovery_codes()
+        audit('MFA_ENABLED','user',ident['user_id'],{'recovery_codes':len(codes),'encrypted':stored_secret.startswith('fernet$')})
+        return {'ok':True,'recovery_codes':codes}
 
     @bp.post('/auth/mfa/disable')
     @require_auth
