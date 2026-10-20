@@ -117,6 +117,12 @@ class Repository:
               prefix text not null,scopes_json text not null,expires_at text,last_used_at text,revoked_at text,created_at text not null);
             create table if not exists system_settings(
               key text primary key,value_json text not null,updated_by text,updated_at text not null);
+            create table if not exists access_reviews(
+              id text primary key,organization_id text not null,name text not null,status text not null default 'OPEN',
+              created_by text not null,created_at text not null,completed_at text);
+            create table if not exists access_review_items(
+              id text primary key,review_id text not null,user_id text not null,role_snapshot text not null,
+              decision text not null default 'PENDING',note text,reviewed_by text,reviewed_at text);
             create table if not exists webhook_endpoints(
               id text primary key,organization_id text not null,name text not null,url text not null,
               secret_ciphertext text not null,events_json text not null,active integer not null default 1,
@@ -170,6 +176,8 @@ class Repository:
             c.execute("create index if not exists idx_mfa_recovery_user on mfa_recovery_codes(user_id,used_at)")
             c.execute("create index if not exists idx_invites_org on invitations(organization_id,status)")
             c.execute("create index if not exists idx_notifications_user on notifications(user_id,created_at)")
+            c.execute("create index if not exists idx_access_reviews_org on access_reviews(organization_id,created_at)")
+            c.execute("create index if not exists idx_access_review_items_review on access_review_items(review_id,decision)")
             c.execute("create index if not exists idx_webhooks_org on webhook_endpoints(organization_id,active)")
             c.execute("create index if not exists idx_webhook_deliveries_endpoint on webhook_deliveries(endpoint_id,created_at)")
             c.execute("create index if not exists idx_assets_scan on assets(scan_id)")
@@ -1215,6 +1223,67 @@ class Repository:
                 c.execute("delete from assets where scan_id=?",(sid,));c.execute("delete from remediation_verifications where scan_id=?",(sid,));c.execute("delete from findings where scan_id=?",(sid,));c.execute("delete from scan_events where scan_id=?",(sid,));c.execute("delete from zap_imports where scan_id=?",(sid,))
                 c.execute("delete from scans where id=?",(sid,))
             return len(scan_ids)
+
+    # enterprise access certification
+    def create_access_review(self,org_id,name,created_by):
+        now=self.now();review_id=self._id()
+        with self.conn() as c:
+            c.execute("insert into access_reviews(id,organization_id,name,status,created_by,created_at,completed_at) values(?,?,?,'OPEN',?,?,null)",(review_id,org_id,name,created_by,now))
+            members=[dict(r) for r in c.execute("""select m.user_id,m.role from memberships m join users u on u.id=m.user_id
+              where m.organization_id=? and m.active=1 and u.active=1 order by m.created_at""",(org_id,))]
+            for m in members:
+                c.execute("insert into access_review_items(id,review_id,user_id,role_snapshot,decision,note,reviewed_by,reviewed_at) values(?,?,?,?, 'PENDING',null,null,null)",
+                  (self._id(),review_id,m['user_id'],m['role']))
+        return self.get_access_review(review_id,org_id)
+
+    def list_access_reviews(self,org_id,limit=100):
+        with self.conn() as c:
+            rows=[dict(r) for r in c.execute("""select r.*,
+              count(i.id) item_count,
+              sum(case when i.decision='PENDING' then 1 else 0 end) pending_count,
+              sum(case when i.decision='APPROVE' then 1 else 0 end) approved_count,
+              sum(case when i.decision='REVOKE' then 1 else 0 end) revoke_count
+              from access_reviews r left join access_review_items i on i.review_id=r.id
+              where r.organization_id=? group by r.id order by r.created_at desc limit ?""",(org_id,limit))]
+        return rows
+
+    def get_access_review(self,review_id,org_id):
+        with self.conn() as c:
+            r=c.execute("select * from access_reviews where id=? and organization_id=?",(review_id,org_id)).fetchone()
+            if not r:return None
+            items=[dict(x) for x in c.execute("""select i.*,u.name,u.email,u.active user_active,m.active membership_active,m.role current_role,u.email_verified,u.mfa_enabled,u.last_login_at
+              from access_review_items i join users u on u.id=i.user_id
+              left join memberships m on m.user_id=i.user_id and m.organization_id=?
+              where i.review_id=? order by case i.role_snapshot when 'owner' then 1 when 'admin' then 2 when 'analyst' then 3 else 4 end,u.name""",(org_id,review_id))]
+        out=dict(r);out['items']=items
+        out['summary']={'total':len(items),'pending':sum(1 for x in items if x['decision']=='PENDING'),'approved':sum(1 for x in items if x['decision']=='APPROVE'),'revoke':sum(1 for x in items if x['decision']=='REVOKE')}
+        return out
+
+    def decide_access_review_item(self,review_id,item_id,org_id,decision,note,reviewed_by):
+        if decision not in {'APPROVE','REVOKE'}:return None
+        with self.conn() as c:
+            review=c.execute("select status from access_reviews where id=? and organization_id=?",(review_id,org_id)).fetchone()
+            if not review or review['status']!='OPEN':return None
+            item=c.execute("select * from access_review_items where id=? and review_id=?",(item_id,review_id)).fetchone()
+            if not item:return None
+            if item['role_snapshot']=='owner' and decision=='REVOKE':raise ValueError("Workspace Owner access cannot be revoked by access review")
+            c.execute("update access_review_items set decision=?,note=?,reviewed_by=?,reviewed_at=? where id=?",(decision,(note or '')[:1000],reviewed_by,self.now(),item_id))
+        return self.get_access_review(review_id,org_id)
+
+    def complete_access_review(self,review_id,org_id,completed_by):
+        now=self.now()
+        with self.conn() as c:
+            review=c.execute("select status from access_reviews where id=? and organization_id=?",(review_id,org_id)).fetchone()
+            if not review or review['status']!='OPEN':return None
+            pending=c.execute("select count(*) from access_review_items where review_id=? and decision='PENDING'",(review_id,)).fetchone()[0]
+            if pending:raise ValueError("All review items must have a decision before completion")
+            revokes=[dict(r) for r in c.execute("select user_id,role_snapshot from access_review_items where review_id=? and decision='REVOKE'",(review_id,))]
+            for item in revokes:
+                if item['role_snapshot']=='owner':continue
+                c.execute("update memberships set active=0 where organization_id=? and user_id=?",(org_id,item['user_id']))
+                c.execute("update sessions set revoked_at=? where organization_id=? and user_id=? and revoked_at is null",(now,org_id,item['user_id']))
+            c.execute("update access_reviews set status='COMPLETED',completed_at=? where id=?",(now,review_id))
+        return self.get_access_review(review_id,org_id)
 
     # integrations / outbound webhooks
     def create_webhook_endpoint(self,org_id,name,url,secret_ciphertext,events,created_by):
