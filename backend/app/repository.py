@@ -1995,26 +1995,65 @@ class Repository:
         return bool(r and r['cancel_requested'])
 
     def recover_stale_jobs(self,stale_minutes=10):
-        cutoff=(datetime.now(timezone.utc)-timedelta(minutes=max(1,int(stale_minutes)))).isoformat();recovered=[];failed=[]
+        cutoff=(datetime.now(timezone.utc)-timedelta(minutes=max(1,int(stale_minutes)))).isoformat()
+        recovered=[];failed=[];resolved=[];schedule_notifications=[]
         with self.conn() as c:
             c.execute("begin immediate")
             rows=[dict(r) for r in c.execute("""select * from jobs where status='RUNNING' and locked_at is not null and locked_at<?""",(cutoff,))]
             for job in rows:
+                try:payload=json.loads(job['payload_json'] or '{}')
+                except Exception:payload={}
+                scan_id=payload.get('scan_id');delivery_id=payload.get('delivery_id')
+                terminal_status=None
+                if scan_id:
+                    scan=c.execute("select status from scans where id=?",(scan_id,)).fetchone()
+                    if scan and scan['status']=='COMPLETED':terminal_status='COMPLETED'
+                    elif scan and scan['status']=='CANCELLED':terminal_status='CANCELLED'
+                elif delivery_id:
+                    delivery=c.execute("select status from webhook_deliveries where id=?",(delivery_id,)).fetchone()
+                    if delivery and delivery['status']=='DELIVERED':terminal_status='COMPLETED'
+                    elif delivery and delivery['status']=='CANCELLED':terminal_status='CANCELLED'
+                if terminal_status:
+                    c.execute("""update jobs set status=?,completed_at=?,locked_by=null,locked_at=null,last_error=?
+                      where id=? and status='RUNNING'""",(terminal_status,self.now(),'Recovered after stale worker lease; domain operation was already terminal',job['id']))
+                    resolved.append(job['id']);continue
+
                 next_status='QUEUED' if int(job['attempts'])<int(job['max_attempts']) else 'FAILED'
                 c.execute("""update jobs set status=?,run_after=?,locked_by=null,locked_at=null,last_error=?,completed_at=?
                   where id=? and status='RUNNING'""",(next_status,self.now(),'Recovered after stale worker lease',None if next_status=='QUEUED' else self.now(),job['id']))
-                try:payload=json.loads(job['payload_json'] or '{}')
-                except Exception:payload={}
-                scan_id=payload.get('scan_id')
+
                 if scan_id:
                     if next_status=='QUEUED':
                         c.execute("update scans set status='QUEUED',stage='RECOVERED',progress=0,error=null where id=? and status='SCANNING'",(scan_id,))
-                        c.execute("insert into scan_events(scan_id,event_type,stage,progress,message,data_json,created_at) values(?,?,?,?,?,?,?)",(scan_id,'STATE','RECOVERED',0,'Stale worker lease recovered; scan re-queued','{}',self.now()))
+                        c.execute("insert into scan_events(scan_id,event_type,stage,progress,message,data_json,created_at) values(?,?,?,?,?,?,?)",
+                          (scan_id,'STATE','RECOVERED',0,'Stale worker lease recovered; scan re-queued','{}',self.now()))
                     else:
-                        c.execute("update scans set status='FAILED',stage='FAILED',progress=100,error=?,completed_at=? where id=? and status in ('SCANNING','QUEUED')",('Worker lease expired and retry limit was reached',self.now(),scan_id))
+                        now=self.now()
+                        c.execute("update scans set status='FAILED',stage='FAILED',progress=100,error=?,completed_at=? where id=? and status in ('SCANNING','QUEUED')",
+                          ('Worker lease expired and retry limit was reached',now,scan_id))
+                        schedule=c.execute("""select sr.schedule_id,s.created_by,s.notify_on_failure,s.name,t.name target_name,p.organization_id
+                          from schedule_runs sr join schedules s on s.id=sr.schedule_id join targets t on t.id=s.target_id
+                          join projects p on p.id=t.project_id where sr.scan_id=? order by sr.created_at desc limit 1""",(scan_id,)).fetchone()
+                        if schedule:
+                            c.execute("update schedule_runs set status='FAILED',completed_at=? where scan_id=?",(now,scan_id))
+                            c.execute("update schedules set failure_count=failure_count+1,last_error=? where id=?",
+                              ('Worker lease expired and retry limit was reached',schedule['schedule_id']))
+                            if schedule['notify_on_failure']:schedule_notifications.append((dict(schedule),scan_id))
+                elif delivery_id:
+                    if next_status=='QUEUED':
+                        c.execute("""update webhook_deliveries set status='QUEUED',last_error=? where id=? and status='RUNNING'""",
+                          ('Recovered after stale worker lease; delivery will be retried',delivery_id))
+                    else:
+                        c.execute("""update webhook_deliveries set status='FAILED',last_error=?,completed_at=?
+                          where id=? and status in ('RUNNING','QUEUED')""",
+                          ('Worker lease expired and retry limit was reached',self.now(),delivery_id))
                 (recovered if next_status=='QUEUED' else failed).append(job['id'])
             c.commit()
-        return {'recovered':recovered,'failed':failed,'checked':len(rows)}
+        for notify,scan_id in schedule_notifications:
+            self.add_notification(notify['organization_id'],notify['created_by'],'schedule_failure','Recurring assessment failed',
+              f"{notify.get('name') or notify.get('target_name') or 'Scheduled assessment'} failed after its worker lease expired and the retry limit was reached.",
+              {'schedule_id':notify['schedule_id'],'scan_id':scan_id})
+        return {'recovered':recovered,'failed':failed,'resolved':resolved,'checked':len(rows)}
 
     def admin_list_jobs(self,limit=500):
         with self.conn() as c:rows=[dict(r) for r in c.execute("select * from jobs order by created_at desc limit ?",(limit,))]
