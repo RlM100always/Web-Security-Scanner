@@ -101,6 +101,7 @@ def test_scoped_api_key_and_scan_quota():
 
         scan_key=client.post("/api/v1/api-keys",json={"name":"Scanner","scopes":["read","scan"],"expires_in_days":30},headers={"X-CSRF-Token":csrf})
         raw_scan=scan_key.get_json()["token"];headers={"Authorization":"Bearer "+raw_scan}
+        repo.save_target_preflight(t["id"],ident["organization_id"],ident["user_id"],"quick",{"status":"READY","checks":[]})
         first=app.test_client().post("/api/v1/scans",json={"target_id":t["id"],"profile":"quick"},headers=headers)
         assert first.status_code==202
         repo.set_system_setting("scan_quota_per_day",1,ident["user_id"])
