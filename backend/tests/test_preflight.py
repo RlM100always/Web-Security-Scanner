@@ -21,7 +21,9 @@ def patch_network(monkeypatch,status=200,ctype="text/html"):
     monkeypatch.setattr(pf,"validate_target",lambda url,allow_private=False:url)
     monkeypatch.setattr(pf.socket,"getaddrinfo",lambda *a,**k:[(2,1,6,"",("93.184.216.34",0))])
     class Client(FakeClient):
+        def __init__(self,*args,**kwargs):self.closed=False
         def get(self,url):return FakeResponse(status,ctype)
+        def close(self):self.closed=True
     monkeypatch.setattr(pf,"SafeHttpClient",Client)
     monkeypatch.setattr(pf,"_tls_details",lambda *a,**k:{"protocol":"TLSv1.3","cipher":"TLS_AES_256_GCM_SHA384","expires_at":"Jan 1 00:00:00 2028 GMT","days_remaining":400})
 
