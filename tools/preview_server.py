@@ -1,0 +1,10 @@
+from http.server import BaseHTTPRequestHandler,HTTPServer
+import json
+HTML='''<!doctype html><meta name="viewport" content="width=device-width"><title>SentinelScope Preview</title><style>body{margin:0;font:14px system-ui;background:#f5f7fa;color:#172033}.top{background:#0b1220;color:white;padding:20px 7vw}.top b{font-size:20px}.wrap{max-width:1100px;margin:30px auto;padding:0 18px}.hero,.p{background:white;border:1px solid #e1e6ee;border-radius:16px;padding:24px;margin:14px 0}.score{font-size:52px;font-weight:800}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.k{background:white;border:1px solid #e1e6ee;border-radius:12px;padding:18px}.k b{display:block;font-size:24px;margin-top:8px}.pill{background:#e6f8ef;color:#138554;padding:6px 9px;border-radius:99px;font-weight:700}@media(max-width:700px){.grid{grid-template-columns:repeat(2,1fr)}}</style><div class=top><b>🛡 SentinelScope</b><div>Web Security Scanner · local preview</div></div><div class=wrap><div class=hero><small>CURRENT POSTURE</small><div class=score>92<small>/100</small></div><p>Evidence-led, standards-mapped, non-destructive assessment platform.</p></div><div class=grid><div class=k>Projects<b>1</b></div><div class=k>Targets<b>2</b></div><div class=k>Checks<b>20+</b></div><div class=k>Status<b><span class=pill>READY</span></b></div></div><div class=p><h2>Implementation preview is running</h2><p>The production repository contains the Flask API, React/PWA dashboard, SSRF-safe scanner engine, crawler, findings, history, reports, demo targets, tests, Docker and CI.</p><p><b>Safety:</b> intrusive exploitation is intentionally not implemented.</p></div></div>'''
+class H(BaseHTTPRequestHandler):
+ def do_GET(self):
+  if self.path=='/health':
+   b=json.dumps({'status':'ok','mode':'preview'}).encode();self.send_response(200);self.send_header('Content-Type','application/json');self.end_headers();self.wfile.write(b);return
+  self.send_response(200);self.send_header('Content-Type','text/html; charset=utf-8');self.end_headers();self.wfile.write(HTML.encode())
+print('Preview: http://127.0.0.1:8765')
+HTTPServer(('127.0.0.1',8765),H).serve_forever()
