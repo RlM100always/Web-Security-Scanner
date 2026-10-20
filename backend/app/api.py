@@ -514,6 +514,26 @@ def create_blueprint():
         audit('SCAN_PROFILE_UPDATED','scan_profile',profile_id,{'project_id':project_id,'version':row['version'] if row else None})
         return row or ({'error':'Scan profile not found'},404)
 
+    @bp.get('/projects/<project_id>/scan-profiles/<profile_id>/versions')
+    @require_auth
+    def project_scan_profile_versions(project_id,profile_id):
+        ident=current_identity();project=repo().get_project(project_id,ident['organization_id'])
+        if not project:return {'error':'Project not found'},404
+        current=repo().get_scan_profile(profile_id)
+        if not current or current['project_id']!=project_id:return {'error':'Scan profile not found'},404
+        return {'profile':current,'usage':repo().scan_profile_usage(profile_id,project_id),'versions':repo().scan_profile_versions(profile_id,project_id)}
+
+    @bp.post('/projects/<project_id>/scan-profiles/<profile_id>/versions/<int:version>/restore')
+    @require_role('analyst')
+    def project_scan_profile_restore(project_id,profile_id,version):
+        ident=current_identity();project=repo().get_project(project_id,ident['organization_id'])
+        if not project:return {'error':'Project not found'},404
+        if project.get('status')=='archived':return {'error':'Archived projects cannot restore scan profiles'},409
+        row=repo().restore_scan_profile_version(profile_id,project_id,version,ident['user_id'])
+        if not row:return {'error':'Profile version not found'},404
+        audit('SCAN_PROFILE_VERSION_RESTORED','scan_profile',profile_id,{'project_id':project_id,'restored_from_version':version,'new_version':row['version']})
+        return row
+
     @bp.post('/projects/<project_id>/scan-profiles/<profile_id>/clone')
     @require_role('analyst')
     def project_scan_profile_clone(project_id,profile_id):
@@ -530,8 +550,12 @@ def create_blueprint():
         if not project:return {'error':'Project not found'},404
         profiles=repo().list_scan_profiles(project_id)
         if len([x for x in profiles if x['active']])<=1:return {'error':'At least one active scan profile must remain'},409
-        if not repo().delete_scan_profile(profile_id,project_id):return {'error':'Scan profile not found'},404
-        audit('SCAN_PROFILE_DELETED','scan_profile',profile_id,{'project_id':project_id});return {'ok':True}
+        usage=repo().scan_profile_usage(profile_id,project_id)
+        if usage['enabled_schedules']>0:return {'error':'Rebind or pause enabled schedules before archiving this profile','usage':usage},409
+        try:ok=repo().delete_scan_profile(profile_id,project_id,ident['user_id'])
+        except ValueError as e:return {'error':str(e),'usage':usage},409
+        if not ok:return {'error':'Scan profile not found'},404
+        audit('SCAN_PROFILE_ARCHIVED','scan_profile',profile_id,{'project_id':project_id,'usage':usage});return {'ok':True,'archived':True,'usage':usage}
 
     # Targets
     @bp.route('/targets',methods=['GET','POST'])
