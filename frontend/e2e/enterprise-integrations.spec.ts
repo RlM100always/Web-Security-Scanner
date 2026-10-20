@@ -31,7 +31,7 @@ test('enterprise integrations and access certification work',async({page},testIn
   await page.getByRole('button',{name:'Start access review'}).click();
   await expect(page.getByText('ACCESS CERTIFICATION')).toBeVisible();
   await page.getByRole('button',{name:'Confirm owner'}).click();
-  await expect(page.getByText('APPROVE')).toBeVisible();
+  await expect(page.getByText('APPROVE',{exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Complete review'}).click();
   await expect(page.getByText('Access review completed')).toBeVisible();
 });
