@@ -73,3 +73,17 @@ def test_webhook_queue_signing_delivery_and_history(monkeypatch):
         assert captured["headers"]["X-SentinelScope-Signature"].startswith("sha256=")
         history=r.list_webhook_deliveries(owner["organization_id"])
         assert history[0]["id"]==delivery["id"] and history[0]["status"]=="DELIVERED"
+
+
+def test_report_export_ledger_preserves_hash_actor_and_scan_context():
+    with tempfile.TemporaryDirectory() as d:
+        r,owner,_=setup_repo(os.path.join(d,"reports.sqlite3"))
+        p=r.create_project("Production","",owner["organization_id"],owner["user_id"])
+        t=r.create_target(p["id"],"https://example.com/","Portal",True,True,owner["user_id"])
+        scan=r.create_scan(t["id"],t["url"],"standard",owner["user_id"],{})
+        r.update_scan(scan["id"],status="COMPLETED",score=88,completed_at=r.now())
+        row=r.record_report_export(owner["organization_id"],scan["id"],"pdf",owner["user_id"],"a"*64,4096)
+        history=r.list_report_exports(owner["organization_id"])
+        assert history[0]["id"]==row["id"]
+        assert history[0]["sha256"]=="a"*64 and history[0]["size_bytes"]==4096
+        assert history[0]["user_email"]=="owner@example.com" and history[0]["target_url"]=="https://example.com/"
