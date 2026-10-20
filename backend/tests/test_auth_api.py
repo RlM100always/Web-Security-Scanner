@@ -83,7 +83,7 @@ def test_mfa_setup_and_login_requirement():
         yes_code=client.post("/api/v1/auth/login",json={"email":"owner@example.com","password":"correct-horse-battery","mfa_code":pyotp.TOTP(secret).now()})
         assert yes_code.status_code==200
 
-def test_invitation_workspace_and_backup():
+def test_invitation_and_tenant_backup_isolation():
     with tempfile.TemporaryDirectory() as d:
         app=build(os.path.join(d,"api.sqlite3"));app.testing=True
         client=app.test_client()
@@ -95,5 +95,10 @@ def test_invitation_workspace_and_backup():
         accepted=client.post("/api/v1/auth/invitations/accept",json={"token":invite_token,"name":"Analyst User","password":"analyst-password-123"})
         assert accepted.status_code==200
         backup=client.post("/api/v1/backups",json={},headers={"X-CSRF-Token":csrf})
-        assert backup.status_code==201
-        assert os.path.exists(os.path.join(TestConfig.BACKUP_DIR,backup.get_json()["filename"]))
+        assert backup.status_code==403
+        assert "System Administrator" in backup.get_json()["error"]
+        assert client.get("/api/v1/metrics").status_code==403
+        export=client.get("/api/v1/export/workspace.json")
+        assert export.status_code==200
+        payload=export.get_json()
+        assert payload["organization"]["id"]==signup.get_json()["user"]["organization_id"]
