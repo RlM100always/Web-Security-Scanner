@@ -37,7 +37,7 @@ test('deep scan policy and API key workflow works',async({page},testInfo)=>{
   await page.getByLabel('Profile name').fill('Release Gate');
   await page.getByLabel('Description').fill('Release readiness profile');
   await page.getByLabel('Maximum pages').fill('22');
-  await page.getByRole('button',{name:'Create profile'}).click();
+  await page.getByRole('button',{name:'Create profile',exact:true}).click();
   await expect(page.getByText('Release Gate')).toBeVisible();
   await expect(page.getByText('v1 · 22 pages · depth 2')).toBeVisible();
   await page.locator('.modalHead button').click();
