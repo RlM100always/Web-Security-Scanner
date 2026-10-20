@@ -355,7 +355,28 @@ def create_blueprint():
         if ROLES.get(ident['role'],0)<ROLES['analyst']:return {'error':'Analyst role required'},403
         d=request.get_json(force=True) or {};name=(d.get('name') or '').strip()
         if not name:return {'error':'Project name is required'},400
-        p=repo().create_project(name,d.get('description',''),ident['organization_id'],ident['user_id']);audit('PROJECT_CREATED','project',p['id'],{'name':name});return p,201
+        tags=[str(x).strip()[:48] for x in d.get('tags',[]) if str(x).strip()][:20] if isinstance(d.get('tags'),list) else []
+        p=repo().create_project(name,d.get('description',''),ident['organization_id'],ident['user_id'],tags);audit('PROJECT_CREATED','project',p['id'],{'name':name,'tags':tags});return p,201
+
+    @bp.patch('/projects/<project_id>')
+    @require_role('analyst')
+    def project_update(project_id):
+        ident=current_identity();project=repo().get_project(project_id,ident['organization_id'])
+        if not project:return {'error':'Project not found'},404
+        d=request.get_json(force=True) or {};updates={}
+        if 'name' in d:
+            name=(d.get('name') or '').strip()
+            if not name:return {'error':'Project name is required'},400
+            updates['name']=name[:160]
+        if 'description' in d:updates['description']=str(d.get('description') or '')[:4000]
+        if 'status' in d:
+            if d['status'] not in {'active','archived'}:return {'error':'Invalid project status'},400
+            updates['status']=d['status']
+        if 'tags' in d:
+            if not isinstance(d['tags'],list):return {'error':'tags must be an array'},400
+            updates['tags_json']=json.dumps([str(x).strip()[:48] for x in d['tags'] if str(x).strip()][:20])
+        saved=repo().update_project(project_id,ident['organization_id'],updates)
+        audit('PROJECT_UPDATED','project',project_id,updates);return saved
 
     @bp.delete('/projects/<project_id>')
     @require_role('admin')
@@ -399,6 +420,7 @@ def create_blueprint():
         if not d.get('authorized'):return {'error':'You must confirm ownership or explicit authorization'},400
         project=repo().get_project(d.get('project_id'),ident['organization_id'])
         if not project:return {'error':'Project not found'},404
+        if project.get('status')=='archived':return {'error':'Archived projects cannot accept new targets'},409
         try:url=validate_target(d.get('url'),current_app.config['SCANNER_ALLOW_PRIVATE'])
         except TargetValidationError as e:return {'error':str(e)},400
         t=repo().create_target(project['id'],url,d.get('name') or url,True,False,ident['user_id'],d.get('criticality','medium'),d.get('environment','production'),d.get('tags') if isinstance(d.get('tags'),list) else []);audit('TARGET_CREATED','target',t['id'],{'url':url,'criticality':t.get('criticality'),'environment':t.get('environment')});return t,201
@@ -464,6 +486,8 @@ def create_blueprint():
         if ROLES.get(ident['role'],0)<ROLES['analyst']:return {'error':'Analyst role required'},403
         d=request.get_json(force=True) or {};t=repo().get_target(d.get('target_id'),ident['organization_id'])
         if not t:return {'error':'Target not found'},404
+        project=repo().get_project(t['project_id'],ident['organization_id'])
+        if project and project.get('status')=='archived':return {'error':'Archived projects cannot queue assessments'},409
         if not t.get('authorized'):return {'error':'Target is not authorized'},403
         profile=d.get('profile','standard')
         if profile not in {'quick','standard','lab'}:return {'error':'Invalid profile'},400
