@@ -860,6 +860,14 @@ class Repository:
         return x
     def list_schedules(self,org_id):
         with self.conn() as c:return [dict(r) for r in c.execute("""select s.* from schedules s join targets t on t.id=s.target_id join projects p on p.id=t.project_id where p.organization_id=? order by s.created_at desc""",(org_id,))]
+    def get_schedule(self,schedule_id,org_id=None):
+        q="""select s.*,t.url target_url,t.name target_name,t.verified target_verified,t.project_id,
+          p.name project_name,p.status project_status,p.organization_id
+          from schedules s join targets t on t.id=s.target_id join projects p on p.id=t.project_id where s.id=?""";args=[schedule_id]
+        if org_id:q+=" and p.organization_id=?";args.append(org_id)
+        with self.conn() as c:r=c.execute(q,args).fetchone()
+        return dict(r) if r else None
+
     def update_schedule(self,schedule_id,org_id,updates):
         allowed={'enabled','profile','interval_minutes','name','notify_on_failure'}
         sets=[];vals=[]
@@ -929,11 +937,11 @@ class Repository:
               from schedule_runs sr left join scans sc on sc.id=sr.scan_id where sr.schedule_id=? order by sr.created_at desc limit ?""",(schedule_id,limit))]
 
     def run_schedule_now(self,schedule_id,org_id,user_id):
-        with self.conn() as c:
-            s=c.execute("""select s.*,t.url target_url,t.project_id from schedules s join targets t on t.id=s.target_id
-              join projects p on p.id=t.project_id where s.id=? and p.organization_id=?""",(schedule_id,org_id)).fetchone()
+        s=self.get_schedule(schedule_id,org_id)
         if not s:return None
-        s=dict(s);policy=self.get_project_policy(s['project_id'])
+        if s.get('project_status')=='archived':raise ValueError("Archived projects cannot run recurring assessments")
+        if s.get('profile')=='lab' and not s.get('target_verified'):raise ValueError("Lab profile requires verified ownership")
+        policy=self.get_project_policy(s['project_id'])
         scan=self.create_scan(s['target_id'],s['target_url'],s['profile'],user_id,policy)
         self.enqueue_job('scan',{'scan_id':scan['id'],'target_id':s['target_id'],'schedule_id':schedule_id})
         self.create_schedule_run(schedule_id,scan['id'])
