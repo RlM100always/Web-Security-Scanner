@@ -265,14 +265,21 @@ class Repository:
 
     def delete_account(self,user_id):
         with self.conn() as c:
-            owners=[dict(r) for r in c.execute("select organization_id,role from memberships where user_id=?",(user_id,))]
-            for m in owners:
-                if m['role']=='owner':
-                    count=c.execute("select count(*) from memberships where organization_id=?",(m['organization_id'],)).fetchone()[0]
-                    if count>1:
-                        raise ValueError("Transfer or remove other workspace members before deleting an owner account")
-                    c.execute("delete from audit_logs where organization_id=?",(m['organization_id'],))
-                    c.execute("delete from organizations where id=?",(m['organization_id'],))
+            memberships=[dict(r) for r in c.execute("select organization_id,role from memberships where user_id=?",(user_id,))]
+            owned=[m['organization_id'] for m in memberships if m['role']=='owner']
+            for org_id in owned:
+                count=c.execute("select count(*) from memberships where organization_id=?",(org_id,)).fetchone()[0]
+                if count>1:raise ValueError("Transfer or remove other workspace members before deleting an owner account")
+        for org_id in owned:
+            for p in self.list_projects(org_id):self.delete_project(p['id'],org_id)
+            with self.conn() as c:
+                c.execute("delete from audit_logs where organization_id=?",(org_id,))
+                c.execute("delete from invitations where organization_id=?",(org_id,))
+                c.execute("delete from notifications where organization_id=?",(org_id,))
+                c.execute("delete from backup_history where organization_id=?",(org_id,))
+                c.execute("delete from memberships where organization_id=?",(org_id,))
+                c.execute("delete from organizations where id=?",(org_id,))
+        with self.conn() as c:
             c.execute("delete from sessions where user_id=?",(user_id,))
             c.execute("delete from memberships where user_id=?",(user_id,))
             c.execute("delete from notifications where user_id=?",(user_id,))
