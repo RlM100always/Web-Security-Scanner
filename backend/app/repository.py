@@ -886,6 +886,24 @@ class Repository:
                 except Exception:pass
         return {'total':len(rows),'states':counts,'overdue':overdue,'assigned':sum(1 for r in rows if r.get('assignee_user_id'))}
 
+    def asset_history(self,org_id,target_id,url,limit=100):
+        with self.conn() as c:
+            target=c.execute("""select t.*,p.name project_name,p.organization_id from targets t join projects p on p.id=t.project_id
+              where t.id=? and p.organization_id=?""",(target_id,org_id)).fetchone()
+            if not target:return None
+            rows=[dict(r) for r in c.execute("""select a.*,s.created_at scan_created_at,s.completed_at,s.score,s.profile,s.status scan_status
+              from assets a join scans s on s.id=a.scan_id where a.target_id=? and a.url=?
+              order by s.created_at desc limit ?""",(target_id,url,limit))]
+        for r in rows:
+            try:r['metadata']=json.loads(r.pop('metadata_json') or '{}')
+            except Exception:r['metadata']={}
+        latest=rows[0] if rows else None
+        return {'target':dict(target),'latest':latest,'history':rows,
+                'summary':{'occurrences':len(rows),'first_seen':rows[-1]['scan_created_at'] if rows else None,
+                           'last_seen':rows[0]['scan_created_at'] if rows else None,
+                           'status_changes':sum(1 for i in range(1,len(rows)) if rows[i-1].get('status_code')!=rows[i].get('status_code')),
+                           'content_type_changes':sum(1 for i in range(1,len(rows)) if rows[i-1].get('content_type')!=rows[i].get('content_type'))}}
+
     def asset_comparison(self,scan_id):
         current=self.get_scan(scan_id)
         if not current:return {}
