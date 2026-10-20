@@ -1262,37 +1262,13 @@ def create_blueprint():
         ident=current_identity();count=repo().mark_all_notifications_read(ident['organization_id'],ident['user_id'])
         return {'ok':True,'updated':count}
 
-    @bp.post('/backups')
+    @bp.route('/backups',methods=['GET','POST'])
+    @bp.route('/backups/<path:legacy_path>',methods=['GET','POST'])
     @require_role('owner')
-    def backup_create():
-        ident=current_identity();path,size=create_sqlite_backup(repo().path,current_app.config['BACKUP_DIR'])
-        repo().record_backup(ident['organization_id'],ident['user_id'],os.path.basename(path),size);audit('BACKUP_CREATED','backup',os.path.basename(path),{'size_bytes':size})
-        return {'filename':os.path.basename(path),'size_bytes':size},201
-
-    @bp.get('/backups')
-    @require_role('owner')
-    def backup_list():
-        return jsonify(repo().list_backups(current_identity()['organization_id']))
-
-    @bp.get('/backups/<filename>')
-    @require_role('owner')
-    def backup_download(filename):
-        safe=os.path.basename(filename);path=os.path.join(current_app.config['BACKUP_DIR'],safe)
-        if not os.path.exists(path):return {'error':'Backup not found'},404
-        return send_file(path,as_attachment=True,download_name=safe)
-
-    @bp.post('/backups/restore')
-    @require_role('owner')
-    def backup_restore():
-        upload=request.files.get('file')
-        if not upload:return {'error':'SQLite backup file is required'},400
-        fd,tmp=tempfile.mkstemp(suffix='.sqlite3');os.close(fd);upload.save(tmp)
-        try:restore_sqlite_backup(repo().path,tmp)
-        except Exception as e:
-            if os.path.exists(tmp):os.remove(tmp)
-            return {'error':str(e)},400
-        if os.path.exists(tmp):os.remove(tmp)
-        return {'ok':True,'message':'Backup restored. Restart API and worker services before continuing.'}
+    def workspace_backup_disabled(legacy_path=None):
+        return {
+            'error':'Raw SQLite backups are platform-wide and require System Administrator access. Use workspace JSON export for tenant-scoped portability.'
+        },403
 
     @bp.get('/export/workspace.json')
     @require_role('owner')
