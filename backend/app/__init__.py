@@ -2,6 +2,7 @@ def create_app(config_object=None):
     import re
     from flask import Flask, request
     from flask_cors import CORS
+    from werkzeug.middleware.proxy_fix import ProxyFix
     from .config import Config
     from .repository import Repository
     from .api import create_blueprint
@@ -11,6 +12,9 @@ def create_app(config_object=None):
     config_object = config_object or Config
     app=Flask(__name__)
     app.config.from_object(config_object)
+    if app.config.get("TRUST_PROXY_HEADERS"):
+        hops=max(1,int(app.config.get("TRUST_PROXY_HOPS",1)))
+        app.wsgi_app=ProxyFix(app.wsgi_app,x_for=hops,x_proto=hops,x_host=hops,x_port=hops)
 
     origins=app.config.get('CORS_ORIGINS','*')
     if isinstance(origins,str):
