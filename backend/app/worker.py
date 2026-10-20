@@ -69,8 +69,12 @@ def worker_loop(repo, config, poll_seconds=1.0):
     worker_id=f"{socket.gethostname()}:{os.getpid()}"
     started=repo.now()
     repo.worker_heartbeat(worker_id,socket.gethostname(),os.getpid(),'STARTING',started_at=started)
+    repo.recover_stale_jobs(10)
+    last_recovery=time.monotonic()
     while True:
         try:
+            if time.monotonic()-last_recovery>=60:
+                repo.recover_stale_jobs(10);last_recovery=time.monotonic()
             repo.enqueue_due_schedules()
             if not process_one(repo,config,worker_id):time.sleep(poll_seconds)
         except KeyboardInterrupt:return
