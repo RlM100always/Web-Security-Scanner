@@ -4,6 +4,7 @@ from app.repository import Repository
 from app.crypto import hash_password,verify_password
 from app.zap import parse_zap_json,compare_with_scanner
 from app.verification import make_verification
+from app import worker as worker_module
 
 def test_password_hash_roundtrip():
     h=hash_password('correct-horse-battery')
@@ -35,3 +36,27 @@ def test_zap_parser_and_comparison():
     ours=[{'check_id':'header.content-security-policy','status':'FAIL'}]
     comp=compare_with_scanner(ours,items)
     assert comp['summary']['mapped_overlap']==1
+
+
+def test_worker_preserves_cancelled_job_state(monkeypatch):
+    with tempfile.TemporaryDirectory() as d:
+        r=Repository(os.path.join(d,'cancel.sqlite3'));r.init_schema()
+        owner=r.create_bootstrap_owner('owner2@example.com','Owner',hash_password('very-secure-password'))
+        p=r.create_project('P','',owner['organization_id'],owner['user_id'])
+        t=r.create_target(p['id'],'https://example.com/','Example',True,False,owner['user_id'])
+        s=r.create_scan(t['id'],t['url'],'quick',owner['user_id'])
+        job=r.enqueue_job('scan',{'scan_id':s['id'],'target_id':t['id']})
+
+        def fake_process_scan(repo,config,payload):
+            repo.update_scan(payload['scan_id'],status='CANCELLED',stage='CANCELLED',progress=100,completed_at=repo.now())
+            return 'CANCELLED'
+
+        monkeypatch.setattr(worker_module,'process_scan',fake_process_scan)
+        class Config: pass
+        assert worker_module.process_one(r,Config,'testhost:123') is True
+
+        jobs={x['id']:x for x in r.admin_list_jobs()}
+        assert jobs[job['id']]['status']=='CANCELLED'
+        assert jobs[job['id']]['locked_by'] is None
+        assert jobs[job['id']]['locked_at'] is None
+        assert r.get_scan(s['id'])['status']=='CANCELLED'
