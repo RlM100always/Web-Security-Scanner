@@ -61,6 +61,9 @@ class Repository:
             create table if not exists schedules(
               id text primary key,target_id text not null,profile text not null,interval_minutes integer not null,
               enabled integer not null default 1,next_run_at text not null,created_by text,created_at text not null);
+            create table if not exists schedule_runs(
+              id text primary key,schedule_id text not null,scan_id text not null,status text not null,
+              created_at text not null,completed_at text);
             create table if not exists zap_imports(
               id text primary key,scan_id text not null,filename text,items_json text not null,comparison_json text not null,
               created_by text,created_at text not null);
@@ -122,6 +125,12 @@ class Repository:
             self._ensure_column(c,"organizations","active","integer not null default 1")
             self._ensure_column(c,"scans","cancel_requested","integer not null default 0")
             self._ensure_column(c,"scans","policy_json","text")
+            self._ensure_column(c,"schedules","name","text")
+            self._ensure_column(c,"schedules","last_run_at","text")
+            self._ensure_column(c,"schedules","last_scan_id","text")
+            self._ensure_column(c,"schedules","run_count","integer not null default 0")
+            self._ensure_column(c,"schedules","failure_count","integer not null default 0")
+            self._ensure_column(c,"schedules","notify_on_failure","integer not null default 1")
             self._ensure_column(c,"finding_states","base_severity","text not null default 'INFO'")
             self._ensure_column(c,"finding_states","risk_expires_at","text")
             self._ensure_column(c,"finding_states","risk_accepted_by","text")
@@ -133,6 +142,8 @@ class Repository:
             c.execute("create index if not exists idx_projects_org on projects(organization_id)")
             c.execute("create index if not exists idx_jobs_queue on jobs(status,run_after)")
             c.execute("create index if not exists idx_events_scan on scan_events(scan_id,id)")
+            c.execute("create index if not exists idx_schedule_runs_schedule on schedule_runs(schedule_id,created_at)")
+            c.execute("create index if not exists idx_schedule_runs_scan on schedule_runs(scan_id)")
             c.execute("create index if not exists idx_audit_org on audit_logs(organization_id,created_at)")
             c.execute("create index if not exists idx_auth_attempts on auth_attempts(email,created_at)")
             c.execute("create index if not exists idx_auth_tokens on auth_tokens(user_id,purpose,expires_at)")
@@ -804,9 +815,11 @@ class Repository:
             c.execute("update jobs set status=?,run_after=?,last_error=?,locked_by=null,locked_at=null,completed_at=? where id=?",(status,run_after,error[:1000],None if status=='QUEUED' else self.now(),id))
     def queue_stats(self):
         with self.conn() as c:return {r['status']:r['n'] for r in c.execute("select status,count(*) n from jobs group by status")}
-    def create_schedule(self,target_id,profile,interval_minutes,created_by):
-        x={'id':self._id(),'target_id':target_id,'profile':profile,'interval_minutes':interval_minutes,'enabled':1,'next_run_at':(datetime.now(timezone.utc)+timedelta(minutes=interval_minutes)).isoformat(),'created_by':created_by,'created_at':self.now()}
-        with self.conn() as c:c.execute("insert into schedules values(?,?,?,?,?,?,?,?)",tuple(x.values()))
+    def create_schedule(self,target_id,profile,interval_minutes,created_by,name=None,notify_on_failure=True):
+        x={'id':self._id(),'target_id':target_id,'profile':profile,'interval_minutes':interval_minutes,'enabled':1,'next_run_at':(datetime.now(timezone.utc)+timedelta(minutes=interval_minutes)).isoformat(),'created_by':created_by,'created_at':self.now(),
+           'name':(name or '').strip()[:160] or None,'last_run_at':None,'last_scan_id':None,'run_count':0,'failure_count':0,'notify_on_failure':int(bool(notify_on_failure))}
+        with self.conn() as c:c.execute("""insert into schedules(id,target_id,profile,interval_minutes,enabled,next_run_at,created_by,created_at,name,last_run_at,last_scan_id,run_count,failure_count,notify_on_failure)
+          values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",(x['id'],x['target_id'],x['profile'],x['interval_minutes'],x['enabled'],x['next_run_at'],x['created_by'],x['created_at'],x['name'],x['last_run_at'],x['last_scan_id'],x['run_count'],x['failure_count'],x['notify_on_failure']))
         return x
     def list_schedules(self,org_id):
         with self.conn() as c:return [dict(r) for r in c.execute("""select s.* from schedules s join targets t on t.id=s.target_id join projects p on p.id=t.project_id where p.organization_id=? order by s.created_at desc""",(org_id,))]
@@ -826,6 +839,39 @@ class Repository:
             c.execute("delete from schedules where id=?",(schedule_id,))
         return True
 
+    def create_schedule_run(self,schedule_id,scan_id):
+        row={'id':self._id(),'schedule_id':schedule_id,'scan_id':scan_id,'status':'QUEUED','created_at':self.now(),'completed_at':None}
+        with self.conn() as c:c.execute("insert into schedule_runs values(?,?,?,?,?,?)",tuple(row.values()))
+        return row
+
+    def finalize_schedule_run(self,scan_id,status):
+        with self.conn() as c:
+            run=c.execute("select schedule_id from schedule_runs where scan_id=? order by created_at desc limit 1",(scan_id,)).fetchone()
+            if not run:return False
+            c.execute("update schedule_runs set status=?,completed_at=? where scan_id=?",(status,self.now(),scan_id))
+            if status=='FAILED':c.execute("update schedules set failure_count=failure_count+1 where id=?",(run['schedule_id'],))
+            return True
+
+    def schedule_history(self,schedule_id,org_id,limit=50):
+        with self.conn() as c:
+            owned=c.execute("""select s.id from schedules s join targets t on t.id=s.target_id join projects p on p.id=t.project_id
+              where s.id=? and p.organization_id=?""",(schedule_id,org_id)).fetchone()
+            if not owned:return []
+            return [dict(r) for r in c.execute("""select sr.*,sc.score,sc.pages_scanned,sc.duration_ms,sc.error
+              from schedule_runs sr left join scans sc on sc.id=sr.scan_id where sr.schedule_id=? order by sr.created_at desc limit ?""",(schedule_id,limit))]
+
+    def run_schedule_now(self,schedule_id,org_id,user_id):
+        with self.conn() as c:
+            s=c.execute("""select s.*,t.url target_url,t.project_id from schedules s join targets t on t.id=s.target_id
+              join projects p on p.id=t.project_id where s.id=? and p.organization_id=?""",(schedule_id,org_id)).fetchone()
+        if not s:return None
+        s=dict(s);policy=self.get_project_policy(s['project_id'])
+        scan=self.create_scan(s['target_id'],s['target_url'],s['profile'],user_id,policy)
+        self.enqueue_job('scan',{'scan_id':scan['id'],'target_id':s['target_id'],'schedule_id':schedule_id})
+        self.create_schedule_run(schedule_id,scan['id'])
+        with self.conn() as c:c.execute("update schedules set last_run_at=?,last_scan_id=?,run_count=run_count+1 where id=?",(self.now(),scan['id'],schedule_id))
+        return scan
+
     def enqueue_due_schedules(self):
         now=self.now()
         with self.conn() as c:rows=[dict(r) for r in c.execute("select * from schedules where enabled=1 and next_run_at<=?",(now,))]
@@ -834,9 +880,10 @@ class Repository:
             if not t:continue
             policy=self.get_project_policy(t['project_id'])
             scan=self.create_scan(t['id'],t['url'],s['profile'],s['created_by'],policy)
-            self.enqueue_job('scan',{'scan_id':scan['id'],'target_id':t['id']})
+            self.enqueue_job('scan',{'scan_id':scan['id'],'target_id':t['id'],'schedule_id':s['id']})
+            self.create_schedule_run(s['id'],scan['id'])
             nxt=(datetime.now(timezone.utc)+timedelta(minutes=s['interval_minutes'])).isoformat()
-            with self.conn() as c:c.execute("update schedules set next_run_at=? where id=?",(nxt,s['id']))
+            with self.conn() as c:c.execute("update schedules set next_run_at=?,last_run_at=?,last_scan_id=?,run_count=run_count+1 where id=?",(nxt,self.now(),scan['id'],s['id']))
         return len(rows)
     # ZAP / audit
     def save_zap_import(self,scan_id,filename,items,comparison,created_by):
