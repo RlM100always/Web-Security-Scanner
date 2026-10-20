@@ -147,3 +147,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .reviewFoot{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:13px 18px;border-top:1px solid var(--ent-border);position:sticky;bottom:0;background:var(--ent-surface)}.reviewFoot>div{display:flex;gap:8px;align-items:flex-start;max-width:650px}.reviewFoot svg{width:16px;color:var(--ent-brand);flex:none}.reviewFoot p{font-size:8px;color:var(--ent-muted);margin:0;line-height:1.5}.loadingState{padding:36px;display:flex;align-items:center;justify-content:center;gap:9px;color:var(--ent-muted)}.loadingState svg{width:16px;animation:spin 1s linear infinite}
 @media(max-width:820px){.pageActionGroup{width:100%;justify-content:stretch}.pageActionGroup button{flex:1;justify-content:center}.reviewSummary{grid-template-columns:1fr 1fr}.reviewItem{grid-template-columns:34px minmax(0,1fr)}.reviewDecision{grid-column:2;justify-content:flex-start;flex-wrap:wrap}.reviewFoot{align-items:stretch;flex-direction:column}.reviewFoot .primary{width:100%;justify-content:center}}
 @media(max-width:480px){.accessReviewRow{grid-template-columns:34px minmax(0,1fr) 18px}.accessReviewRow>.status{display:none}.reviewItems{padding:0 13px}.reviewSummary{padding:10px 13px}.accessReviewHero{padding:13px}.reviewMember>div{align-items:flex-start;flex-direction:column;gap:4px}}
+
+/* Workflow-grouped enterprise navigation */
+.side .groupedNav{padding:0 8px 12px;overflow:auto;display:block}
+.navGroup{margin:0 0 11px}.navGroupLabel{display:block;padding:0 10px 6px;font-size:7px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#506680}
+.navGroup button{width:100%;display:flex;align-items:center;gap:10px}.navGroup button>span:not(.navGroupLabel){min-width:0}
+.navGroup+.navGroup{padding-top:2px;border-top:1px solid rgba(255,255,255,.035)}
+.navGroup+.navGroup .navGroupLabel{padding-top:10px}
+@media(max-width:820px){.side .groupedNav{padding-bottom:18px}.navGroupLabel{font-size:8px;color:#66809f}.navGroup{margin-bottom:8px}.navGroup button{min-height:44px!important;font-size:13px!important}}
