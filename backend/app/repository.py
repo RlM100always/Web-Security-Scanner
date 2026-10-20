@@ -99,6 +99,13 @@ class Repository:
               last_scan_id text,updated_by text,updated_at text not null,unique(target_id,fingerprint));
             create table if not exists finding_comments(
               id text primary key,finding_state_id text not null,user_id text not null,body text not null,created_at text not null);
+            create table if not exists finding_activity(
+              id text primary key,finding_state_id text not null,user_id text,event text not null,details_json text not null,created_at text not null);
+            create table if not exists workspace_security_policies(
+              organization_id text primary key,policy_json text not null,updated_by text,updated_at text not null);
+            create table if not exists issue_saved_views(
+              id text primary key,organization_id text not null,user_id text not null,name text not null,filters_json text not null,
+              is_shared integer not null default 0,created_at text not null,updated_at text not null);
             create table if not exists remediation_verifications(
               id text primary key,finding_state_id text not null,scan_id text not null,requested_by text not null,
               status text not null default 'QUEUED',created_at text not null,completed_at text);
@@ -156,6 +163,8 @@ class Repository:
             c.execute("create index if not exists idx_assets_target on assets(target_id,url)")
             c.execute("create index if not exists idx_finding_states_target on finding_states(target_id,state,last_seen_at)")
             c.execute("create index if not exists idx_finding_comments_state on finding_comments(finding_state_id,created_at)")
+            c.execute("create index if not exists idx_finding_activity_state on finding_activity(finding_state_id,created_at)")
+            c.execute("create index if not exists idx_issue_saved_views_org on issue_saved_views(organization_id,user_id,updated_at)")
             c.execute("create index if not exists idx_remediation_scan on remediation_verifications(scan_id,status)")
             c.execute("create index if not exists idx_api_keys_org on api_keys(organization_id,revoked_at)")
             c.execute("insert or ignore into system_settings(key,value_json,updated_by,updated_at) values('registration_enabled','true',null,?)",(self.now(),))
@@ -608,11 +617,89 @@ class Repository:
             except Exception:r['metadata']={}
         return rows
 
+    def get_workspace_security_policy(self,org_id):
+        default={'sla_days':{'CRITICAL':7,'HIGH':14,'MEDIUM':30,'LOW':60,'INFO':90},
+                 'require_owner_for_risk_acceptance':False,'auto_due_dates':True}
+        with self.conn() as c:r=c.execute("select policy_json from workspace_security_policies where organization_id=?",(org_id,)).fetchone()
+        if not r:return default
+        try:stored=json.loads(r['policy_json'] or '{}')
+        except Exception:stored={}
+        if isinstance(stored.get('sla_days'),dict):default['sla_days'].update(stored['sla_days'])
+        for key in ['require_owner_for_risk_acceptance','auto_due_dates']:
+            if key in stored:default[key]=bool(stored[key])
+        return default
+
+    def set_workspace_security_policy(self,org_id,policy,user_id):
+        current=self.get_workspace_security_policy(org_id)
+        if isinstance(policy.get('sla_days'),dict):
+            for severity,days in policy['sla_days'].items():
+                sev=str(severity).upper()
+                if sev in {'CRITICAL','HIGH','MEDIUM','LOW','INFO'}:current['sla_days'][sev]=max(1,min(int(days),3650))
+        for key in ['require_owner_for_risk_acceptance','auto_due_dates']:
+            if key in policy:current[key]=bool(policy[key])
+        now=self.now()
+        with self.conn() as c:c.execute("""insert into workspace_security_policies(organization_id,policy_json,updated_by,updated_at)
+          values(?,?,?,?) on conflict(organization_id) do update set policy_json=excluded.policy_json,updated_by=excluded.updated_by,updated_at=excluded.updated_at""",
+          (org_id,json.dumps(current),user_id,now))
+        return current
+
+    def add_finding_activity(self,state_id,user_id,event,details=None):
+        row={'id':self._id(),'finding_state_id':state_id,'user_id':user_id,'event':event,'details_json':json.dumps(details or {}),'created_at':self.now()}
+        with self.conn() as c:c.execute("insert into finding_activity values(?,?,?,?,?,?)",tuple(row.values()))
+        return row['id']
+
+    def finding_activity(self,state_id,org_id):
+        if not self.get_finding_state(state_id,org_id):return []
+        with self.conn() as c:rows=[dict(r) for r in c.execute("""select fa.*,u.name user_name,u.email user_email
+          from finding_activity fa left join users u on u.id=fa.user_id where fa.finding_state_id=? order by fa.created_at desc limit 300""",(state_id,))]
+        for r in rows:
+            try:r['details']=json.loads(r.pop('details_json') or '{}')
+            except Exception:r['details']={}
+        return rows
+
+    def list_issue_saved_views(self,org_id,user_id):
+        with self.conn() as c:rows=[dict(r) for r in c.execute("""select * from issue_saved_views
+          where organization_id=? and (user_id=? or is_shared=1) order by is_shared desc,updated_at desc""",(org_id,user_id))]
+        for r in rows:
+            try:r['filters']=json.loads(r.pop('filters_json') or '{}')
+            except Exception:r['filters']={}
+            r['is_shared']=bool(r['is_shared'])
+        return rows
+
+    def create_issue_saved_view(self,org_id,user_id,name,filters,is_shared=False):
+        row={'id':self._id(),'organization_id':org_id,'user_id':user_id,'name':name,'filters_json':json.dumps(filters or {}),
+             'is_shared':int(bool(is_shared)),'created_at':self.now(),'updated_at':self.now()}
+        with self.conn() as c:c.execute("insert into issue_saved_views values(?,?,?,?,?,?,?,?)",tuple(row.values()))
+        return {'id':row['id'],'name':name,'filters':filters or {},'is_shared':bool(is_shared),'created_at':row['created_at'],'updated_at':row['updated_at']}
+
+    def update_issue_saved_view(self,view_id,org_id,user_id,updates,can_admin=False):
+        with self.conn() as c:
+            row=c.execute("select * from issue_saved_views where id=? and organization_id=?",(view_id,org_id)).fetchone()
+            if not row:return None
+            if row['user_id']!=user_id and not can_admin:return None
+            name=(updates.get('name') or row['name']).strip()[:80]
+            try:filters=updates['filters'] if isinstance(updates.get('filters'),dict) else json.loads(row['filters_json'] or '{}')
+            except Exception:filters={}
+            shared=int(bool(updates['is_shared'])) if 'is_shared' in updates else row['is_shared']
+            c.execute("update issue_saved_views set name=?,filters_json=?,is_shared=?,updated_at=? where id=?",(name,json.dumps(filters),shared,self.now(),view_id))
+        return next((x for x in self.list_issue_saved_views(org_id,user_id) if x['id']==view_id),None)
+
+    def delete_issue_saved_view(self,view_id,org_id,user_id,can_admin=False):
+        with self.conn() as c:
+            row=c.execute("select user_id from issue_saved_views where id=? and organization_id=?",(view_id,org_id)).fetchone()
+            if not row or (row['user_id']!=user_id and not can_admin):return False
+            return c.execute("delete from issue_saved_views where id=?",(view_id,)).rowcount>0
+
     def sync_finding_states(self,scan_id):
         scan=self.get_scan(scan_id)
         if not scan:return
         active=[f for f in self.findings(scan_id,with_lifecycle=False) if f['status'] in {'FAIL','WARNING','ERROR'}]
+        with self.conn() as c:
+            scope=c.execute("""select p.organization_id from targets t join projects p on p.id=t.project_id where t.id=?""",(scan['target_id'],)).fetchone()
+        org_id=scope['organization_id'] if scope else None
+        security_policy=self.get_workspace_security_policy(org_id) if org_id else {'sla_days':{},'auto_due_dates':False}
         now=self.now();fingerprints={f['fingerprint'] for f in active}
+        activity=[]
         with self.conn() as c:
             for f in active:
                 row=c.execute("select id,state from finding_states where target_id=? and fingerprint=?",(scan['target_id'],f['fingerprint'])).fetchone()
@@ -620,13 +707,21 @@ class Repository:
                     new_state='OPEN' if row['state']=='REMEDIATED' else row['state']
                     c.execute("""update finding_states set state=?,check_id=?,title=?,base_severity=?,last_seen_at=?,occurrences=occurrences+1,last_scan_id=?,updated_at=?
                       where id=?""",(new_state,f['check_id'],f['title'],f['severity'],now,scan_id,now,row['id']))
+                    if row['state']=='REMEDIATED':activity.append((row['id'],None,'REOPENED',{'scan_id':scan_id}))
                 else:
+                    state_id=self._id();due_at=None
+                    if security_policy.get('auto_due_dates'):
+                        days=int((security_policy.get('sla_days') or {}).get(str(f['severity']).upper(),30))
+                        due_at=(datetime.now(timezone.utc)+timedelta(days=days)).date().isoformat()
                     c.execute("""insert into finding_states(id,target_id,fingerprint,check_id,title,state,severity_override,assignee_user_id,due_at,risk_reason,first_seen_at,last_seen_at,occurrences,last_scan_id,updated_by,updated_at,base_severity,risk_expires_at,risk_accepted_by)
-                      values(?,?,?,?,?,'OPEN',null,null,null,null,?,?,1,?,null,?,?,null,null)""",(self._id(),scan['target_id'],f['fingerprint'],f['check_id'],f['title'],now,now,scan_id,now,f['severity']))
+                      values(?,?,?,?,?,'OPEN',null,null,?,null,?,?,1,?,null,?,?,null,null)""",(state_id,scan['target_id'],f['fingerprint'],f['check_id'],f['title'],due_at,now,now,scan_id,now,f['severity']))
+                    activity.append((state_id,None,'CREATED',{'scan_id':scan_id,'sla_due_at':due_at}))
             rows=[dict(r) for r in c.execute("select id,fingerprint,state from finding_states where target_id=?",(scan['target_id'],))]
             for row in rows:
                 if row['fingerprint'] not in fingerprints and row['state'] in {'OPEN','ACKNOWLEDGED','IN_PROGRESS'}:
                     c.execute("update finding_states set state='REMEDIATED',updated_at=? where id=?",(now,row['id']))
+                    activity.append((row['id'],None,'AUTO_REMEDIATED',{'scan_id':scan_id}))
+        for state_id,user_id,event,details in activity:self.add_finding_activity(state_id,user_id,event,details)
 
     def list_finding_states(self,org_id,state=None,target_id=None,limit=500):
         q="""select fs.*,t.name target_name,t.url target_url,t.criticality target_criticality,t.environment target_environment,
@@ -676,17 +771,31 @@ class Repository:
         for k,v in updates.items():
             if k in allowed:sets.append(k+"=?");vals.append(v)
         if not sets:return self.get_finding_state(state_id,org_id)
+        before=self.get_finding_state(state_id,org_id)
         with self.conn() as c:
             exists=c.execute("""select fs.id from finding_states fs join targets t on t.id=fs.target_id join projects p on p.id=t.project_id
               where fs.id=? and p.organization_id=?""",(state_id,org_id)).fetchone()
             if not exists:return None
             vals.extend([user_id,self.now(),state_id]);c.execute("update finding_states set "+",".join(sets)+",updated_by=?,updated_at=? where id=?",vals)
-        return self.get_finding_state(state_id,org_id)
+        after=self.get_finding_state(state_id,org_id)
+        changed={k:{'before':before.get(k) if before else None,'after':after.get(k) if after else None} for k in allowed if k in updates and (before or {}).get(k)!=(after or {}).get(k)}
+        if changed:self.add_finding_activity(state_id,user_id,'TRIAGE_UPDATED',changed)
+        return after
+
+    def bulk_update_finding_states(self,state_ids,org_id,updates,user_id):
+        unique=list(dict.fromkeys([str(x) for x in state_ids if x]))[:250]
+        changed=[];missing=[]
+        for state_id in unique:
+            row=self.update_finding_state(state_id,org_id,updates,user_id)
+            if row:changed.append(row)
+            else:missing.append(state_id)
+        return {'updated':changed,'missing':missing,'count':len(changed)}
 
     def add_finding_comment(self,state_id,org_id,user_id,body):
         if not self.get_finding_state(state_id,org_id):return None
         row={'id':self._id(),'finding_state_id':state_id,'user_id':user_id,'body':body,'created_at':self.now()}
         with self.conn() as c:c.execute("insert into finding_comments values(?,?,?,?,?)",tuple(row.values()))
+        self.add_finding_activity(state_id,user_id,'COMMENT_ADDED',{'comment_id':row['id']})
         return row
 
     def finding_comments(self,state_id,org_id):
