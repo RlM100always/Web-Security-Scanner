@@ -638,7 +638,8 @@ class Repository:
         for s in rows:
             t=self.get_target(s['target_id'])
             if not t:continue
-            scan=self.create_scan(t['id'],t['url'],s['profile'],s['created_by'])
+            policy=self.get_project_policy(t['project_id'])
+            scan=self.create_scan(t['id'],t['url'],s['profile'],s['created_by'],policy)
             self.enqueue_job('scan',{'scan_id':scan['id'],'target_id':t['id']})
             nxt=(datetime.now(timezone.utc)+timedelta(minutes=s['interval_minutes'])).isoformat()
             with self.conn() as c:c.execute("update schedules set next_run_at=? where id=?",(nxt,s['id']))
