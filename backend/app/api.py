@@ -853,6 +853,46 @@ def create_blueprint():
         if fmt=='pdf':return Response(as_pdf(s,f,comp,context),mimetype='application/pdf',headers={'Content-Disposition':f'attachment; filename=sentinelscope-{scan_id}.pdf'})
         return {'error':'Unsupported format'},404
 
+    # Enterprise access reviews
+    @bp.route('/access-reviews',methods=['GET','POST'])
+    @require_role('admin')
+    def access_reviews():
+        ident=current_identity()
+        if request.method=='GET':return jsonify(repo().list_access_reviews(ident['organization_id']))
+        d=request.get_json(force=True) or {};name=(d.get('name') or '').strip()[:180] or ('Workspace access review '+datetime.now(timezone.utc).date().isoformat())
+        row=repo().create_access_review(ident['organization_id'],name,ident['user_id'])
+        audit('ACCESS_REVIEW_CREATED','access_review',row['id'],{'name':name,'members':row['summary']['total']})
+        return row,201
+
+    @bp.get('/access-reviews/<review_id>')
+    @require_role('admin')
+    def access_review_get(review_id):
+        ident=current_identity();row=repo().get_access_review(review_id,ident['organization_id'])
+        if not row:return {'error':'Access review not found'},404
+        return row
+
+    @bp.patch('/access-reviews/<review_id>/items/<item_id>')
+    @require_role('admin')
+    def access_review_decide(review_id,item_id):
+        ident=current_identity();d=request.get_json(force=True) or {};decision=(d.get('decision') or '').upper()
+        if decision not in {'APPROVE','REVOKE'}:return {'error':'Decision must be APPROVE or REVOKE'},400
+        try:row=repo().decide_access_review_item(review_id,item_id,ident['organization_id'],decision,d.get('note'),ident['user_id'])
+        except ValueError as e:return {'error':str(e)},400
+        if not row:return {'error':'Open access review item not found'},404
+        audit('ACCESS_REVIEW_ITEM_DECIDED','access_review',review_id,{'item_id':item_id,'decision':decision})
+        return row
+
+    @bp.post('/access-reviews/<review_id>/complete')
+    @require_role('admin')
+    def access_review_complete(review_id):
+        ident=current_identity()
+        try:row=repo().complete_access_review(review_id,ident['organization_id'],ident['user_id'])
+        except ValueError as e:return {'error':str(e)},409
+        if not row:return {'error':'Open access review not found'},404
+        audit('ACCESS_REVIEW_COMPLETED','access_review',review_id,{'revoked_members':row['summary']['revoke']})
+        repo().emit_webhook_event(ident['organization_id'],'finding.updated',{'type':'access_review.completed','review_id':review_id,'revoked_members':row['summary']['revoke']})
+        return row
+
     # Workspace integrations / signed webhooks
     @bp.get('/integrations/webhooks')
     @require_role('admin')
