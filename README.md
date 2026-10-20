@@ -310,3 +310,37 @@ System administrators can configure:
 - completed-scan retention period
 
 Retention removes old scan instances and their per-scan assets/findings/events while preserving continuing security-management state such as current finding lifecycle records.
+
+### Enterprise security operations
+
+The authenticated product now includes a portfolio-level security operations workflow rather than only per-scan review:
+
+- executive risk dashboard with severity debt, remediation health, scan posture trend and recurring-assessment health
+- issue inbox with search, severity/state/owner/SLA filters
+- private and workspace-shared saved issue views
+- multi-select and governed bulk triage
+- CSV export of filtered issue portfolios
+- severity-based remediation SLA policy and automatic due dates
+- optional Owner-only accepted-risk approval
+- durable issue activity history for creation, reopen, triage, comments and automatic remediation
+- asset provenance drilldown with first/last seen, redirect evidence and scan-by-scan response history
+- per-workspace notification preferences for in-app and email channels
+
+### Public product website
+
+The unauthenticated site explains the complete product before signup:
+
+- `/product`
+- `/features`
+- `/solutions`
+- `/enterprise`
+- `/workflow`
+- `/security`
+- `/standards`
+- `/research`
+- `/responsible-use`
+- `/deployment`
+- `/docs`
+- `/about`
+
+Desktop and mobile use intentionally different information layouts. Mobile uses a compact context header, bottom navigation dock, stacked operational cards and sheet-style detail/modals rather than scaling the desktop console down.
