@@ -514,15 +514,36 @@ class Repository:
         with self.conn() as c:return [dict(r) for r in c.execute("select * from backup_history where organization_id=? order by created_at desc",(org_id,))]
 
     def delete_account(self,user_id):
+        user=self.get_user_by_id(user_id)
+        if not user:return False
+        if user.get('system_admin') and self.system_admin_count()<=1:
+            raise ValueError("The last active system administrator cannot delete their account.")
         with self.conn() as c:
             memberships=[dict(r) for r in c.execute("select organization_id,role from memberships where user_id=?",(user_id,))]
             owned=[m['organization_id'] for m in memberships if m['role']=='owner']
             for org_id in owned:
                 count=c.execute("select count(*) from memberships where organization_id=?",(org_id,)).fetchone()[0]
                 if count>1:raise ValueError("Transfer or remove other workspace members before deleting an owner account")
+        for membership in memberships:
+            org_id=membership['organization_id']
+            if membership['role']!='owner':
+                self.remove_member(org_id,user_id)
         for org_id in owned:
             for p in self.list_projects(org_id):self.delete_project(p['id'],org_id)
             with self.conn() as c:
+                endpoint_ids=[r[0] for r in c.execute("select id from webhook_endpoints where organization_id=?",(org_id,))]
+                for endpoint_id in endpoint_ids:c.execute("delete from webhook_deliveries where endpoint_id=?",(endpoint_id,))
+                review_ids=[r[0] for r in c.execute("select id from access_reviews where organization_id=?",(org_id,))]
+                for review_id in review_ids:c.execute("delete from access_review_items where review_id=?",(review_id,))
+                c.execute("delete from access_reviews where organization_id=?",(org_id,))
+                c.execute("delete from webhook_endpoints where organization_id=?",(org_id,))
+                c.execute("delete from issue_saved_views where organization_id=?",(org_id,))
+                c.execute("delete from workspace_security_policies where organization_id=?",(org_id,))
+                c.execute("delete from notification_preferences where organization_id=?",(org_id,))
+                c.execute("delete from onboarding_preferences where organization_id=?",(org_id,))
+                c.execute("delete from api_keys where organization_id=?",(org_id,))
+                c.execute("delete from finding_escalations where organization_id=?",(org_id,))
+                c.execute("delete from report_exports where organization_id=?",(org_id,))
                 c.execute("delete from audit_logs where organization_id=?",(org_id,))
                 c.execute("delete from invitations where organization_id=?",(org_id,))
                 c.execute("delete from notifications where organization_id=?",(org_id,))
@@ -533,10 +554,14 @@ class Repository:
             c.execute("delete from sessions where user_id=?",(user_id,))
             c.execute("delete from memberships where user_id=?",(user_id,))
             c.execute("delete from notifications where user_id=?",(user_id,))
+            c.execute("delete from notification_preferences where user_id=?",(user_id,))
+            c.execute("delete from onboarding_preferences where user_id=?",(user_id,))
+            c.execute("delete from issue_saved_views where user_id=?",(user_id,))
             c.execute("delete from auth_tokens where user_id=?",(user_id,))
             c.execute("delete from mfa_recovery_codes where user_id=?",(user_id,))
             c.execute("delete from api_keys where user_id=?",(user_id,))
             c.execute("delete from users where id=?",(user_id,))
+        return True
 
     def export_workspace(self,org_id):
         data={'organization':None,'members':self.list_members(org_id),'projects':self.list_projects(org_id),'targets':self.list_targets(org_id=org_id),'scans':self.list_scans(10000,org_id),'schedules':self.list_schedules(org_id),'audit':self.list_audit(org_id,10000)}
@@ -1522,11 +1547,16 @@ class Repository:
         with self.conn() as c:
             scan_ids=[r[0] for r in c.execute("select id from scans where completed_at is not null and completed_at<?",(cutoff,))]
             for sid in scan_ids:
-                c.execute("delete from assets where scan_id=?",(sid,));c.execute("delete from remediation_verifications where scan_id=?",(sid,));c.execute("delete from findings where scan_id=?",(sid,));c.execute("delete from scan_events where scan_id=?",(sid,));c.execute("delete from zap_imports where scan_id=?",(sid,))
+                c.execute("update finding_states set last_scan_id=null where last_scan_id=?",(sid,))
+                c.execute("delete from schedule_runs where scan_id=?",(sid,))
+                c.execute("delete from assets where scan_id=?",(sid,))
+                c.execute("delete from remediation_verifications where scan_id=?",(sid,))
+                c.execute("delete from findings where scan_id=?",(sid,))
+                c.execute("delete from scan_events where scan_id=?",(sid,))
+                c.execute("delete from zap_imports where scan_id=?",(sid,))
                 c.execute("delete from scans where id=?",(sid,))
             return len(scan_ids)
 
-    # SLA escalation automation
     def process_overdue_finding_escalations(self):
         today=datetime.now(timezone.utc).date().isoformat();escalation_key='overdue:'+today
         with self.conn() as c:
