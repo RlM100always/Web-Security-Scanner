@@ -167,7 +167,9 @@ def create_blueprint():
         if not row:return {'error':'Reset link is invalid or expired'},400
         repo().update_user_password(row['user_id'],hash_password(new))
         repo().revoke_other_sessions(row['user_id'],'')
-        return {'ok':True}
+        revoked_keys=repo().revoke_all_api_keys_for_user(row['user_id'])
+        repo().audit(None,row['user_id'],'PASSWORD_RESET_COMPLETED','user',row['user_id'],{'revoked_api_keys':revoked_keys},ip_addr())
+        return {'ok':True,'revoked_api_keys':revoked_keys}
 
     @bp.post('/auth/mfa/setup')
     @require_auth
