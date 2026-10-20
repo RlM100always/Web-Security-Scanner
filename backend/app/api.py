@@ -87,7 +87,10 @@ def create_blueprint():
     @bp.post('/auth/login')
     def login():
         d=request.get_json(force=True) or {};email=(d.get('email') or '').strip().lower();password=d.get('password') or ''
-        if repo().recent_failed_attempts(email,ip_addr(),current_app.config['AUTH_WINDOW_MINUTES'])>=current_app.config['AUTH_MAX_ATTEMPTS']:
+        window=current_app.config['AUTH_WINDOW_MINUTES'];remote_ip=ip_addr()
+        email_failures=repo().recent_failed_email_attempts(email,window)
+        ip_failures=repo().recent_failed_ip_attempts(remote_ip,window)
+        if email_failures>=current_app.config['AUTH_MAX_ATTEMPTS'] or ip_failures>=current_app.config.get('AUTH_MAX_IP_ATTEMPTS',50):
             return {'error':'Too many failed attempts. Try again later.'},429
         user=repo().get_user_by_email(email)
         locked=False
@@ -97,7 +100,7 @@ def create_blueprint():
         ok=bool(user and not locked and user.get('active') and verify_password(password,user['password_hash']))
         repo().record_login_attempt(email,ip_addr(),ok)
         if not ok:
-            if user:repo().set_login_failure(user['id'],repo().recent_failed_attempts(email,ip_addr())>=5)
+            if user:repo().set_login_failure(user['id'],repo().recent_failed_email_attempts(email)>=5)
             return {'error':'Invalid email or password'},401
         if user.get('mfa_enabled'):
             code=str(d.get('mfa_code') or '').replace(' ','')
