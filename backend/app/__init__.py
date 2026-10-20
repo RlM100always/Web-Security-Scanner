@@ -26,6 +26,16 @@ def create_app(config_object=None):
     @app.before_request
     def csrf_guard():
         identity=current_identity() if request.path.startswith("/api/v1/") else None
+        if identity and identity.get("auth_method")=="api_key":
+            scopes=set(identity.get("api_scopes") or [])
+            if request.path.startswith("/api/v1/admin/") and "admin" not in scopes:
+                return {"error":"API key admin scope required"},403
+            if request.method in {"GET","HEAD"} and not ({"read","admin"} & scopes):
+                return {"error":"API key read scope required"},403
+            if request.method not in {"GET","HEAD","OPTIONS"}:
+                needed="scan" if request.path=="/api/v1/scans" and request.method=="POST" else "write"
+                if needed not in scopes and "admin" not in scopes:
+                    return {"error":f"API key {needed} scope required"},403
         if request.path.startswith("/api/v1/") and not request.path.startswith("/api/v1/admin/"):
             if repo.system_setting("maintenance_mode",False) and request.path not in {
                 "/api/v1/auth/login","/api/v1/auth/logout","/api/v1/auth/me","/api/v1/auth/workspace"
