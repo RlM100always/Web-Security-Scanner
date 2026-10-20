@@ -321,6 +321,26 @@ class Repository:
             return cur.rowcount
 
 
+    def session_is_active(self,session_id):
+        now=self.now()
+        with self.conn() as c:
+            r=c.execute("""select 1 from sessions s join users u on u.id=s.user_id
+              join memberships m on m.user_id=u.id and m.organization_id=s.organization_id
+              join organizations o on o.id=m.organization_id
+              where s.id=? and s.revoked_at is null and s.expires_at>? and u.active=1
+                and (m.active=1 or u.system_admin=1) and (o.active=1 or u.system_admin=1)""",(session_id,now)).fetchone()
+        return bool(r)
+
+    def api_key_is_active(self,key_id):
+        now=self.now()
+        with self.conn() as c:
+            r=c.execute("""select 1 from api_keys k join users u on u.id=k.user_id
+              join memberships m on m.user_id=u.id and m.organization_id=k.organization_id
+              join organizations o on o.id=m.organization_id
+              where k.id=? and k.revoked_at is null and (k.expires_at is null or k.expires_at>?)
+                and u.active=1 and m.active=1 and o.active=1""",(key_id,now)).fetchone()
+        return bool(r)
+
     def revoke_session(self,session_id):
         with self.conn() as c:c.execute("update sessions set revoked_at=? where id=?",(self.now(),session_id))
     def list_memberships_for_user(self,user_id):
