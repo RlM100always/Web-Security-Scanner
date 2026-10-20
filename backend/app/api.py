@@ -669,7 +669,14 @@ def create_blueprint():
             updates['interval_minutes']=interval
         if 'profile' in d:
             if d['profile'] not in {'quick','standard','lab'}:return {'error':'Invalid profile'},400
+            if d['profile']=='lab':
+                existing=repo().get_schedule(schedule_id,ident['organization_id'])
+                if not existing:return {'error':'Schedule not found'},404
+                if existing.get('project_status')=='archived':return {'error':'Archived projects cannot configure recurring assessments'},409
+                if not existing.get('target_verified'):return {'error':'Lab profile requires verified ownership'},403
             updates['profile']=d['profile']
+        existing=repo().get_schedule(schedule_id,ident['organization_id'])
+        if existing and existing.get('project_status')=='archived':return {'error':'Archived projects cannot modify recurring assessments'},409
         saved=repo().update_schedule(schedule_id,ident['organization_id'],updates)
         if not saved:return {'error':'Schedule not found'},404
         audit('SCHEDULE_UPDATED','schedule',schedule_id,updates);return saved
@@ -683,7 +690,8 @@ def create_blueprint():
         usage=repo().organization_scan_usage(ident['organization_id'])
         concurrent=max(1,int(repo().system_setting('max_concurrent_scans_per_org',3)))
         if usage['active']>=concurrent:return {'error':'Concurrent scan limit reached','limit':concurrent},429
-        scan=repo().run_schedule_now(schedule_id,ident['organization_id'],ident['user_id'])
+        try:scan=repo().run_schedule_now(schedule_id,ident['organization_id'],ident['user_id'])
+        except ValueError as e:return {'error':str(e)},409
         if not scan:return {'error':'Schedule not found'},404
         audit('SCHEDULE_RUN_NOW','schedule',schedule_id,{'scan_id':scan['id']});return scan,202
 
