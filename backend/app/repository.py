@@ -99,9 +99,6 @@ class Repository:
               scan_mode text not null default 'standard',policy_json text not null,version integer not null default 1,
               is_default integer not null default 0,active integer not null default 1,created_by text,updated_by text,
               created_at text not null,updated_at text not null);
-            create table if not exists sla_policies(
-              organization_id text not null,severity text not null,due_hours integer not null,updated_by text,updated_at text not null,
-              primary key(organization_id,severity));
             create table if not exists assets(
               id text primary key,scan_id text not null,target_id text not null,url text not null,kind text not null,
               status_code integer,content_type text,title text,depth integer not null,size_bytes integer not null,
@@ -750,22 +747,6 @@ class Repository:
         rows=self.list_scan_profiles(project_id)
         if rows:return next((x for x in rows if x['is_default']),rows[0])
         return self.create_scan_profile(project_id,"Standard Baseline","Reusable default project assessment profile","standard",self.get_project_policy(project_id),True,user_id)
-
-    def get_sla_policy(self,org_id):
-        defaults={'CRITICAL':24,'HIGH':72,'MEDIUM':168,'LOW':720}
-        with self.conn() as c:rows=c.execute("select severity,due_hours from sla_policies where organization_id=?",(org_id,))
-        for r in rows:defaults[r['severity']]=r['due_hours']
-        return defaults
-
-    def set_sla_policy(self,org_id,rules,user_id):
-        now=self.now()
-        with self.conn() as c:
-            for severity,hours in rules.items():
-                if severity not in {'CRITICAL','HIGH','MEDIUM','LOW'}:continue
-                c.execute("""insert into sla_policies(organization_id,severity,due_hours,updated_by,updated_at) values(?,?,?,?,?)
-                  on conflict(organization_id,severity) do update set due_hours=excluded.due_hours,updated_by=excluded.updated_by,updated_at=excluded.updated_at""",
-                  (org_id,severity,max(1,min(int(hours),8760)),user_id,now))
-        return self.get_sla_policy(org_id)
 
     # verification
     def create_verification(self,target_id,method,token,instructions,created_by):
