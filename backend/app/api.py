@@ -494,6 +494,9 @@ def create_blueprint():
         current=repo().get_scan_profile(profile_id)
         if not current or current['project_id']!=project_id:return {'error':'Scan profile not found'},404
         d=request.get_json(force=True) or {};updates={}
+        if d.get('active') is False:
+            usage=repo().scan_profile_usage(profile_id,project_id)
+            if usage['enabled_schedules']>0:return {'error':'Rebind or pause enabled schedules before deactivating this profile','usage':usage},409
         for key in ['name','description','scan_mode','is_default','active']:
             if key in d:updates[key]=d[key]
         if 'scan_mode' in updates and updates['scan_mode'] not in {'quick','standard','lab'}:return {'error':'Invalid scan mode'},400
