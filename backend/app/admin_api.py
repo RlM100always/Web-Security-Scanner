@@ -25,8 +25,7 @@ def create_admin_blueprint():
 
 
     def ip_addr():
-        if current_app.config.get("TRUST_PROXY_HEADERS"):
-            return (request.headers.get("X-Forwarded-For","").split(",")[0].strip() or request.remote_addr or "")
+        # ProxyFix rewrites remote_addr only when an explicit trusted proxy hop count is enabled.
         return request.remote_addr or ""
 
     def audit(event,resource_type=None,resource_id=None,details=None):
