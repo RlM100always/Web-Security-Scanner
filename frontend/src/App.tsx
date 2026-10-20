@@ -154,8 +154,8 @@ export default function App(){
     {modal==='api-key'&&<ApiKeyModal close={()=>setModal(null)} done={()=>{load()}}/>}
     {modal==='webhook-create'&&<WebhookModal close={()=>setModal(null)} done={()=>{setModal(null);notify('Webhook integration created');load()}}/>}
     {modal?.startsWith('issue:')&&<IssueDetailModal initial={selectedIssue} stateId={modal.split(':')[1]} team={team} close={()=>{setSelectedIssue(null);setModal(null)}} done={()=>{load()}}/>}
-    {modal?.startsWith('delete-project:')&&<DestructiveConfirmModal kind="project" name={projects.find(p=>p.id===modal.split(':')[1])?.name||'project'} close={()=>setModal(null)} confirm={async()=>{const id=modal.split(':')[1];await api('/projects/'+id,{method:'DELETE',body:'{}'});setModal(null);notify('Project permanently deleted');load()}}/>}
-    {modal?.startsWith('delete-target:')&&<DestructiveConfirmModal kind="target" name={targets.find(t=>t.id===modal.split(':')[1])?.name||'target'} close={()=>setModal(null)} confirm={async()=>{const id=modal.split(':')[1];await api('/targets/'+id,{method:'DELETE',body:'{}'});setModal(null);notify('Target and assessment history permanently deleted');load()}}/>}
+    {modal?.startsWith('delete-project:')&&<DestructiveConfirmModal kind="project" name={projects.find(p=>p.id===modal.split(':')[1])?.name||'project'} close={()=>setModal(null)} onConfirm={async()=>{const id=modal.split(':')[1];await api('/projects/'+id,{method:'DELETE',body:'{}'});setModal(null);notify('Project permanently deleted');load()}}/>}
+    {modal?.startsWith('delete-target:')&&<DestructiveConfirmModal kind="target" name={targets.find(t=>t.id===modal.split(':')[1])?.name||'target'} close={()=>setModal(null)} onConfirm={async()=>{const id=modal.split(':')[1];await api('/targets/'+id,{method:'DELETE',body:'{}'});setModal(null);notify('Target and assessment history permanently deleted');load()}}/>}
     {cmdOpen&&<CommandPalette navItems={navItems} projects={projects} targets={targets} issues={issues} close={()=>setCmdOpen(false)} go={(n:string)=>{setNav(n);setCmdOpen(false)}}/>}
   </div>
 }
