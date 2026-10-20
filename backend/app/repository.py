@@ -170,6 +170,8 @@ class Repository:
             self._ensure_column(c,"organizations","active","integer not null default 1")
             self._ensure_column(c,"scans","cancel_requested","integer not null default 0")
             self._ensure_column(c,"scans","policy_json","text")
+            self._ensure_column(c,"scans","scan_profile_id","text")
+            self._ensure_column(c,"schedules","scan_profile_id","text")
             self._ensure_column(c,"schedules","name","text")
             self._ensure_column(c,"schedules","last_run_at","text")
             self._ensure_column(c,"schedules","last_scan_id","text")
@@ -759,10 +761,10 @@ class Repository:
         return {'last_24h':used,'active':active}
 
     # scans / findings
-    def create_scan(self,target_id,target_url,profile,created_by=None,policy=None):
-        x={'id':self._id(),'target_id':target_id,'target_url':target_url,'profile':profile,'status':'QUEUED','progress':0,'stage':'QUEUED','score':None,'pages_scanned':None,'duration_ms':None,'created_by':created_by,'created_at':self.now(),'completed_at':None,'error':None,'cancel_requested':0,'policy_json':json.dumps(policy or {})}
-        with self.conn() as c:c.execute("""insert into scans(id,target_id,target_url,profile,status,progress,stage,score,pages_scanned,duration_ms,created_by,created_at,completed_at,error,cancel_requested,policy_json)
-          values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",(x['id'],x['target_id'],x['target_url'],x['profile'],x['status'],x['progress'],x['stage'],x['score'],x['pages_scanned'],x['duration_ms'],x['created_by'],x['created_at'],x['completed_at'],x['error'],x['cancel_requested'],x['policy_json']))
+    def create_scan(self,target_id,target_url,profile,created_by=None,policy=None,scan_profile_id=None):
+        x={'id':self._id(),'target_id':target_id,'target_url':target_url,'profile':profile,'status':'QUEUED','progress':0,'stage':'QUEUED','score':None,'pages_scanned':None,'duration_ms':None,'created_by':created_by,'created_at':self.now(),'completed_at':None,'error':None,'cancel_requested':0,'policy_json':json.dumps(policy or {}),'scan_profile_id':scan_profile_id}
+        with self.conn() as c:c.execute("""insert into scans(id,target_id,target_url,profile,status,progress,stage,score,pages_scanned,duration_ms,created_by,created_at,completed_at,error,cancel_requested,policy_json,scan_profile_id)
+          values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",(x['id'],x['target_id'],x['target_url'],x['profile'],x['status'],x['progress'],x['stage'],x['score'],x['pages_scanned'],x['duration_ms'],x['created_by'],x['created_at'],x['completed_at'],x['error'],x['cancel_requested'],x['policy_json'],x['scan_profile_id']))
         self.add_scan_event(x['id'],'STATE','QUEUED',0,'Scan queued')
         x['policy']=policy or {};x.pop('policy_json',None)
         return x
@@ -1263,8 +1265,10 @@ class Repository:
         for s in rows:
             t=self.get_target(s['target_id'])
             if not t:continue
-            policy=self.get_project_policy(t['project_id'])
-            scan=self.create_scan(t['id'],t['url'],s['profile'],s['created_by'],policy)
+            named=self.get_scan_profile(s.get('scan_profile_id')) if s.get('scan_profile_id') else None
+            policy=named['policy'] if named and named.get('active') else self.get_project_policy(t['project_id'])
+            mode=named['scan_mode'] if named and named.get('active') else s['profile']
+            scan=self.create_scan(t['id'],t['url'],mode,s['created_by'],policy,named['id'] if named else None)
             self.enqueue_job('scan',{'scan_id':scan['id'],'target_id':t['id'],'schedule_id':s['id']})
             self.create_schedule_run(s['id'],scan['id'])
             nxt=(datetime.now(timezone.utc)+timedelta(minutes=s['interval_minutes'])).isoformat()
