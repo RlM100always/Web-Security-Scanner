@@ -87,3 +87,11 @@ test('public navigation remains usable on mobile',async({page},testInfo)=>{
   await expect(page).toHaveURL(/\/solutions$/);
   await expect(page.getByRole('heading',{name:/practical security workspace/i})).toBeVisible();
 });
+
+
+test('public exposure management page explains contextual workflow',async({page})=>{
+  await page.goto('/exposure-management');
+  await expect(page.getByRole('heading',{name:/Connect governed scope/i})).toBeVisible();
+  await expect(page.getByText(/Relationship map/i).first()).toBeVisible();
+  await expect(page.getByText(/Contextual prioritisation/i).first()).toBeVisible();
+});
