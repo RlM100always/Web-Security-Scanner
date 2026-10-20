@@ -520,34 +520,60 @@ class Repository:
                 row=c.execute("select id,state from finding_states where target_id=? and fingerprint=?",(scan['target_id'],f['fingerprint'])).fetchone()
                 if row:
                     new_state='OPEN' if row['state']=='REMEDIATED' else row['state']
-                    c.execute("""update finding_states set state=?,check_id=?,title=?,last_seen_at=?,occurrences=occurrences+1,last_scan_id=?,updated_at=?
-                      where id=?""",(new_state,f['check_id'],f['title'],now,scan_id,now,row['id']))
+                    c.execute("""update finding_states set state=?,check_id=?,title=?,base_severity=?,last_seen_at=?,occurrences=occurrences+1,last_scan_id=?,updated_at=?
+                      where id=?""",(new_state,f['check_id'],f['title'],f['severity'],now,scan_id,now,row['id']))
                 else:
-                    c.execute("""insert into finding_states(id,target_id,fingerprint,check_id,title,state,severity_override,assignee_user_id,due_at,risk_reason,first_seen_at,last_seen_at,occurrences,last_scan_id,updated_by,updated_at)
-                      values(?,?,?,?,?,'OPEN',null,null,null,null,?,?,1,?,null,?)""",(self._id(),scan['target_id'],f['fingerprint'],f['check_id'],f['title'],now,now,scan_id,now))
+                    c.execute("""insert into finding_states(id,target_id,fingerprint,check_id,title,state,severity_override,assignee_user_id,due_at,risk_reason,first_seen_at,last_seen_at,occurrences,last_scan_id,updated_by,updated_at,base_severity,risk_expires_at,risk_accepted_by)
+                      values(?,?,?,?,?,'OPEN',null,null,null,null,?,?,1,?,null,?,?,null,null)""",(self._id(),scan['target_id'],f['fingerprint'],f['check_id'],f['title'],now,now,scan_id,now,f['severity']))
             rows=[dict(r) for r in c.execute("select id,fingerprint,state from finding_states where target_id=?",(scan['target_id'],))]
             for row in rows:
                 if row['fingerprint'] not in fingerprints and row['state'] in {'OPEN','ACKNOWLEDGED','IN_PROGRESS'}:
                     c.execute("update finding_states set state='REMEDIATED',updated_at=? where id=?",(now,row['id']))
 
     def list_finding_states(self,org_id,state=None,target_id=None,limit=500):
-        q="""select fs.*,t.name target_name,t.url target_url,p.name project_name,u.name assignee_name,u.email assignee_email
+        q="""select fs.*,t.name target_name,t.url target_url,t.criticality target_criticality,t.environment target_environment,
+          p.name project_name,u.name assignee_name,u.email assignee_email
           from finding_states fs join targets t on t.id=fs.target_id join projects p on p.id=t.project_id
           left join users u on u.id=fs.assignee_user_id where p.organization_id=?""";args=[org_id]
         if state:q+=" and fs.state=?";args.append(state)
         if target_id:q+=" and fs.target_id=?";args.append(target_id)
-        q+=" order by case fs.state when 'OPEN' then 1 when 'IN_PROGRESS' then 2 when 'ACKNOWLEDGED' then 3 else 4 end,fs.last_seen_at desc limit ?";args.append(limit)
-        with self.conn() as c:return [dict(r) for r in c.execute(q,args)]
+        q+=" order by fs.last_seen_at desc limit ?";args.append(limit)
+        with self.conn() as c:rows=[dict(r) for r in c.execute(q,args)]
+        sev={'INFO':0,'LOW':1,'MEDIUM':2,'HIGH':3,'CRITICAL':4};crit={'low':0,'medium':1,'high':2,'critical':3}
+        now=datetime.now(timezone.utc)
+        for r in rows:
+            effective=(r.get('severity_override') or r.get('base_severity') or 'INFO').upper()
+            score=sev.get(effective,0)*20+crit.get((r.get('target_criticality') or 'medium').lower(),1)*8+min(int(r.get('occurrences') or 1),10)
+            if r.get('state')=='IN_PROGRESS':score-=3
+            if r.get('state') in {'ACCEPTED_RISK','FALSE_POSITIVE','REMEDIATED'}:score-=30
+            due=r.get('due_at')
+            if due and r.get('state') not in {'FALSE_POSITIVE','REMEDIATED'}:
+                try:
+                    parsed=datetime.fromisoformat(due if 'T' in due else due+'T23:59:59+00:00')
+                    if parsed.tzinfo is None:parsed=parsed.replace(tzinfo=timezone.utc)
+                    if parsed<now:score+=15
+                except Exception:pass
+            expired=False
+            if r.get('state')=='ACCEPTED_RISK' and r.get('risk_expires_at'):
+                try:
+                    exp=datetime.fromisoformat(r['risk_expires_at'] if 'T' in r['risk_expires_at'] else r['risk_expires_at']+'T23:59:59+00:00')
+                    if exp.tzinfo is None:exp=exp.replace(tzinfo=timezone.utc)
+                    expired=exp<now
+                    if expired:score+=25
+                except Exception:pass
+            r['effective_severity']=effective;r['risk_score']=max(0,score);r['risk_acceptance_expired']=expired
+        rows.sort(key=lambda r:(r['state'] in {'REMEDIATED','FALSE_POSITIVE'},-r['risk_score'],-int(r.get('occurrences') or 0)))
+        return rows
 
     def get_finding_state(self,state_id,org_id=None):
-        q="""select fs.*,t.name target_name,t.url target_url,p.name project_name,p.organization_id
+        q="""select fs.*,t.name target_name,t.url target_url,t.criticality target_criticality,t.environment target_environment,p.name project_name,p.organization_id
           from finding_states fs join targets t on t.id=fs.target_id join projects p on p.id=t.project_id where fs.id=?""";args=[state_id]
         if org_id:q+=" and p.organization_id=?";args.append(org_id)
         with self.conn() as c:r=c.execute(q,args).fetchone()
         return dict(r) if r else None
 
     def update_finding_state(self,state_id,org_id,updates,user_id):
-        allowed={'state','severity_override','assignee_user_id','due_at','risk_reason'}
+        allowed={'state','severity_override','assignee_user_id','due_at','risk_reason','risk_expires_at'}
         sets=[];vals=[]
         for k,v in updates.items():
             if k in allowed:sets.append(k+"=?");vals.append(v)
