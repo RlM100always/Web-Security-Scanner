@@ -1013,8 +1013,13 @@ def create_blueprint():
             return {'error':'Verify your email before creating recurring assessments'},403
         d=request.get_json(force=True) or {};t=repo().get_target(d.get('target_id'),ident['organization_id'])
         if not t:return {'error':'Target not found'},404
-        interval=int(d.get('interval_minutes') or 1440)
-        if interval<60:return {'error':'Minimum recurring interval is 60 minutes'},400
+        if not t.get('authorized'):return {'error':'Target is not authorized'},403
+        project=repo().get_project(t['project_id'],ident['organization_id'])
+        if not project:return {'error':'Project not found'},404
+        if project.get('status')=='archived':return {'error':'Archived projects cannot create recurring assessments'},409
+        try:interval=int(d.get('interval_minutes') or 1440)
+        except (TypeError,ValueError):return {'error':'Schedule interval must be a whole number of minutes'},400
+        if interval<60 or interval>525600:return {'error':'Schedule interval must be between 60 minutes and one year'},400
         named_profile=None
         if d.get('scan_profile_id'):
             named_profile=repo().get_scan_profile(d.get('scan_profile_id'))
@@ -1033,7 +1038,8 @@ def create_blueprint():
         if 'name' in d:updates['name']=(d.get('name') or '').strip()[:160] or None
         if 'notify_on_failure' in d:updates['notify_on_failure']=bool(d['notify_on_failure'])
         if 'interval_minutes' in d:
-            interval=int(d.get('interval_minutes') or 0)
+            try:interval=int(d.get('interval_minutes') or 0)
+            except (TypeError,ValueError):return {'error':'Schedule interval must be a whole number of minutes'},400
             if interval<60 or interval>525600:return {'error':'Schedule interval must be between 60 minutes and one year'},400
             updates['interval_minutes']=interval
         if 'scan_profile_id' in d:
@@ -1043,6 +1049,7 @@ def create_blueprint():
             if profile_id:
                 named=repo().get_scan_profile(profile_id)
                 if not named or named['project_id']!=existing['project_id'] or not named.get('active'):return {'error':'Active scan profile not found for this schedule'},404
+                if named['scan_mode']=='lab' and not existing.get('target_verified'):return {'error':'Lab profile requires verified ownership'},403
                 updates['scan_profile_id']=profile_id;updates['profile']=named['scan_mode']
             else:updates['scan_profile_id']=None
         if 'profile' in d:
