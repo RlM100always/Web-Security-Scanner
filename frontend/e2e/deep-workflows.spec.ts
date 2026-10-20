@@ -8,6 +8,7 @@ async function openNav(page:any,name:string){
 
 test('deep scan policy and API key workflow works',async({page},testInfo)=>{
   const email='deep-'+testInfo.project.name+'-'+Date.now()+'@example.com';
+
   await page.goto('/');
   await page.getByRole('button',{name:'Create account'}).click();
   await page.getByLabel('Full name').fill('Deep Feature Owner');
@@ -25,8 +26,7 @@ test('deep scan policy and API key workflow works',async({page},testInfo)=>{
   await expect(page.getByText('Production Estate')).toBeVisible();
 
   await page.getByRole('button',{name:'Scan policy'}).click();
-  const pages=page.getByLabel('Maximum pages');
-  await pages.fill('37');
+  await page.getByLabel('Maximum pages').fill('37');
   await page.getByLabel('Maximum crawl depth').fill('3');
   await page.getByLabel('Request delay (ms)').fill('250');
   await page.getByLabel('Exclude path regex — one per line').fill('^/logout$\n^/billing/export');
@@ -36,17 +36,7 @@ test('deep scan policy and API key workflow works',async({page},testInfo)=>{
   await page.getByRole('button',{name:'Scan policy'}).click();
   await expect(page.getByLabel('Maximum pages')).toHaveValue('37');
   const persistedExclude=await page.getByLabel('Exclude path regex — one per line').inputValue();
-  expect(persistedExclude.split('\n')).toEqual(['^/logout
-  await page.getByRole('button',{name:'Cancel'}).click();
-
-  await openNav(page,'Settings');
-  await page.getByRole('button',{name:'New API key'}).click();
-  await page.getByLabel('Key name').fill('CI Integration');
-  await page.getByLabel('Expires in days').fill('30');
-  await page.getByRole('button',{name:'Create key'}).click();
-  await expect(page.locator('.codeBox')).toContainText('wss_');
-});
-,'^/billing/export']);
+  expect(persistedExclude.split(String.fromCharCode(10))).toEqual(['^/logout$','^/billing/export']);
   await page.getByRole('button',{name:'Cancel'}).click();
 
   await openNav(page,'Settings');
