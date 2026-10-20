@@ -181,3 +181,8 @@ Returns workspace-scoped target context, the latest observation, scan-by-scan as
 - `PUT /api/v1/notification-preferences`
 
 Preferences are stored per user **and per workspace**. Supported channels currently cover in-app/email delivery for scan completion, scan failure and recurring-assessment failure.
+
+### Member security activity
+- `GET /api/v1/team/:user_id/activity`
+
+Workspace Admin/Owner users can review member-scoped audit activity together with membership security posture exposed by `GET /api/v1/team`, including email-verification state, MFA state and last-login timestamp.
