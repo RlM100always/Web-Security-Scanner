@@ -674,7 +674,8 @@ def create_blueprint():
         if usage['last_24h']>=quota:return {'error':'Daily scan quota reached','quota':quota,'usage':usage},429
         if usage['active']>=concurrent:return {'error':'Concurrent scan limit reached','limit':concurrent,'usage':usage},429
         policy=repo().scan_policy(scan_id) or repo().get_project_policy(target['project_id'])
-        new=repo().create_scan(target['id'],target['url'],old['profile'],ident['user_id'],policy)
+        profile_snapshot={'id':old.get('scan_profile_id'),'name':old.get('scan_profile_name'),'version':old.get('scan_profile_version'),'scan_mode':old['profile']} if old.get('scan_profile_id') else None
+        new=repo().create_scan(target['id'],target['url'],old['profile'],ident['user_id'],policy,old.get('scan_profile_id'),profile_snapshot)
         job=repo().enqueue_job('scan',{'scan_id':new['id'],'target_id':target['id'],'rerun_of':scan_id})
         audit('SCAN_RERUN_QUEUED','scan',new['id'],{'rerun_of':scan_id,'job_id':job['id']})
         new['job_id']=job['id'];new['rerun_of']=scan_id;return new,202
