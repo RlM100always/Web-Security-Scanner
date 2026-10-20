@@ -181,6 +181,10 @@ python tools/load_smoke.py http://127.0.0.1:5000/health --requests 100 --concurr
 
 The utility has built-in request/concurrency safety caps.
 
+## Product design system
+
+Responsive layout, navigation, modal behavior, destructive actions, public information architecture and regression expectations are documented in `docs/DESIGN_SYSTEM.md`.
+
 ## Security model
 SentinelScope intentionally does **not** implement destructive exploitation, credential attacks, brute-force against target applications, persistence, data extraction or denial-of-service behavior. Automated scanning cannot prove complete application security or reliably identify all business-logic and authorization flaws.
 
