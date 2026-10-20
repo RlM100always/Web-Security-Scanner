@@ -541,6 +541,36 @@ def create_blueprint():
         if not s:return {'error':'Scan not found'},404
         s['findings']=repo().findings(scan_id);s['assets']=repo().assets(scan_id);s['asset_comparison']=repo().asset_comparison(scan_id);s['standards_summary']=repo().standards_summary(scan_id);s['policy']=repo().scan_policy(scan_id);s['comparison']=repo().comparison(scan_id);s['zap']=repo().latest_zap_import(scan_id);return s
 
+    @bp.post('/scans/<scan_id>/cancel')
+    @require_role('analyst')
+    def scan_cancel_workspace(scan_id):
+        ident=current_identity();s=repo().get_scan(scan_id,ident['organization_id'])
+        if not s:return {'error':'Scan not found'},404
+        if not repo().request_scan_cancel(scan_id):return {'error':'Only queued or running scans can be cancelled'},409
+        audit('SCAN_CANCEL_REQUESTED','scan',scan_id);return {'ok':True}
+
+    @bp.post('/scans/<scan_id>/rerun')
+    @require_role('analyst')
+    def scan_rerun(scan_id):
+        ident=current_identity();old=repo().get_scan(scan_id,ident['organization_id'])
+        if not old:return {'error':'Scan not found'},404
+        target=repo().get_target(old['target_id'],ident['organization_id'])
+        if not target:return {'error':'Target not found'},404
+        project=repo().get_project(target['project_id'],ident['organization_id'])
+        if project and project.get('status')=='archived':return {'error':'Archived projects cannot queue assessments'},409
+        if old['profile']=='lab' and not target.get('verified'):return {'error':'Lab profile requires verified ownership'},403
+        if repo().system_setting('require_verified_email_for_scans',False) and not ident.get('email_verified'):
+            return {'error':'Verify your email before creating assessments'},403
+        usage=repo().organization_scan_usage(ident['organization_id'])
+        quota=max(1,int(repo().system_setting('scan_quota_per_day',100)));concurrent=max(1,int(repo().system_setting('max_concurrent_scans_per_org',3)))
+        if usage['last_24h']>=quota:return {'error':'Daily scan quota reached','quota':quota,'usage':usage},429
+        if usage['active']>=concurrent:return {'error':'Concurrent scan limit reached','limit':concurrent,'usage':usage},429
+        policy=repo().scan_policy(scan_id) or repo().get_project_policy(target['project_id'])
+        new=repo().create_scan(target['id'],target['url'],old['profile'],ident['user_id'],policy)
+        job=repo().enqueue_job('scan',{'scan_id':new['id'],'target_id':target['id'],'rerun_of':scan_id})
+        audit('SCAN_RERUN_QUEUED','scan',new['id'],{'rerun_of':scan_id,'job_id':job['id']})
+        new['job_id']=job['id'];new['rerun_of']=scan_id;return new,202
+
     @bp.get('/scans/<scan_id>/events')
     @require_auth
     def scan_events(scan_id):
