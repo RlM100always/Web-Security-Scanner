@@ -1850,7 +1850,7 @@ class Repository:
 
     def mark_webhook_delivery_success(self,delivery_id,status_code,response_body):
         with self.conn() as c:c.execute("""update webhook_deliveries set status='DELIVERED',response_code=?,response_body=?,last_error=null,completed_at=? where id=?""",
-          (status_code,(response_body or '')[:1000],self.now(),delivery_id))
+          (status_code,(response_body or '')[:17000],self.now(),delivery_id))
 
     def mark_webhook_delivery_cancelled(self,delivery_id,reason="Webhook endpoint is paused"):
         with self.conn() as c:c.execute("""update webhook_deliveries set status='CANCELLED',last_error=?,completed_at=?
@@ -1858,7 +1858,7 @@ class Repository:
 
     def mark_webhook_delivery_failure(self,delivery_id,error,status_code=None,response_body=None):
         with self.conn() as c:c.execute("""update webhook_deliveries set status='FAILED',response_code=?,response_body=?,last_error=? where id=?""",
-          (status_code,(response_body or '')[:1000],str(error)[:1000],delivery_id))
+          (status_code,(response_body or '')[:17000],str(error)[:1000],delivery_id))
 
     def retry_webhook_delivery(self,delivery_id,org_id):
         with self.conn() as c:
