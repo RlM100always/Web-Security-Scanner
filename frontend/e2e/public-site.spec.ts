@@ -24,7 +24,7 @@ test('public navigation remains usable on mobile',async({page},testInfo)=>{
   test.skip(!testInfo.project.name.includes('mobile'),'mobile-only navigation check');
   await page.goto('/');
   await page.getByRole('button',{name:'Toggle navigation'}).click();
-  await page.getByRole('link',{name:'Features',exact:true}).click();
+  await page.locator('.publicNav nav').getByRole('link',{name:'Features',exact:true}).click();
   await expect(page).toHaveURL(/\/features$/);
   await expect(page.getByRole('heading',{name:/Depth across identity/i})).toBeVisible();
 });
