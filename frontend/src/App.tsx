@@ -59,13 +59,19 @@ export default function App(){
   }
   if(specialPath==='/admin')return user.system_admin?<SystemAdminPanel user={user}/>:<AdminAccessDenied/>;
 
-  const navItems:any[]=[['Dashboard',LayoutDashboard],['Projects',FolderKanban],['Assets',Boxes],['Scans',Radar],['Issues',TriangleAlert],['Reports',FileText],['Schedules',CalendarClock],['Team',Users],['Notifications',Bell],...(can(user,'admin')?[['Integrations',Webhook],['Audit',History]]:[]),['Settings',Settings]];
+  const navGroups:any[]=[
+    ['Overview',[['Dashboard',LayoutDashboard]]],
+    ['Security operations',[['Issues',TriangleAlert],['Assets',Boxes],['Reports',FileText]]],
+    ['Assessment',[['Projects',FolderKanban],['Scans',Radar],['Schedules',CalendarClock]]],
+    ['Governance',[['Team',Users],['Notifications',Bell],...(can(user,'admin')?[['Integrations',Webhook],['Audit',History]]:[]),['Settings',Settings]]]
+  ];
+  const navItems:any[]=navGroups.flatMap((g:any)=>g[1]);
 
   return <div className="app">
     <aside className={mobile?'side open':'side'}>
       <div className="brand"><span className="brandmark"><ShieldCheck size={21}/></span><div><b>SentinelScope</b><small>Security Platform</small></div><button className="mobileClose" onClick={()=>setMobile(false)}><X/></button></div>
       <div className="workspace"><small>WORKSPACE</small><select value={user.organization_id} onChange={async e=>{await api('/auth/workspace',{method:'POST',body:JSON.stringify({organization_id:e.target.value})});await loadMe()}}>{workspaces.map(w=><option key={w.organization_id} value={w.organization_id}>{w.organization_name}</option>)}</select><span>{user.role}</span></div>
-      <nav>{navItems.map(([n,I])=><button className={nav===n?'active':''} onClick={()=>{setNav(n);setMobile(false)}} key={n}><I size={18}/>{n}{n==='Notifications'&&notificationSummary.unread?<em className="navCount">{Math.min(notificationSummary.unread,99)}</em>:null}</button>)}</nav>
+      <nav className="groupedNav">{navGroups.map(([label,items]:any)=><div className="navGroup" key={label}><span className="navGroupLabel">{label}</span>{items.map(([n,I]:any)=><button className={nav===n?'active':''} onClick={()=>{setNav(n);setMobile(false)}} key={n}><I size={18}/><span>{n}</span>{n==='Notifications'&&notificationSummary.unread?<em className="navCount">{Math.min(notificationSummary.unread,99)}</em>:null}</button>)}</div>)}</nav>
       {user.system_admin?<button className="adminLaunch" onClick={()=>window.location.href='/admin'}><Shield size={18}/> System Admin</button>:null}
       <div className="sideFoot"><span className="safeDot"/> Authorised, non-destructive scans</div>
     </aside>
