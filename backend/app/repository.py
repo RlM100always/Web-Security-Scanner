@@ -83,6 +83,9 @@ class Repository:
             create table if not exists notifications(
               id text primary key,organization_id text,user_id text,type text not null,title text not null,body text not null,
               read_at text,meta_json text,created_at text not null);
+            create table if not exists notification_preferences(
+              user_id text not null,organization_id text not null,preferences_json text not null,updated_at text not null,
+              primary key(user_id,organization_id));
             create table if not exists backup_history(
               id text primary key,organization_id text,user_id text,filename text not null,size_bytes integer not null,
               created_at text not null);
@@ -357,7 +360,39 @@ class Repository:
             c.execute("update sessions set revoked_at=? where organization_id=? and user_id=? and revoked_at is null",(self.now(),org_id,user_id))
         return True
 
+    def get_notification_preferences(self,user_id,org_id):
+        defaults={'in_app_scan_completed':True,'in_app_scan_failed':True,'in_app_schedule_failure':True,
+                  'email_scan_completed':True,'email_scan_failed':False,'email_schedule_failure':True}
+        with self.conn() as c:r=c.execute("select preferences_json from notification_preferences where user_id=? and organization_id=?",(user_id,org_id)).fetchone()
+        if not r:return defaults
+        try:stored=json.loads(r['preferences_json'] or '{}')
+        except Exception:stored={}
+        for key in defaults:
+            if key in stored:defaults[key]=bool(stored[key])
+        return defaults
+
+    def set_notification_preferences(self,user_id,org_id,updates):
+        prefs=self.get_notification_preferences(user_id,org_id)
+        for key in prefs:
+            if key in updates:prefs[key]=bool(updates[key])
+        with self.conn() as c:c.execute("""insert into notification_preferences(user_id,organization_id,preferences_json,updated_at)
+          values(?,?,?,?) on conflict(user_id,organization_id) do update set preferences_json=excluded.preferences_json,updated_at=excluded.updated_at""",
+          (user_id,org_id,json.dumps(prefs),self.now()))
+        return prefs
+
+    def notification_enabled(self,user_id,org_id,kind,channel='in_app'):
+        if not user_id:return True
+        prefs=self.get_notification_preferences(user_id,org_id)
+        key=f"{channel}_{kind}"
+        return prefs.get(key,True)
+
     def add_notification(self,org_id,user_id,kind,title,body,meta=None):
+        effective_org=org_id
+        if user_id and not effective_org:
+            with self.conn() as c:
+                m=c.execute("select organization_id from memberships where user_id=? and active=1 order by created_at limit 1",(user_id,)).fetchone()
+                effective_org=m['organization_id'] if m else None
+        if user_id and effective_org and not self.notification_enabled(user_id,effective_org,kind,'in_app'):return None
         row={'id':self._id(),'organization_id':org_id,'user_id':user_id,'type':kind,'title':title,'body':body,'read_at':None,'meta_json':json.dumps(meta or {}),'created_at':self.now()}
         with self.conn() as c:c.execute("insert into notifications values(?,?,?,?,?,?,?,?,?)",tuple(row.values()))
         return row['id']
