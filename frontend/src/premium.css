@@ -73,3 +73,15 @@ body{background:var(--ss-bg);color:var(--ss-ink);font-feature-settings:"cv02","c
 
 .scanMetrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0 14px}.scanOpsTable .tableHeader,.scanOpsTable .tableRow{grid-template-columns:minmax(290px,2fr) 110px 100px 70px 80px 150px 150px}.scanIdentity{display:flex;align-items:flex-start;gap:10px;min-width:0}.scanIdentity>div{min-width:0}.scanIdentity b,.scanIdentity small,.scanIdentity .scanError{display:block}.scanIdentity small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.scanStateGlyph{width:31px;height:31px;border-radius:8px;display:grid;place-items:center;flex:0 0 auto}.scanStateGlyph svg{width:15px}.scanStateGlyph.queued,.scanStateGlyph.scanning{background:var(--ss-blue-soft);color:var(--ss-blue)}.scanStateGlyph.completed{background:#e8f7ef;color:#247651}.scanStateGlyph.failed,.scanStateGlyph.cancelled{background:#ffebed;color:#b9333d}.scanError{font-size:8px;color:var(--ss-red);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:360px}.miniProgress{height:3px;background:var(--ss-surface-3);border-radius:999px;margin-top:6px;width:72px;overflow:hidden}.miniProgress i{display:block;height:100%;background:var(--ss-blue)}.scanRowActions{display:flex;gap:7px;flex-wrap:wrap}
 @media(max-width:1100px){.scanOpsTable{overflow-x:auto}.scanOpsTable .tableHeader,.scanOpsTable .tableRow{min-width:930px}}@media(max-width:700px){.scanMetrics{grid-template-columns:1fr 1fr}}
+
+/* Accessibility and motion safety */
+:where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:3px solid rgba(23,105,255,.42);outline-offset:2px;border-radius:8px}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  .spin{animation:none!important}
+}
+@media(prefers-contrast:more){
+  :root{--line:#8895a7!important}
+  .panel,.card,.projectCard,.exposureCell,.workerCard,.authCard,.modal{border-width:2px!important}
+  .muted,small{opacity:.95}
+}
