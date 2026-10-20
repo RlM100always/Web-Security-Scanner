@@ -58,8 +58,22 @@ def run_scan(target,profile="standard",allow_private=False,progress=None,policy=
         findings.extend(run_transport_checks(target,client));emit("DISCOVERING",15,"Transport checks complete")
         if profile!="quick":findings.extend(run_origin_checks(target,client))
         emit("DISCOVERING",22,"Origin-level configuration checks complete")
-        pages=crawl(target,client,policy["max_pages"],policy["max_depth"],policy["include_paths"],policy["exclude_paths"],policy["request_delay_ms"])
-        emit("SCANNING",30,f"Discovered {len(pages)} in-scope asset(s)")
+        pages,crawl_errors,crawl_meta=crawl(target,client,policy["max_pages"],policy["max_depth"],policy["include_paths"],policy["exclude_paths"],policy["request_delay_ms"])
+        emit("SCANNING",30,f"Discovered {len(pages)} in-scope asset(s); {len(crawl_errors)} fetch failure(s)")
+        for failure in crawl_errors:
+            findings.append(mk("crawl.fetch_error","In-scope Crawl Fetch Failure","Discovery","WARNING","LOW","HIGH",failure["url"],
+              f"Fetch failed at depth {failure['depth']}: {failure['error']}",
+              "Records in-scope URLs that were discovered but could not be retrieved within the safe crawl.",
+              "Unretrieved routes reduce automated coverage and can hide configuration differences.",
+              "Review target availability, authentication boundaries, TLS/network controls and scanner scope for this route.",
+              ["NIST SP 800-115"]))
+        if crawl_meta.get("budget_exhausted"):
+            findings.append(mk("crawl.attempt_budget","Crawler Attempt Budget Reached","Discovery","WARNING","LOW","HIGH",target,
+              f"Attempted {crawl_meta['attempted']} URL(s); {crawl_meta['remaining_discovered']} discovered URL(s) remained when the bounded attempt budget was reached.",
+              "Limits both successful and failed retrieval attempts so broken-link fan-out cannot bypass scan bounds.",
+              "Some discovered in-scope routes were not assessed in this run.",
+              "Increase the project page budget deliberately, narrow scope with include/exclude rules, or fix excessive broken-link fan-out.",
+              ["NIST SP 800-115"]))
         if not pages:
             findings.append(mk("availability.http","Target Reachability","Availability","ERROR","HIGH","HIGH",target,"No page could be retrieved","Checks whether the target can be retrieved safely.","A scan cannot assess an unreachable target.","Verify the URL, network access and target availability.",["NIST SP 800-115"]))
         for idx,(url,resp,depth,source) in enumerate(pages,1):
