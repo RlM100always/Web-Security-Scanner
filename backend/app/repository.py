@@ -398,8 +398,12 @@ class Repository:
 
     def create_invitation(self,org_id,email,role,token_hash,invited_by,ttl_hours):
         now=self.now();exp=(datetime.now(timezone.utc)+timedelta(hours=ttl_hours)).isoformat()
-        row={'id':self._id(),'organization_id':org_id,'email':email.lower(),'role':role,'token_hash':token_hash,'status':'PENDING','invited_by':invited_by,'expires_at':exp,'accepted_at':None,'created_at':now}
+        email=email.lower()
+        row={'id':self._id(),'organization_id':org_id,'email':email,'role':role,'token_hash':token_hash,'status':'PENDING','invited_by':invited_by,'expires_at':exp,'accepted_at':None,'created_at':now}
         with self.conn() as c:
+            existing=c.execute("""select m.role,m.active from memberships m join users u on u.id=m.user_id
+              where m.organization_id=? and lower(u.email)=lower(?)""",(org_id,email)).fetchone()
+            if existing:raise ValueError("This user is already a member of the workspace")
             c.execute("update invitations set status='REVOKED' where organization_id=? and lower(email)=lower(?) and status='PENDING'",(org_id,email))
             c.execute("insert into invitations values(?,?,?,?,?,?,?,?,?,?)",tuple(row.values()))
         return row
