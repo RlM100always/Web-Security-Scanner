@@ -1764,9 +1764,22 @@ class Repository:
         return self.get_webhook_endpoint(endpoint_id,org_id)
 
     def delete_webhook_endpoint(self,endpoint_id,org_id):
+        now=self.now()
         with self.conn() as c:
             row=c.execute("select id from webhook_endpoints where id=? and organization_id=?",(endpoint_id,org_id)).fetchone()
             if not row:return False
+            deliveries=[dict(r) for r in c.execute("select id,status from webhook_deliveries where endpoint_id=?",(endpoint_id,))]
+            ids={d['id'] for d in deliveries}
+            if any(d['status']=='RUNNING' for d in deliveries):
+                raise ValueError("Webhook has a delivery currently in progress. Wait for it to finish before deletion.")
+            jobs=[dict(r) for r in c.execute("select id,status,payload_json from jobs where kind='webhook' and status in ('QUEUED','RUNNING')")]
+            for job in jobs:
+                try:delivery_id=json.loads(job['payload_json']).get('delivery_id')
+                except Exception:continue
+                if delivery_id not in ids:continue
+                if job['status']=='RUNNING':
+                    raise ValueError("Webhook has a worker job currently in progress. Wait for it to finish before deletion.")
+                c.execute("update jobs set status='CANCELLED',completed_at=?,last_error=? where id=?",(now,"Webhook endpoint deleted before delivery",job['id']))
             c.execute("delete from webhook_deliveries where endpoint_id=?",(endpoint_id,))
             c.execute("delete from webhook_endpoints where id=?",(endpoint_id,))
         return True
@@ -1812,19 +1825,28 @@ class Repository:
         with self.conn() as c:c.execute("""update webhook_deliveries set status='DELIVERED',response_code=?,response_body=?,last_error=null,completed_at=? where id=?""",
           (status_code,(response_body or '')[:1000],self.now(),delivery_id))
 
+    def mark_webhook_delivery_cancelled(self,delivery_id,reason="Webhook endpoint is paused"):
+        with self.conn() as c:c.execute("""update webhook_deliveries set status='CANCELLED',last_error=?,completed_at=?
+          where id=? and status in ('QUEUED','RUNNING')""",(reason[:1000],self.now(),delivery_id))
+
     def mark_webhook_delivery_failure(self,delivery_id,error,status_code=None,response_body=None):
         with self.conn() as c:c.execute("""update webhook_deliveries set status='FAILED',response_code=?,response_body=?,last_error=? where id=?""",
           (status_code,(response_body or '')[:1000],str(error)[:1000],delivery_id))
 
     def retry_webhook_delivery(self,delivery_id,org_id):
         with self.conn() as c:
-            row=c.execute("""select d.id from webhook_deliveries d join webhook_endpoints e on e.id=d.endpoint_id
+            row=c.execute("""select d.id,d.status,e.active from webhook_deliveries d join webhook_endpoints e on e.id=d.endpoint_id
               where d.id=? and e.organization_id=?""",(delivery_id,org_id)).fetchone()
-            if not row:return False
-            c.execute("update webhook_deliveries set status='QUEUED',response_code=null,response_body=null,last_error=null,completed_at=null where id=?",(delivery_id,))
+            if not row or row['status'] not in {'FAILED','CANCELLED'} or not row['active']:return False
+            existing=[dict(r) for r in c.execute("select id,status,payload_json from jobs where kind='webhook' and status in ('QUEUED','RUNNING')")]
+            for job in existing:
+                try:
+                    if json.loads(job['payload_json']).get('delivery_id')==delivery_id:return False
+                except Exception:continue
+            c.execute("""update webhook_deliveries set status='QUEUED',response_code=null,response_body=null,last_error=null,completed_at=null
+              where id=?""",(delivery_id,))
         self.enqueue_job('webhook',{'delivery_id':delivery_id},max_attempts=5);return True
 
-    # system administration
     def set_system_admin(self,user_id,enabled=True):
         with self.conn() as c:c.execute("update users set system_admin=? where id=?",(int(enabled),user_id))
 
