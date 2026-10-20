@@ -48,7 +48,7 @@ export default function App(){
   useEffect(()=>{if(!selected||!user||!['QUEUED','SCANNING','CREATED'].includes(selected.status))return;
     const es=new EventSource('/api/v1/scans/'+selected.id+'/events',{withCredentials:true} as any);
     const refresh=async()=>{try{const fresh=await api('/scans/'+selected.id);setSelected(fresh);setScans(await api('/scans'))}catch{}};
-    es.addEventListener('scan',refresh);es.addEventListener('terminal',()=>{refresh();es.close()});es.onerror=()=>{};
+    es.addEventListener('scan',refresh);es.addEventListener('terminal',()=>{refresh();es.close()});es.addEventListener('auth',()=>{es.close();loadMe()});es.onerror=()=>{};
     return()=>es.close();
   },[selected?.id,selected?.status,user?.user_id]);
 
