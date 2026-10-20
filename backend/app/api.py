@@ -75,6 +75,25 @@ def create_blueprint():
         ident=current_identity();repo().revoke_session(ident['session_id']);audit('LOGOUT','user',ident['user_id'])
         response=jsonify({'ok':True});response.delete_cookie('wss_session',path='/');return response
 
+    @bp.post('/auth/password')
+    @require_auth
+    def change_password():
+        ident=current_identity();d=request.get_json(force=True) or {}
+        current=d.get('current_password') or '';new=d.get('new_password') or ''
+        user=repo().get_user_by_email(ident['email'])
+        if not user or not verify_password(current,user['password_hash']):return {'error':'Current password is incorrect'},400
+        if len(new)<12:return {'error':'New password must be at least 12 characters'},400
+        repo().update_user_password(ident['user_id'],hash_password(new))
+        repo().revoke_other_sessions(ident['user_id'],ident['session_id'])
+        audit('PASSWORD_CHANGED','user',ident['user_id']);return {'ok':True}
+
+    @bp.get('/auth/sessions')
+    @require_auth
+    def auth_sessions():
+        ident=current_identity();rows=repo().list_sessions(ident['user_id'])
+        for r in rows:r['current']=r['id']==ident['session_id']
+        return jsonify(rows)
+
     @bp.get('/auth/me')
     @require_auth
     def me():
@@ -145,6 +164,13 @@ def create_blueprint():
         try:url=validate_target(d.get('url'),current_app.config['SCANNER_ALLOW_PRIVATE'])
         except TargetValidationError as e:return {'error':str(e)},400
         t=repo().create_target(project['id'],url,d.get('name') or url,True,False,ident['user_id']);audit('TARGET_CREATED','target',t['id'],{'url':url});return t,201
+
+    @bp.delete('/targets/<target_id>')
+    @require_role('admin')
+    def target_delete(target_id):
+        ident=current_identity()
+        if not repo().delete_target(target_id,ident['organization_id']):return {'error':'Target not found'},404
+        audit('TARGET_DELETED','target',target_id);return {'ok':True}
 
     @bp.post('/targets/<target_id>/verification')
     @require_role('analyst')
@@ -233,6 +259,20 @@ def create_blueprint():
         if profile not in {'quick','standard','lab'}:return {'error':'Invalid profile'},400
         if profile=='lab' and not t.get('verified'):return {'error':'Lab profile requires verified ownership'},403
         s=repo().create_schedule(t['id'],profile,interval,ident['user_id']);audit('SCHEDULE_CREATED','schedule',s['id'],{'interval_minutes':interval});return s,201
+
+    @bp.patch('/schedules/<schedule_id>')
+    @require_role('analyst')
+    def schedule_toggle(schedule_id):
+        ident=current_identity();enabled=bool((request.get_json(force=True) or {}).get('enabled'))
+        if not repo().set_schedule_enabled(schedule_id,ident['organization_id'],enabled):return {'error':'Schedule not found'},404
+        audit('SCHEDULE_TOGGLED','schedule',schedule_id,{'enabled':enabled});return {'ok':True,'enabled':enabled}
+
+    @bp.delete('/schedules/<schedule_id>')
+    @require_role('analyst')
+    def schedule_delete(schedule_id):
+        ident=current_identity()
+        if not repo().delete_schedule(schedule_id,ident['organization_id']):return {'error':'Schedule not found'},404
+        audit('SCHEDULE_DELETED','schedule',schedule_id);return {'ok':True}
 
     # ZAP import / comparison
     @bp.post('/scans/<scan_id>/zap')
