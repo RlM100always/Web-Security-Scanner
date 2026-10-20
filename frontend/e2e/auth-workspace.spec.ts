@@ -2,7 +2,7 @@ import {test,expect} from '@playwright/test';
 
 test('signup opens authenticated workspace and creates a project',async({page})=>{
   const email='e2e-'+Date.now()+'@example.com';
-  await page.goto('/');
+  await page.goto('/signup');
   await page.getByRole('button',{name:'Create account'}).click();
   await page.getByLabel('Full name').fill('E2E Owner');
   await page.getByLabel('Workspace name').fill('E2E Security');
