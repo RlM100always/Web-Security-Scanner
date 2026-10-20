@@ -101,8 +101,13 @@ def test_invitation_and_tenant_backup_isolation():
         invite=client.post("/api/v1/team/invitations",json={"email":"analyst@example.com","role":"analyst"},headers={"X-CSRF-Token":csrf})
         assert invite.status_code==201
         invite_token=invite.get_json()["development_invite_link"].split("token=",1)[1]
+        info=client.get("/api/v1/auth/invitations/info",query_string={"token":invite_token})
+        assert info.status_code==200 and info.get_json()["existing_account"]==0 and info.get_json()["organization_name"]=="Acme"
+        incomplete=client.post("/api/v1/auth/invitations/accept",json={"token":invite_token,"name":"Analyst User","password":"short"})
+        assert incomplete.status_code==400
+        assert client.get("/api/v1/auth/invitations/info",query_string={"token":invite_token}).status_code==200
         accepted=client.post("/api/v1/auth/invitations/accept",json={"token":invite_token,"name":"Analyst User","password":"analyst-password-123"})
-        assert accepted.status_code==200
+        assert accepted.status_code==200 and accepted.get_json()["existing_account"] is False
         backup=client.post("/api/v1/backups",json={},headers={"X-CSRF-Token":csrf})
         assert backup.status_code==403
         assert "System Administrator" in backup.get_json()["error"]
@@ -126,3 +131,26 @@ def test_shared_ip_failures_do_not_lock_unrelated_account():
             assert res.status_code==401
         login=app.test_client().post("/api/v1/auth/login",json={"email":"owner@example.com","password":"correct-horse-battery"})
         assert login.status_code==200
+
+
+def test_existing_account_invitation_does_not_reset_password():
+    with tempfile.TemporaryDirectory() as d:
+        app=build(os.path.join(d,"existing-invite.sqlite3"));app.testing=True
+        owner=app.test_client();existing=app.test_client()
+        owner_signup=owner.post("/api/v1/auth/signup",json={"name":"Owner","email":"owner@example.com","password":"owner-password-123","organization_name":"Owner Workspace"})
+        owner_csrf=owner_signup.get_json()["csrf_token"]
+        existing_signup=existing.post("/api/v1/auth/signup",json={"name":"Existing User","email":"existing@example.com","password":"existing-password-123","organization_name":"Existing Workspace"})
+        existing_csrf=existing_signup.get_json()["csrf_token"]
+        existing.post("/api/v1/auth/logout",json={},headers={"X-CSRF-Token":existing_csrf})
+
+        invite=owner.post("/api/v1/team/invitations",json={"email":"existing@example.com","role":"analyst"},headers={"X-CSRF-Token":owner_csrf})
+        token=invite.get_json()["development_invite_link"].split("token=",1)[1]
+        info=app.test_client().get("/api/v1/auth/invitations/info",query_string={"token":token})
+        assert info.status_code==200 and info.get_json()["existing_account"]==1
+
+        accepted=app.test_client().post("/api/v1/auth/invitations/accept",json={"token":token})
+        assert accepted.status_code==200 and accepted.get_json()["existing_account"] is True
+        login=app.test_client().post("/api/v1/auth/login",json={"email":"existing@example.com","password":"existing-password-123"})
+        assert login.status_code==200
+        workspaces=login.get_json()["workspaces"]
+        assert {w["organization_name"] for w in workspaces}=={"Existing Workspace","Owner Workspace"}
