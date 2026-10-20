@@ -117,6 +117,9 @@ class Repository:
               prefix text not null,scopes_json text not null,expires_at text,last_used_at text,revoked_at text,created_at text not null);
             create table if not exists system_settings(
               key text primary key,value_json text not null,updated_by text,updated_at text not null);
+            create table if not exists finding_escalations(
+              id text primary key,finding_state_id text not null,organization_id text not null,user_id text not null,
+              escalation_key text not null,created_at text not null,unique(finding_state_id,user_id,escalation_key));
             create table if not exists report_exports(
               id text primary key,organization_id text not null,scan_id text not null,format text not null,
               user_id text not null,sha256 text not null,size_bytes integer not null,created_at text not null);
@@ -179,6 +182,7 @@ class Repository:
             c.execute("create index if not exists idx_mfa_recovery_user on mfa_recovery_codes(user_id,used_at)")
             c.execute("create index if not exists idx_invites_org on invitations(organization_id,status)")
             c.execute("create index if not exists idx_notifications_user on notifications(user_id,created_at)")
+            c.execute("create index if not exists idx_finding_escalations_org on finding_escalations(organization_id,created_at)")
             c.execute("create index if not exists idx_report_exports_org on report_exports(organization_id,created_at)")
             c.execute("create index if not exists idx_report_exports_scan on report_exports(scan_id,created_at)")
             c.execute("create index if not exists idx_access_reviews_org on access_reviews(organization_id,created_at)")
@@ -1230,6 +1234,43 @@ class Repository:
                 c.execute("delete from assets where scan_id=?",(sid,));c.execute("delete from remediation_verifications where scan_id=?",(sid,));c.execute("delete from findings where scan_id=?",(sid,));c.execute("delete from scan_events where scan_id=?",(sid,));c.execute("delete from zap_imports where scan_id=?",(sid,))
                 c.execute("delete from scans where id=?",(sid,))
             return len(scan_ids)
+
+    # SLA escalation automation
+    def process_overdue_finding_escalations(self):
+        today=datetime.now(timezone.utc).date().isoformat();escalation_key='overdue:'+today
+        with self.conn() as c:
+            rows=[dict(r) for r in c.execute("""select fs.id finding_state_id,fs.title,fs.state,fs.due_at,fs.assignee_user_id,
+              fs.base_severity,fs.severity_override,t.id target_id,t.name target_name,t.url target_url,p.organization_id
+              from finding_states fs join targets t on t.id=fs.target_id join projects p on p.id=t.project_id
+              where fs.state in ('OPEN','ACKNOWLEDGED','IN_PROGRESS') and fs.due_at is not null and substr(fs.due_at,1,10)<?
+              order by fs.due_at""",(today,))]
+        emitted=[]
+        for row in rows:
+            recipients=set()
+            if row.get('assignee_user_id'):recipients.add(row['assignee_user_id'])
+            with self.conn() as c:
+                for x in c.execute("""select user_id from memberships where organization_id=? and active=1 and role in ('owner','admin')""",(row['organization_id'],)):
+                    recipients.add(x['user_id'])
+            for uid in recipients:
+                with self.conn() as c:
+                    try:
+                        c.execute("insert into finding_escalations(id,finding_state_id,organization_id,user_id,escalation_key,created_at) values(?,?,?,?,?,?)",
+                          (self._id(),row['finding_state_id'],row['organization_id'],uid,escalation_key,self.now()))
+                    except sqlite3.IntegrityError:
+                        continue
+                severity=row.get('severity_override') or row.get('base_severity') or 'INFO'
+                body=f"{severity} issue overdue since {str(row.get('due_at'))[:10]} on {row.get('target_name') or row.get('target_url')}: {row.get('title')}"
+                self.add_notification(row['organization_id'],uid,'finding_overdue','Security issue overdue',body,
+                  {'finding_state_id':row['finding_state_id'],'target_id':row['target_id'],'due_at':row['due_at'],'severity':severity})
+                emitted.append({**row,'user_id':uid,'severity':severity,'body':body,'escalation_key':escalation_key})
+        return emitted
+
+    def list_finding_escalations(self,org_id,limit=200):
+        with self.conn() as c:
+            return [dict(r) for r in c.execute("""select e.*,fs.title,fs.due_at,u.name user_name,u.email user_email,t.name target_name
+              from finding_escalations e join finding_states fs on fs.id=e.finding_state_id
+              join users u on u.id=e.user_id join targets t on t.id=fs.target_id
+              where e.organization_id=? order by e.created_at desc limit ?""",(org_id,limit))]
 
     # report export evidence ledger
     def record_report_export(self,org_id,scan_id,fmt,user_id,sha256,size_bytes):
