@@ -43,7 +43,13 @@ def process_scan(repo, config, payload):
         return
     except Exception as e:
         repo.update_scan(scan['id'],status='FAILED',stage='FAILED',progress=100,error=str(e)[:1000],completed_at=repo.now())
+        schedule_ctx=repo.schedule_notification_context(scan['id'])
         repo.finalize_schedule_run(scan['id'],'FAILED')
+        if schedule_ctx and schedule_ctx.get('notify_on_failure'):
+            user=repo.get_user_by_id(schedule_ctx.get('created_by'))
+            if user and repo.notification_enabled(schedule_ctx['created_by'],schedule_ctx['organization_id'],'schedule_failure','email'):
+                try:send_email(vars(config),user['email'],'SentinelScope recurring assessment failed',f"{schedule_ctx.get('name') or schedule_ctx.get('target_name') or 'Scheduled assessment'} failed.\n\n{str(e)[:500]}")
+                except Exception:pass
         repo.add_scan_event(scan['id'],'STATE','FAILED',100,'Scan failed',{"error":str(e)[:1000]})
         if scan.get('created_by'):
             org_id=repo.target_organization(target['id'])
