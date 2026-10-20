@@ -410,6 +410,18 @@ class Repository:
         try:x['tags']=json.loads(x.pop('tags_json') or '[]')
         except Exception:x['tags']=[]
         return x
+    def update_target(self,target_id,org_id,updates):
+        allowed={'name','criticality','environment','tags_json'}
+        sets=[];vals=[]
+        for k,v in updates.items():
+            if k in allowed:sets.append(k+"=?");vals.append(v)
+        if not sets:return False
+        with self.conn() as c:
+            row=c.execute("""select t.id from targets t join projects p on p.id=t.project_id where t.id=? and p.organization_id=?""",(target_id,org_id)).fetchone()
+            if not row:return False
+            vals.append(target_id);c.execute("update targets set "+",".join(sets)+" where id=?",vals)
+        return True
+
     def delete_target(self,target_id,org_id):
         with self.conn() as c:
             row=c.execute("""select t.id from targets t join projects p on p.id=t.project_id
@@ -573,7 +585,7 @@ class Repository:
         return dict(r) if r else None
 
     def update_finding_state(self,state_id,org_id,updates,user_id):
-        allowed={'state','severity_override','assignee_user_id','due_at','risk_reason','risk_expires_at'}
+        allowed={'state','severity_override','assignee_user_id','due_at','risk_reason','risk_expires_at','risk_accepted_by'}
         sets=[];vals=[]
         for k,v in updates.items():
             if k in allowed:sets.append(k+"=?");vals.append(v)
