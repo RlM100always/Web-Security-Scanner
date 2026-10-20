@@ -1,0 +1,12 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports: ["5000:5000"]
+    environment:
+      - SCANNER_ALLOW_PRIVATE=0
+  web:
+    build: ./frontend
+    ports: ["8080:80"]
+    depends_on: [api]
