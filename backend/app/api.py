@@ -426,7 +426,8 @@ def create_blueprint():
     @bp.delete('/projects/<project_id>')
     @require_role('admin')
     def project_delete(project_id):
-        ok=repo().delete_project(project_id,current_identity()['organization_id'])
+        try:ok=repo().delete_project(project_id,current_identity()['organization_id'])
+        except ValueError as e:return {'error':str(e)},409
         if not ok:return {'error':'Project not found'},404
         audit('PROJECT_DELETED','project',project_id);return {'ok':True}
 
@@ -610,7 +611,9 @@ def create_blueprint():
     @require_role('admin')
     def target_delete(target_id):
         ident=current_identity()
-        if not repo().delete_target(target_id,ident['organization_id']):return {'error':'Target not found'},404
+        try:ok=repo().delete_target(target_id,ident['organization_id'])
+        except ValueError as e:return {'error':str(e)},409
+        if not ok:return {'error':'Target not found'},404
         audit('TARGET_DELETED','target',target_id);return {'ok':True}
 
     @bp.route('/targets/<target_id>/preflight',methods=['GET','POST'])
