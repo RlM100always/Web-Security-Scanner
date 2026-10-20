@@ -10,7 +10,9 @@ test('signup opens authenticated workspace and creates a project',async({page})=
   await page.getByLabel('Password').fill('e2e-secure-password-123');
   await page.getByRole('button',{name:'Create account'}).click();
   await expect(page.getByRole('heading',{name:'Dashboard'})).toBeVisible();
-  await page.getByRole('button',{name:'Projects'}).click();
+  const menu=page.locator('button.menu');
+  if(await menu.isVisible()) await menu.click();
+  await page.getByRole('button',{name:'Projects',exact:true}).click();
   await page.getByRole('button',{name:'New project'}).click();
   await page.getByLabel('Project name').fill('E2E Web Estate');
   await page.getByLabel('Description').fill('Browser integration test');
