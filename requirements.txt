@@ -3,3 +3,5 @@ Flask-Cors>=4,<6
 requests>=2.31,<3
 beautifulsoup4>=4.12,<5
 reportlab>=4,<5
+gunicorn>=23,<24
+dnspython>=2.7,<3
