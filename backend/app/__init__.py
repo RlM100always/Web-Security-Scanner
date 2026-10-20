@@ -38,7 +38,7 @@ def create_app(config_object=None):
                     request.path=="/api/v1/scans" or
                     re.fullmatch(r"/api/v1/scans/[^/]+/rerun",request.path) or
                     re.fullmatch(r"/api/v1/finding-states/[^/]+/verify",request.path) or
-                    re.fullmatch(r"/api/v1/schedules/[^/]+/run",request.path)
+                    re.fullmatch(r"/api/v1/schedules/[^/]+/run-now",request.path)
                 )
                 needed="scan" if scan_action else "write"
                 if needed not in scopes and "admin" not in scopes:
