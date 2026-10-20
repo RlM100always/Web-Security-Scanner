@@ -154,3 +154,21 @@ def test_existing_account_invitation_does_not_reset_password():
         assert login.status_code==200
         workspaces=login.get_json()["workspaces"]
         assert {w["organization_name"] for w in workspaces}=={"Existing Workspace","Owner Workspace"}
+
+
+def test_existing_member_cannot_be_reinvited_or_owner_downgraded():
+    with tempfile.TemporaryDirectory() as d:
+        app=build(os.path.join(d,"member-guard.sqlite3"));app.testing=True
+        client=app.test_client()
+        signup=client.post("/api/v1/auth/signup",json={"name":"Owner","email":"owner@example.com","password":"owner-password-123","organization_name":"Acme"})
+        payload=signup.get_json();csrf=payload["csrf_token"];owner_id=payload["user"]["user_id"]
+
+        invite=client.post("/api/v1/team/invitations",json={"email":"owner@example.com","role":"viewer"},headers={"X-CSRF-Token":csrf})
+        assert invite.status_code==409
+        assert "already a member" in invite.get_json()["error"]
+
+        downgrade=client.patch("/api/v1/team/"+owner_id,json={"role":"viewer"},headers={"X-CSRF-Token":csrf})
+        assert downgrade.status_code==409
+        assert "Owner role cannot be changed" in downgrade.get_json()["error"]
+        me=client.get("/api/v1/auth/me").get_json()["user"]
+        assert me["role"]=="owner"
