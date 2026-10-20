@@ -16,9 +16,10 @@ def make_verification(target_url, method):
 def check_file(target_url, token, allow_private=False):
     base=f"{urlsplit(target_url).scheme}://{urlsplit(target_url).netloc}/"
     url=urljoin(base,".well-known/sentinelscope-verification.txt")
-    r=SafeHttpClient(allow_private=allow_private).get(url)
-    text=(r.text or "").strip()
-    return token in text, f"GET {url} returned HTTP {r.status_code}; token {'found' if token in text else 'not found'}"
+    with SafeHttpClient(allow_private=allow_private) as client:
+        r=client.get(url)
+        text=(r.text or "").strip()
+        return token in text, f"GET {url} returned HTTP {r.status_code}; token {'found' if token in text else 'not found'}"
 
 def check_dns(target_url, token):
     host=urlsplit(target_url).hostname
