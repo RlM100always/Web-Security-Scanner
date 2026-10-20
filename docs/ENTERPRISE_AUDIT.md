@@ -19,6 +19,7 @@ This document records the current SentinelScope product architecture, the workfl
 | Secret storage | API/session/token hashes; optional Fernet encryption for MFA secrets using deployment-managed APP_ENCRYPTION_KEY |
 | Workspace isolation | Active per-workspace memberships, Owner/Admin/Analyst/Viewer roles, workspace switching, suspended-workspace enforcement, workspace-scoped member deactivation, member email/MFA/last-login posture and member-level audit activity drilldown |
 | Invitations | Expiring invitations, resend/revoke lifecycle, role assignment, pending-invitation UI |
+| Access certification | Formal workspace membership snapshots, per-member keep/revoke decisions, reviewer notes, owner protection, completion-time revocation and session invalidation |
 | System administration | Separate system-admin privilege, users/workspaces/scans/jobs/workers/security events/audit/settings/backups/retention/quotas/maintenance/broadcast/SMTP diagnostics |
 | Projects | Editable name/description/tags, active/archive lifecycle, archived-project scan/target enforcement, retained history, safer archive-before-delete workflow |
 | Targets | Explicit authorisation, ownership verification, business criticality, environment, tags, metadata editing, SSRF-safe URL validation |
@@ -30,13 +31,14 @@ This document records the current SentinelScope product architecture, the workfl
 | Risk decisions | OPEN/ACKNOWLEDGED/IN_PROGRESS/ACCEPTED_RISK/FALSE_POSITIVE/REMEDIATED; saved/private/shared issue views; portfolio filters; bulk triage; rationale requirement; risk-review expiry; optional Owner-only acceptance approval; expired acceptance priority signal |
 | Remediation verification | Queued re-assessment linked to the persistent issue; VERIFIED_FIXED/STILL_PRESENT history |
 | Standards | Check-level references and scan-level mapped PASS/WARNING/FAIL/ERROR summary; no blanket certification claim |
-| Reports | Executive summary, scope, policy, target context, standards evidence, findings, assets, drift, methodology and limitations in PDF/HTML/JSON |
+| Reports | Executive summary, scope, policy, target context, standards evidence, findings, assets, drift, methodology and limitations in PDF/HTML/JSON; immutable export ledger with actor, format, byte size and SHA-256 provenance |
 | ZAP comparison | Imported JSON baseline comparison stored with scan evidence |
 | Schedules | Named recurring assessments, cadence/profile, failure notification preference, pause/resume, run-now, run count, failure count, last/next run and persisted execution history |
-| Job processing | Persistent SQLite queue, retries, cancellation, worker heartbeat, status telemetry |
+| Job processing | Persistent SQLite queue, cancellation, bounded exponential retry backoff, stale-lease recovery, worker heartbeat, status telemetry and durable webhook delivery jobs |
 | Notifications | Personal/workspace/global notifications, unread summary, mark-one/read-all workflow, scheduled failure delivery |
 | Audit | Actor/resource/IP/details/timestamp evidence, search/filter UI and JSON export |
 | API access | Expiring one-time-displayed bearer tokens, hashed storage, read/scan/write/admin scopes and central scope enforcement |
+| Integrations | Workspace-admin managed HTTPS webhooks, event subscriptions, protected signing secrets, HMAC-SHA256 signatures, durable queue delivery, delivery history, retries, pause/test/rotation controls |
 | Backups | SQLite online backup, integrity validation, restore workflow, workspace/system-admin history |
 | Retention & quotas | Daily scan quota, concurrent scan limit, retention policy and admin-triggered cleanup |
 | Responsive UX | Premium desktop security console with condensed sidebar, command palette, executive risk dashboard and dense evidence views; mobile uses a separate compact shell with bottom dock, stacked operational cards, safe-area spacing and sheet-style modals instead of shrinking the desktop layout |
@@ -107,6 +109,13 @@ The unauthenticated product site now provides dedicated routes for:
 - Deployment model
 - Documentation
 - About
+- Trust center
+- Integrations
+- Developer API
+- Architecture
+- Scanner check catalogue
+- Reporting
+- Developers
 
 The public experience intentionally explains what the scanner does, what it does not do, how evidence moves through remediation, how SQLite deployment is operated, and why automated standards mapping is not equivalent to certification.
 
