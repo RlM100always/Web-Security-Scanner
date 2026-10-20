@@ -1,8 +1,8 @@
 import React,{useState}from'react';
 import{ShieldCheck,Menu,X,ArrowRight,CheckCircle2,Radar,FolderKanban,TriangleAlert,History,KeyRound,Database,Users,FileText,Globe2,LockKeyhole,Workflow,Search,Activity,Braces,BookOpen,ChevronRight,ServerCog,GitCompareArrows}from'lucide-react';
-import'./public.css';
+import'./public.css';import'./public-enterprise.css';
 
-const links=[['Product','/product'],['Features','/features'],['Security','/security'],['Standards','/standards'],['Docs','/docs'],['About','/about']];
+const links=[['Product','/product'],['Solutions','/solutions'],['Enterprise','/enterprise'],['Security','/security'],['Docs','/docs'],['About','/about']];
 
 export default function PublicSite({path='/'}:{path?:string}){
   const[open,setOpen]=useState(false);
@@ -14,7 +14,7 @@ export default function PublicSite({path='/'}:{path?:string}){
       <div className="publicActions"><a className="textLink" href="/login">Sign in</a><a className="publicPrimary" href="/signup">Start workspace <ArrowRight/></a><button className="publicMenu" onClick={()=>setOpen(!open)} aria-label="Toggle navigation">{open?<X/>:<Menu/>}</button></div>
     </header>
     {page==='home'?<Home/>:<StaticPage page={page}/>}
-    <footer className="publicFooter"><div><a className="publicBrand" href="/"><span><ShieldCheck/></span><div><b>SentinelScope</b><small>Authorised, non-destructive assessment</small></div></a><p>Designed for explainable web-security assessment, remediation tracking and repeatable evidence.</p></div><div className="footerGrid"><div><b>Platform</b><a href="/product">Product</a><a href="/features">Features</a><a href="/standards">Standards</a></div><div><b>Trust</b><a href="/security">Security model</a><a href="/docs">Documentation</a><a href="/about">About</a></div><div><b>Workspace</b><a href="/login">Sign in</a><a href="/signup">Create account</a></div></div><small className="footerNote">Use only against systems you own or are explicitly authorised to assess. SentinelScope intentionally avoids destructive exploitation, credential attacks and denial-of-service behaviour.</small></footer>
+    <footer className="publicFooter"><div><a className="publicBrand" href="/"><span><ShieldCheck/></span><div><b>SentinelScope</b><small>Authorised, non-destructive assessment</small></div></a><p>Designed for explainable web-security assessment, remediation tracking and repeatable evidence.</p></div><div className="footerGrid"><div><b>Platform</b><a href="/product">Product</a><a href="/features">Features</a><a href="/workflow">Workflow</a><a href="/solutions">Solutions</a></div><div><b>Enterprise</b><a href="/enterprise">Enterprise controls</a><a href="/deployment">Deployment model</a><a href="/standards">Standards</a><a href="/research">Research & evaluation</a></div><div><b>Trust</b><a href="/security">Security model</a><a href="/responsible-use">Responsible use</a><a href="/docs">Documentation</a><a href="/about">About</a></div><div><b>Workspace</b><a href="/login">Sign in</a><a href="/signup">Create account</a></div></div><small className="footerNote">Use only against systems you own or are explicitly authorised to assess. SentinelScope intentionally avoids destructive exploitation, credential attacks and denial-of-service behaviour.</small></footer>
   </div>
 }
 
@@ -82,6 +82,42 @@ function StaticPage({page}:{page:string}){
       ['Define assessment policy','Set crawl limits, scope patterns, pacing and disabled checks at project level. Scan records retain a snapshot.',ServerCog],
       ['Run and observe','Queue a scan, watch progress via server-sent events, then review findings, discovered assets, standards mapping and historical comparisons.',Radar],
       ['Close the loop','Assign findings, add investigation notes, record risk decisions and request remediation verification after a fix is deployed.',CheckCircle2]
+    ]},
+    solutions:{eyebrow:'SOLUTIONS',title:'A practical security workspace for teams that need evidence, not scanner noise.',intro:'SentinelScope connects repeatable assessment with ownership and remediation. The same platform adapts to coursework, small security teams and governed internal assessment without turning into an exploitation framework.',sections:[
+      ['Application security teams','Manage a portfolio issue inbox, target criticality, SLA due dates, assignments, risk decisions and verification runs from one workspace.',TriangleAlert],
+      ['Engineering teams','Give developers evidence, remediation guidance, standards context and a clear verification loop instead of detached scanner output.',Workflow],
+      ['Security education & research','Use controlled secure/insecure targets, repeatable policies, ZAP comparison and recorded evidence for transparent evaluation.',BookOpen],
+      ['Small organisations','Establish an authorised baseline, schedule recurring checks and preserve audit-ready history without a large security stack.',ShieldCheck]
+    ]},
+    enterprise:{eyebrow:'ENTERPRISE WORKFLOWS',title:'Govern security work across people, targets, evidence and time.',intro:'Enterprise depth comes from controlled transitions and durable evidence: who can act, what changed, when it is due, why a risk was accepted and whether remediation was independently re-checked.',sections:[
+      ['Governed issue operations','Saved and shared issue views, severity-based remediation SLAs, bulk triage, assignees, due dates, decision rationale, risk review expiry and immutable activity history.',Users],
+      ['Workspace & platform separation','Owner/Admin/Analyst/Viewer workspace permissions remain separate from system-administrator privileges and platform operations.',LockKeyhole],
+      ['Operational resilience','Persistent SQLite queue, worker heartbeat, stale-job recovery, backups, retention, quotas, recurring assessment history and cancellation/rerun controls.',ServerCog],
+      ['Audit-ready evidence','Findings, scan-policy snapshots, asset drift, standards mappings, comments, verification history and administrative actions remain attached to the workflow.',History]
+    ]},
+    workflow:{eyebrow:'HOW IT WORKS',title:'From authorised scope to verified remediation in one continuous loop.',intro:'The product is organised around the work security teams repeat: establish scope, discover assets, assess safely, prioritise risk, coordinate remediation and prove the fix.',sections:[
+      ['1. Establish scope','Create a project, classify target criticality/environment, acknowledge authorisation and complete ownership verification when the Lab profile requires it.',FolderKanban],
+      ['2. Discover & assess','Apply a bounded scan policy, crawl same-origin assets, capture response evidence and run non-destructive transport/browser/configuration checks.',Radar],
+      ['3. Prioritise & assign','Use effective severity, business criticality, recurrence and SLA state to rank issues; assign owners and record investigation context.',TriangleAlert],
+      ['4. Verify & govern','Queue remediation verification, compare stable fingerprints, track asset drift, retain reports and use audit/activity evidence for accountability.',CheckCircle2]
+    ]},
+    research:{eyebrow:'RESEARCH & EVALUATION',title:'Designed so scanner claims can be measured instead of assumed.',intro:'SentinelScope supports a dissertation-style evaluation model with controlled targets, planted weaknesses, repeatable scan policies and a comparable external baseline.',sections:[
+      ['Controlled test environments','Secure and intentionally insecure demonstration sites let checks be evaluated without testing unrelated third-party systems.',ShieldCheck],
+      ['Detection metrics','Track planted vulnerability detection, false positives, duration, page coverage and remediation-verification outcomes.',Activity],
+      ['OWASP ZAP comparison','Import ZAP JSON and preserve overlap, scanner-only and ZAP-only evidence alongside the SentinelScope scan.',GitCompareArrows],
+      ['Explicit limitations','Automated checks do not claim to solve business logic, complex authorization, human process, source-only weaknesses or complete compliance.',BookOpen]
+    ]},
+    'responsible-use':{eyebrow:'RESPONSIBLE USE',title:'Authorisation and bounded behaviour are product requirements, not a disclaimer.',intro:'The scanner is built for systems you own or have explicit permission to assess. Safety controls remain active even for advanced workflows.',sections:[
+      ['Authorisation first','Targets require an explicit permission acknowledgement; advanced Lab workflows require stronger target verification.',ShieldCheck],
+      ['Network safety','Private, loopback, link-local, reserved and metadata destinations are blocked by default and redirect destinations are revalidated.',Globe2],
+      ['Non-destructive checks','The platform avoids brute force, credential theft, persistence, destructive modification, unrestricted exploitation and denial-of-service testing.',LockKeyhole],
+      ['Evidence over exploitation','Checks gather bounded HTTP/TLS/configuration evidence and explain remediation rather than attempting to weaponize findings.',FileText]
+    ]},
+    deployment:{eyebrow:'DEPLOYMENT MODEL',title:'A production-style single-node architecture with explicit operational boundaries.',intro:'The current product intentionally uses SQLite WAL while separating API, worker and reverse-proxy responsibilities. It is suitable for this academic/product scope without pretending to be a multi-region distributed control plane.',sections:[
+      ['Web & API tier','React/Vite serves the responsive interface while Flask exposes versioned APIs behind a reverse proxy with secure cookie and CSRF controls.',Braces],
+      ['Worker isolation','Persistent queued scan jobs execute in a separate worker process with heartbeat, retries, cancellation and stale-lease recovery.',ServerCog],
+      ['Durable local state','SQLite WAL stores workspace state, evidence, queue data, audit records and lifecycle history; online backups and integrity-aware restore are supported.',Database],
+      ['Scaling boundary','For horizontally distributed or multi-region operation, the documented architecture expects database/queue/object-storage components to be replaced without changing the product workflow model.',Activity]
     ]},
     about:{eyebrow:'ABOUT THE PROJECT',title:'A transparent security-assessment platform built for explainability.',intro:'SentinelScope focuses on clear methodology, reproducible evidence and safe operation rather than opaque “magic” vulnerability claims.',sections:[
       ['Purpose','Help students, small teams and security practitioners understand repeatable web-security checks and track remediation in a controlled workflow.',ShieldCheck],
