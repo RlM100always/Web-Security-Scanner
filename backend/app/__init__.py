@@ -46,7 +46,7 @@ def create_app(config_object=None):
             }:
                 return None
             identity=current_identity()
-            if identity:
+            if identity and identity.get("auth_method")!="api_key":
                 supplied=request.headers.get("X-CSRF-Token","")
                 if not supplied or supplied != identity.get("csrf_token"):
                     return {"error":"CSRF token missing or invalid"},403
