@@ -737,10 +737,17 @@ class Repository:
         name=updates.get('name',current['name']);description=updates.get('description',current['description'])
         scan_mode=updates.get('scan_mode',current['scan_mode']);policy=updates.get('policy',current['policy'])
         is_default=bool(updates.get('is_default',current['is_default']));active=bool(updates.get('active',current['active']))
+        if current.get('active') and not active:
+            with self.conn() as c:remaining=c.execute("select count(*) from scan_profiles where project_id=? and id<>? and active=1",(project_id,profile_id)).fetchone()[0]
+            if remaining<1:raise ValueError("At least one active scan profile must remain")
+            if current.get('is_default'):is_default=False
         with self.conn() as c:
             if is_default:c.execute("update scan_profiles set is_default=0 where project_id=? and id<>?",(project_id,profile_id))
             c.execute("""update scan_profiles set name=?,description=?,scan_mode=?,policy_json=?,version=version+1,is_default=?,active=?,updated_by=?,updated_at=?
               where id=? and project_id=?""",(name,description,scan_mode,json.dumps(policy),int(is_default),int(active),user_id,self.now(),profile_id,project_id))
+            if current.get('is_default') and not active:
+                replacement=c.execute("select id from scan_profiles where project_id=? and id<>? and active=1 order by updated_at desc limit 1",(project_id,profile_id)).fetchone()
+                if replacement:c.execute("update scan_profiles set is_default=1 where id=?",(replacement['id'],))
         row=self.get_scan_profile(profile_id);self._record_scan_profile_version(row,user_id,updates.get('change_note') or 'Profile updated');return row
 
     def scan_profile_versions(self,profile_id,project_id):
@@ -787,8 +794,8 @@ class Repository:
         return True
 
     def ensure_default_scan_profile(self,project_id,user_id):
-        rows=self.list_scan_profiles(project_id)
-        if rows:return next((x for x in rows if x['is_default']),rows[0])
+        rows=self.list_scan_profiles(project_id);active=[x for x in rows if x.get('active')]
+        if active:return next((x for x in active if x['is_default']),active[0])
         return self.create_scan_profile(project_id,"Standard Baseline","Reusable default project assessment profile","standard",self.get_project_policy(project_id),True,user_id)
 
     # verification
