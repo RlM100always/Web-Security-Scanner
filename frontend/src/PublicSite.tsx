@@ -1,5 +1,5 @@
 import React,{useEffect,useState}from'react';
-import{ShieldCheck,Menu,X,ArrowRight,CheckCircle2,Radar,FolderKanban,TriangleAlert,History,KeyRound,Database,Users,FileText,Globe2,LockKeyhole,Workflow,Search,Activity,Braces,BookOpen,ChevronRight,ServerCog,GitCompareArrows,Webhook,CalendarClock,SlidersHorizontal,Network}from'lucide-react';
+import{ShieldCheck,Menu,X,ArrowRight,CheckCircle2,Radar,FolderKanban,TriangleAlert,History,KeyRound,Database,Users,FileText,Globe2,LockKeyhole,Workflow,Search,Activity,Braces,BookOpen,ChevronRight,MessageSquare,ServerCog,GitCompareArrows,Webhook,CalendarClock,SlidersHorizontal,Network}from'lucide-react';
 import'./public.css';import'./public-enterprise.css';
 
 const links=[['Product','/product'],['Features','/features'],['Solutions','/solutions'],['Enterprise','/enterprise'],['Developers','/developers'],['Docs','/docs']];
@@ -38,9 +38,33 @@ export default function PublicSite({path='/'}:{path?:string}){
 
 function Home(){
   return <main>
-    <section className="publicHero">
-      <div className="heroCopy"><div className="heroKicker"><span></span> EVIDENCE-FIRST APPLICATION SECURITY</div><h1>Turn web-security checks into a <em>managed remediation workflow.</em></h1><p>Discover web assets, run bounded authorised assessments, prioritise findings, assign remediation, verify fixes and preserve standards-mapped evidence from one workspace.</p><div className="heroCtas"><a className="publicPrimary large" href="/signup">Create secure workspace <ArrowRight/></a><a className="publicSecondary" href="/product">Explore the platform</a></div><div className="heroTrust"><span><CheckCircle2/> Target authorisation controls</span><span><CheckCircle2/> SSRF-safe bounded scanning</span><span><CheckCircle2/> Persistent finding lifecycle</span></div></div>
-      <ProductPreview/>
+    <section className="publicHero redesignedHero">
+      <div className="heroAtmosphere" aria-hidden="true"><i/><i/><i/><span className="heroOrbit heroOrbitOne"/><span className="heroOrbit heroOrbitTwo"/></div>
+      <div className="heroCopy redesignedHeroCopy">
+        <div className="heroKicker"><span></span> EVIDENCE-FIRST APPLICATION SECURITY</div>
+        <h1>Turn web-security checks into a <em>managed remediation workflow.</em></h1>
+        <p>Discover web assets, run bounded authorised assessments, prioritise findings, assign remediation, verify fixes and preserve standards-mapped evidence — all from one workspace.</p>
+        <div className="heroCtas"><a className="publicPrimary large" href="/signup">Start workspace <ArrowRight/></a><a className="publicSecondary" href="/product"><MessageSquare/> Explore the platform</a></div>
+        <div className="heroHighlights" aria-label="Core workflow">
+          <article><span><Search/></span><div><b>Discover & scan</b><small>Find and assess web assets</small></div></article>
+          <article><span><ShieldCheck/></span><div><b>Prioritise findings</b><small>Focus on what matters</small></div></article>
+          <article><span><Activity/></span><div><b>Track remediation</b><small>Verify fixes and preserve evidence</small></div></article>
+        </div>
+        <div className="heroTrust redesignedHeroTrust">
+          <span><ShieldCheck/><b>Authorised</b><small>assessments only</small></span>
+          <span><FileText/><b>Evidence-first</b><small>standards-mapped</small></span>
+          <span><Users/><b>Team-ready</b><small>remediation tracking</small></span>
+          <span><CheckCircle2/><b>Audit-friendly</b><small>repeatable evidence</small></span>
+        </div>
+      </div>
+      <div className="heroVisual">
+        <div className="heroVisualGlow" aria-hidden="true"/>
+        <div className="heroFloatingCard floatingFindings"><span className="floatIcon danger"><TriangleAlert/></span><div><small>OPEN FINDINGS</small><b>18</b><em><Activity/> −12% this month</em></div><div className="sparkline sparkRed"><i/><i/><i/><i/><i/><i/><i/></div></div>
+        <ProductPreview/>
+        <div className="heroFloatingCard floatingSla"><span className="floatIcon success"><CheckCircle2/></span><div><small>REMEDIATION SLA</small><b>92<small>%</small></b><em>Met last 30 days</em></div><div className="sparkline sparkGreen"><i/><i/><i/><i/><i/><i/><i/></div></div>
+        <div className="heroFloatingCard floatingVerification"><span className="floatIcon violet"><Activity/></span><div><small>VERIFICATION RATE</small><b>87<small>%</small></b><em>Fixes re-checked</em></div></div>
+        <div className="heroStandards"><ShieldCheck/><span><b>Standards aligned</b><small>OWASP · NIST · ISO 27001</small></span><ChevronRight/></div>
+      </div>
     </section>
     <section className="logoStrip"><span>BUILT AROUND</span><b>OWASP WSTG</b><b>OWASP ASVS</b><b>Evidence-led findings</b><b>Persistent assessment history</b><b>Mobile-ready workspace</b></section>
     <section className="publicSection"><SectionHead eyebrow="OPERATING MODEL" title="Security work should move, not sit in a report." text="SentinelScope connects discovery, assessment, triage and verification so every finding has context, ownership and a next action."/><div className="workflowRail">{[
