@@ -518,3 +518,24 @@ button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
 @media(max-width:520px){.authBrand.authBrandExperience{padding:23px 17px 22px}.authBrandTop{margin-bottom:23px}.authBrandTop>span{width:40px;height:40px;border-radius:12px}.authBrandTop b{font-size:17px}.authBrandTop small{font-size:7px}.authBrandStory h2{font-size:30px;margin:14px 0 10px}.authBrandStory p{font-size:12px;line-height:1.65}.authVisualCard{padding:8px;margin-top:17px;border-radius:13px}.authVisualTop{padding-bottom:8px}.authVisualTop>span{font-size:7px}.authVisualScore{padding:10px;gap:7px}.authVisualScore strong{font-size:26px}.authVisualBars{height:38px;gap:3px}.authVisualBars i{width:5px}.authVisualStats{gap:5px}.authVisualStats>div{padding:7px 6px}.authVisualStats small{font-size:5px}.authVisualStats b{font-size:15px}.authVisualStats span{font-size:6px}.authVisualFinding{padding:8px;gap:6px}.authVisualFinding b{font-size:7px}.authVisualFinding small{font-size:6px}.authBrandExperience .authBenefits{grid-template-columns:1fr 1fr;gap:9px;margin-top:16px}.authBrandExperience .authBenefits div{font-size:9px}.authBrandFooter{gap:8px;padding-top:12px;margin-top:14px}.authBrandFooter span{font-size:7px}.authCard.authCardExperience{width:calc(100% - 28px);margin:18px auto 28px;padding:23px 19px;border-radius:17px}.authCardExperience h1{font-size:28px}.authFormSecure{font-size:7px}}
 @media(max-width:360px){.authBrandExperience .authBenefits{grid-template-columns:1fr}.authVisualStats{grid-template-columns:1fr 1fr}.authVisualStats>div:last-child{grid-column:1/-1}.authBrandFooter{display:grid;gap:7px}}
 @media(prefers-reduced-motion:reduce){.authVisualCard,.authVisualBars i{animation:none!important;transition:none!important}}
+
+.authBrandSpecial .authBrandTop{margin-bottom:clamp(30px,4vw,58px)}
+.authBrandSpecial .authSpecialVisual{margin-top:30px}
+.authSpecialFlow{display:grid;grid-template-columns:minmax(0,1fr) 16px minmax(0,1fr) 16px minmax(0,1fr);gap:8px;align-items:center;padding:8px 2px}
+.authSpecialFlow>div{min-width:0;padding:12px 9px;border:1px solid rgba(172,197,236,.15);border-radius:10px;background:rgba(8,21,38,.48)}
+.authSpecialFlow>div>span{width:30px;height:30px;display:grid;place-items:center;border-radius:9px;background:rgba(60,112,215,.22);color:#94bcff;margin-bottom:10px}
+.authSpecialFlow>div>span svg{width:16px;height:16px}
+.authSpecialFlow b,.authSpecialFlow small{display:block}
+.authSpecialFlow b{font-size:9px;color:#f2f6ff;line-height:1.4}
+.authSpecialFlow small{font-size:7px;color:#9cb2d1;margin-top:4px;line-height:1.45}
+.authSpecialFlow>svg{width:15px;height:15px;color:#7696c7}
+.authSpecialNotice{display:flex;align-items:center;gap:9px;padding:11px 12px;margin-top:8px;border:1px solid rgba(85,215,173,.18);border-radius:10px;background:rgba(31,133,101,.08)}
+.authSpecialNotice>svg{width:19px;height:19px;color:#65d9b3;flex:none}
+.authSpecialNotice b,.authSpecialNotice small{display:block}
+.authSpecialNotice b{font-size:9px;color:#e7f5ff}
+.authSpecialNotice small{font-size:8px;color:#a0b6d3;margin-top:3px;line-height:1.45}
+.authSpecialCard{align-self:center}
+.authSpecialCard .successBox{display:flex;align-items:flex-start;gap:9px;border-radius:10px;padding:12px;background:#eaf8f1;border:1px solid #cbead9;color:#176f4e}
+.authSpecialCard .successBox>svg{width:17px;height:17px;flex:none}
+.authSpecialCard .successBox p{font-size:11px;line-height:1.6;margin:0}
+@media(max-width:520px){.authBrandSpecial .authBrandTop{margin-bottom:20px}.authBrandSpecial .authSpecialVisual{margin-top:17px}.authSpecialFlow{grid-template-columns:1fr;gap:6px}.authSpecialFlow>svg{transform:rotate(90deg);justify-self:center}.authSpecialFlow>div{display:grid;grid-template-columns:30px 1fr;column-gap:8px;align-items:center;padding:8px}.authSpecialFlow>div>span{grid-row:1/3;margin:0;width:27px;height:27px}.authSpecialFlow b{font-size:8px}.authSpecialFlow small{font-size:7px;margin-top:2px}}
