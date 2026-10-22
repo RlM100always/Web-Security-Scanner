@@ -1,5 +1,5 @@
 import React,{useEffect,useState}from'react';
-import{ShieldCheck,Menu,X,ArrowRight,CheckCircle2,Radar,FolderKanban,TriangleAlert,History,KeyRound,Database,Users,FileText,Globe2,LockKeyhole,Workflow,Search,Activity,Braces,BookOpen,ChevronRight,MessageSquare,ServerCog,GitCompareArrows,Webhook,CalendarClock,SlidersHorizontal,Network}from'lucide-react';
+import{ShieldCheck,Menu,X,ArrowRight,CheckCircle2,LayoutDashboard,Radar,FolderKanban,TriangleAlert,History,KeyRound,Database,Users,FileText,Globe2,LockKeyhole,Workflow,Search,Activity,Braces,BookOpen,ChevronRight,MessageSquare,ServerCog,GitCompareArrows,Webhook,CalendarClock,SlidersHorizontal,Network}from'lucide-react';
 import'./public.css';import'./public-enterprise.css';
 
 const links=[['Product','/product'],['Features','/features'],['Solutions','/solutions'],['Enterprise','/enterprise'],['Developers','/developers'],['Docs','/docs']];
