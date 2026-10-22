@@ -7,6 +7,8 @@ const links=[['Product','/product'],['Features','/features'],['Solutions','/solu
 export default function PublicSite({path='/'}:{path?:string}){
   const[open,setOpen]=useState(false);
   const page=path.replace(/^\//,'')||'home';
+  useEffect(()=>{setOpen(false)},[path]);
+  useEffect(()=>{if(!open)return;const onKey=(event:KeyboardEvent)=>{if(event.key==='Escape'){setOpen(false);document.querySelector<HTMLButtonElement>('.publicMenu')?.focus()}};window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey)},[open]);
   useEffect(()=>{const meta:any={
     home:['SentinelScope — Web Security Assessment Platform','Authorised web-security assessment, asset context, persistent issue management and remediation verification.'],
     product:['Product | SentinelScope','Explore governed scanning, asset inventory, vulnerability management, reporting and platform operations.'],
@@ -22,13 +24,14 @@ export default function PublicSite({path='/'}:{path?:string}){
     '404':['Page not found | SentinelScope','The requested SentinelScope page could not be found.']
   };const m=meta[page]||['SentinelScope — '+page.replaceAll('-',' '),'SentinelScope authorised, evidence-first web security assessment platform.'];document.title=m[0];let tag=document.querySelector('meta[name="description"]');if(!tag){tag=document.createElement('meta');tag.setAttribute('name','description');document.head.appendChild(tag)}tag.setAttribute('content',m[1])},[page]);
   return <div className="publicSite">
+    <a className="skipLink" href="#main-content" onClick={event=>{event.preventDefault();document.getElementById("main-content")?.focus()}}>Skip to main content</a>
     <header className="publicNav">
       <a className="publicBrand" href="/"><span><ShieldCheck/></span><div><b>SentinelScope</b><small>Web Security Assessment Platform</small></div></a>
-      <nav className={open?'open':''}>{links.map(([n,h])=><a key={h} className={path===h?'active':''} href={h}>{n}</a>)}</nav>
-      <div className="publicActions"><a className="textLink" href="/login">Sign in</a><a className="publicPrimary" href="/signup">Start workspace <ArrowRight/></a><button className="publicMenu" onClick={()=>setOpen(!open)} aria-label="Toggle navigation">{open?<X/>:<Menu/>}</button></div>
+      <nav id="public-primary-nav" aria-label="Primary navigation" className={open?'open':''}>{links.map(([n,h])=><a key={h} className={path===h?'active':''} href={h} onClick={()=>setOpen(false)}>{n}</a>)}</nav>
+      <div className="publicActions"><a className="textLink" href="/login">Sign in</a><a className="publicPrimary" href="/signup">Start workspace <ArrowRight/></a><button className="publicMenu" onClick={()=>setOpen(!open)} aria-label="Toggle navigation" aria-controls="public-primary-nav" aria-expanded={open}>{open?<X/>:<Menu/>}</button></div>
     </header>
     <div className="publicProofBar"><span><ShieldCheck/> Authorised assessment only</span><a href="/status">Live platform status</a><a href="/trust">Trust & governance</a><a href="/security">Security model</a></div>
-    {page==='home'?<Home/>:page==='status'?<StatusPage/>:<StaticPage page={page}/>}
+    <div id="main-content" tabIndex={-1}>{page==='home'?<Home/>:page==='status'?<StatusPage/>:<StaticPage page={page}/>}</div>
     <footer className="publicFooter"><div><a className="publicBrand" href="/"><span><ShieldCheck/></span><div><b>SentinelScope</b><small>Authorised, non-destructive assessment</small></div></a><p>Designed for explainable web-security assessment, remediation tracking and repeatable evidence.</p></div><div className="footerGrid"><div><b>Platform</b><a href="/product">Product</a><a href="/exposure-management">Exposure management</a><a href="/asset-inventory">Asset inventory</a><a href="/scan-profiles">Scan profiles</a><a href="/vulnerability-management">Issue management</a><a href="/continuous-monitoring">Continuous monitoring</a></div><div><b>Enterprise</b><a href="/enterprise">Enterprise controls</a><a href="/governance">Governance</a><a href="/integrations">Integrations</a><a href="/reports">Reporting</a><a href="/deployment">Deployment model</a></div><div><b>Learn</b><a href="/getting-started">Getting started</a><a href="/workflow">Workflow</a><a href="/methodology">Methodology</a><a href="/standards">Standards</a><a href="/research">Research</a></div><div><b>Developers</b><a href="/developers">Developer platform</a><a href="/api">API access</a><a href="/architecture">Architecture</a><a href="/scanner-checks">Scanner checks</a></div><div><b>Trust</b><a href="/trust">Trust center</a><a href="/status">Platform status</a><a href="/security">Security model</a><a href="/responsible-use">Responsible use</a><a href="/standards">Standards</a></div><div><b>Workspace</b><a href="/login">Sign in</a><a href="/signup">Create account</a></div></div><small className="footerNote">Use only against systems you own or are explicitly authorised to assess. SentinelScope intentionally avoids destructive exploitation, credential attacks and denial-of-service behaviour.</small></footer>
   </div>
 }
