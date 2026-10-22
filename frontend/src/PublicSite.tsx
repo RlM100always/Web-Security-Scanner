@@ -61,20 +61,20 @@ function Home(){
     <section className="publicHero redesignedHero">
       <div className="heroAtmosphere" aria-hidden="true"><i/><i/><i/><span className="heroOrbit heroOrbitOne"/><span className="heroOrbit heroOrbitTwo"/></div>
       <div className="heroCopy redesignedHeroCopy">
-        <div className="heroKicker"><span></span> EVIDENCE-FIRST APPLICATION SECURITY</div>
-        <h1>Turn web-security checks into a <em>managed remediation workflow.</em></h1>
-        <p>Discover web assets, run bounded authorised assessments, prioritise findings, assign remediation, verify fixes and preserve standards-mapped evidence — all from one workspace.</p>
-        <div className="heroCtas"><a className="publicPrimary large" href="/signup">Start workspace <ArrowRight/></a><a className="publicSecondary" href="/product"><MessageSquare/> Explore the platform</a></div>
+        <div className="heroKicker"><span></span> AUTHORISED WEB SECURITY · FROM EVIDENCE TO CLOSURE</div>
+        <h1>See what matters. Move the fix. <em>Prove the outcome.</em></h1>
+        <p>SentinelScope gives AppSec, engineering and platform teams one place to define approved scope, run bounded assessments, turn findings into owned work and verify remediation with fresh evidence.</p>
+        <div className="heroCtas"><a className="publicPrimary large" href="/signup">Start workspace <ArrowRight/></a><a className="publicSecondary" href="/product"><MessageSquare/> See product tour</a></div>
         <div className="heroHighlights" aria-label="Core workflow">
-          <article><span><Search/></span><div><b>Discover & scan</b><small>Find and assess web assets</small></div></article>
-          <article><span><ShieldCheck/></span><div><b>Prioritise findings</b><small>Focus on what matters</small></div></article>
-          <article><span><Activity/></span><div><b>Track remediation</b><small>Verify fixes and preserve evidence</small></div></article>
+          <article><span><Globe2/></span><div><b>Define approved scope</b><small>Targets, context and policy stay explicit</small></div></article>
+          <article><span><TriangleAlert/></span><div><b>Review actionable evidence</b><small>Severity, confidence and ownership together</small></div></article>
+          <article><span><GitCompareArrows/></span><div><b>Verify remediation</b><small>Close issues with a fresh observation</small></div></article>
         </div>
         <div className="heroTrust redesignedHeroTrust">
-          <span><ShieldCheck/><b>Authorised</b><small>assessments only</small></span>
-          <span><FileText/><b>Evidence-first</b><small>standards-mapped</small></span>
-          <span><Users/><b>Team-ready</b><small>remediation tracking</small></span>
-          <span><CheckCircle2/><b>Audit-friendly</b><small>repeatable evidence</small></span>
+          <span><ShieldCheck/><b>Explicit scope</b><small>authorised targets</small></span>
+          <span><SlidersHorizontal/><b>Repeatable policy</b><small>versioned scan profiles</small></span>
+          <span><History/><b>Persistent history</b><small>one issue across repeat scans</small></span>
+          <span><FileText/><b>Portable evidence</b><small>reviewable exports</small></span>
         </div>
       </div>
       <div className="heroVisual">
@@ -86,17 +86,17 @@ function Home(){
         <div className="heroStandards"><ShieldCheck/><span><b>Standards aligned</b><small>OWASP · NIST · ISO 27001</small></span><ChevronRight/></div>
       </div>
     </section>
-    <section className="logoStrip"><span>BUILT AROUND</span><b>OWASP WSTG</b><b>OWASP ASVS</b><b>Evidence-led findings</b><b>Persistent assessment history</b><b>Mobile-ready workspace</b></section>
+    <section className="logoStrip"><span>OPERATING PRINCIPLES</span><b>Explicit authorisation</b><b>Bounded assessment</b><b>Evidence before claims</b><b>Owned remediation</b><b>Verification before closure</b></section>
     <RealWorldStory page="home"/>
     <section className="publicSection homeWhatSection">
-      <div className="homeWhatHeader"><SectionHead eyebrow="WHAT SENTINELSCOPE DOES" title="A security assessment becomes useful when someone can act on it." text="SentinelScope connects authorised scope, repeatable checks, evidence, accountable ownership and a fresh verification run. It is built to make the work after a scan as clear as the scan itself."/><div className="homeWhatCallout"><span><ShieldCheck/></span><div><b>Built around authorised assessment</b><p>Only assess systems you own or have explicit permission to test. The visual data below is illustrative, not live customer telemetry.</p></div></div></div>
+      <div className="homeWhatHeader"><SectionHead eyebrow="WHAT SENTINELSCOPE DOES" title="One operating model from approved scope to verified remediation." text="Instead of treating scans, tickets and evidence as separate artifacts, SentinelScope keeps the technical observation, the accountable owner and the verification result connected."/><div className="homeWhatCallout"><span><ShieldCheck/></span><div><b>Built around authorised assessment</b><p>Only assess systems you own or have explicit permission to test. The visual data below is illustrative, not live customer telemetry.</p></div></div></div>
       <div className="homeModuleGrid">
         <article className="homeModuleCard"><div className="homeModuleCopy"><span className="homeModuleIndex">01 / SCOPE</span><div className="homeModuleIcon"><Globe2/></div><h3>Know what is in scope.</h3><p>Group approved targets into projects, attach environment and criticality, and keep discovered same-origin assets linked to the assessment that found them.</p><a href="/asset-inventory">Explore asset inventory <ArrowRight/></a></div><HomeModulePreview kind="scope"/></article>
         <article className="homeModuleCard"><div className="homeModuleCopy"><span className="homeModuleIndex">02 / PRIORITISE</span><div className="homeModuleIcon"><TriangleAlert/></div><h3>Turn signals into owned issues.</h3><p>Keep evidence, confidence, remediation guidance, severity, owner, due date and decision history together as repeat scans update the same finding record.</p><a href="/vulnerability-management">Explore issue management <ArrowRight/></a></div><HomeModulePreview kind="findings"/></article>
         <article className="homeModuleCard"><div className="homeModuleCopy"><span className="homeModuleIndex">03 / VERIFY</span><div className="homeModuleIcon"><GitCompareArrows/></div><h3>Prove the fix with new evidence.</h3><p>Run a fresh bounded assessment after a change, compare the result with the original finding, and keep the verification outcome and audit history attached.</p><a href="/workflow">Explore the lifecycle <ArrowRight/></a></div><HomeModulePreview kind="verification"/></article>
       </div>
     </section>
-    <section className="publicSection"><SectionHead eyebrow="OPERATING MODEL" title="Security work should move, not sit in a report." text="SentinelScope connects discovery, assessment, triage and verification so every finding has context, ownership and a next action."/><div className="workflowRail">{[
+    <section className="publicSection"><SectionHead eyebrow="OPERATING MODEL" title="A finding should arrive with context and leave with proof." text="Every stage has a job: define the boundary, collect explainable evidence, assign an accountable owner and verify the change before closure."/><div className="workflowRail">{[
       ['01','Discover','Build a persistent inventory of in-scope pages and response metadata.',Globe2],
       ['02','Assess','Run policy-bound, non-destructive checks with evidence and confidence.',Radar],
       ['03','Triage','Assign owners, due dates, state, comments and risk decisions.',TriangleAlert],
