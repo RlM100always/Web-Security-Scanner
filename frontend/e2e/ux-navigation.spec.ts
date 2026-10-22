@@ -14,6 +14,26 @@ test('workspace navigation, command search and mobile layout are user-friendly',
   await expect(page).toHaveTitle('Dashboard | SentinelScope');
   await expect(page.getByRole('heading',{name:'Know what needs attention.'})).toBeVisible();
   await expect(page.locator('.dashboardIntro')).toBeVisible();
+  await expect(page.getByText('Workspace Owner',{exact:true}).first()).toBeVisible();
+  const guideButton=testInfo.project.name==='mobile-chromium'
+    ? page.locator('.mobileDock').getByRole('button',{name:'Guide',exact:true})
+    : page.locator('aside.side').getByRole('button',{name:'Guide',exact:true});
+  await guideButton.click();
+  await expect(page.getByRole('heading',{name:'From authorised scope to verified remediation.'})).toBeVisible();
+  await expect(page.getByText('Where to go for each job')).toBeVisible();
+  await page.locator('.guidePanelMap').getByRole('button',{name:/Manage your account/}).click();
+  await expect(page.getByRole('heading',{name:'Settings',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Edit profile'}).click();
+  await page.getByLabel('Display name').fill('UX Test Owner Updated');
+  await page.getByRole('button',{name:'Save profile'}).click();
+  await expect(page.getByText('UX Test Owner Updated',{exact:true}).first()).toBeVisible();
+  await page.locator('.appearanceChoice button').nth(1).click();
+  await expect.poll(async()=>page.evaluate(()=>document.documentElement.dataset.theme)).toBe('dark');
+  await expect(page.locator('.settingsGrid .panel').first()).toHaveCSS('background-color',/rgb/);
+  await page.locator('.appearanceChoice button').nth(0).click();
+  await expect.poll(async()=>page.evaluate(()=>document.documentElement.dataset.theme)).toBe('light');
+  await page.locator('.mobileDock').getByRole('button',{name:'Dashboard',exact:true}).click().catch(async()=>{await page.locator('aside.side').getByRole('button',{name:'Dashboard',exact:true}).click()});
+
   const visual=await page.evaluate(()=> {
     const intro=document.querySelector('.dashboardIntro') as HTMLElement|null;
     const side=document.querySelector('.side') as HTMLElement|null;
@@ -22,12 +42,12 @@ test('workspace navigation, command search and mobile layout are user-friendly',
     return {
       introRadius:intro?parseFloat(getComputedStyle(intro).borderRadius):0,
       sideWidth:side?.getBoundingClientRect().width||0,
-      scoreBg:score?getComputedStyle(score).backgroundImage:'',
+      scoreBg:score?getComputedStyle(score).backgroundColor:'',
       dockRadius:dock?parseFloat(getComputedStyle(dock).borderRadius):0
     };
   });
   expect(visual.introRadius).toBeGreaterThanOrEqual(18);
-  expect(visual.scoreBg).not.toBe('none');
+  expect(visual.scoreBg).not.toBe('rgba(0, 0, 0, 0)');
   if(testInfo.project.name==='mobile-chromium') expect(visual.dockRadius).toBeGreaterThanOrEqual(16);
   else expect(visual.sideWidth).toBeGreaterThanOrEqual(220);
 
