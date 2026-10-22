@@ -22,20 +22,20 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .side{width:260px}
 .app>main{margin-left:260px}
 .side .brand{min-height:58px}
-.navGroupLabel{padding:10px 12px 5px;font-size:10px!important;letter-spacing:.12em!important}
-.side nav button{min-height:42px;font-size:13px!important}
+.navGroupLabel{padding:10px 12px 5px;font-size:13px!important;letter-spacing:.12em!important}
+.side nav button{min-height:42px;font-size:15px!important}
 .side nav button svg{flex:0 0 auto}
 .side .workspace select{width:100%;min-width:0}
-.sideFoot{font-size:11px;line-height:1.5}
+.sideFoot{font-size:13px;line-height:1.5}
 .content{max-width:1640px;padding:28px 34px 52px}
 .workspaceTitle h2,.pageActions h2{font-size:26px;line-height:1.18;letter-spacing:-.035em}
-.workspaceTitle p,.pageActions p{font-size:13px;line-height:1.65;max-width:760px}
-.eyebrow{font-size:9px!important;letter-spacing:.14em!important}
+.workspaceTitle p,.pageActions p{font-size:15px;line-height:1.65;max-width:760px}
+.eyebrow{font-size:12px!important;letter-spacing:.14em!important}
 .panel,.projectCard,.scheduleCard,.metric,.card{border-radius:15px!important}
 .panelHead{min-height:52px}
-.panelHead h3{font-size:13px}
+.panelHead h3{font-size:15px}
 .card{min-width:0;padding:18px 17px!important}
-.card small{font-size:10px!important;line-height:1.4;letter-spacing:.08em}
+.card small{font-size:13px!important;line-height:1.4;letter-spacing:.08em}
 .card strong{font-size:26px;line-height:1.15;overflow-wrap:anywhere}
 .metrics{gap:13px;margin:16px 0}
 .primary,.ghost{min-height:40px;justify-content:center;gap:8px}
@@ -45,22 +45,22 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .filterBar select,.searchField,.filterBar .iconButton{min-height:40px}
 .tableHeader{min-height:42px!important}
 .enterpriseTable .tableRow{min-height:62px}
-.enterpriseTable b{font-size:12px}
-.enterpriseTable small{font-size:10px;line-height:1.45}
+.enterpriseTable b{font-size:14px}
+.enterpriseTable small{font-size:13px;line-height:1.45}
 .modal{max-height:min(88dvh,900px);overflow:auto;overscroll-behavior:contain}
 .modal input,.modal select,.modal textarea{min-height:42px;font-size:14px}
 .modal textarea{line-height:1.5}
 .modalActions{position:sticky;bottom:-22px;background:var(--ent-surface);padding:12px 0 4px;z-index:2}
 .emptyStateCompact{padding:34px 18px!important;gap:7px}
-.emptyStateCompact b{font-size:13px!important}
-.emptyStateCompact span{font-size:11px!important;line-height:1.55}
+.emptyStateCompact b{font-size:15px!important}
+.emptyStateCompact span{font-size:13px!important;line-height:1.55}
 .toast{max-width:min(560px,calc(100vw - 28px));right:16px;left:auto}
-.error,.authError{font-size:13px;line-height:1.5}
-.offlineBanner,.verifyBanner{font-size:12px;line-height:1.45}
+.error,.authError{font-size:15px;line-height:1.5}
+.offlineBanner,.verifyBanner{font-size:14px;line-height:1.45}
 .notificationShortcut{width:38px;height:38px;position:relative;display:grid;place-items:center;border:1px solid var(--ent-border);border-radius:10px;background:var(--ent-surface);color:var(--ent-text);cursor:pointer;flex:0 0 auto}
 .notificationShortcut>svg{width:17px;height:17px}
 .notificationShortcut:hover{background:var(--ent-surface-2)}
-.headerNotificationBadge{position:absolute;right:-5px;top:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:#d73f50;color:white;border:2px solid var(--ent-surface);font-size:9px;font-weight:900;display:grid;place-items:center}
+.headerNotificationBadge{position:absolute;right:-5px;top:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:#d73f50;color:white;border:2px solid var(--ent-surface);font-size:12px;font-weight:900;display:grid;place-items:center}
 .drawerScrim{display:none}
 
 /* Dashboard redesigned around the user's next decision, not vanity metrics. */
@@ -76,11 +76,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .scoreCardTop{display:flex;align-items:center;gap:9px}
 .scoreGlyph{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--ent-brand-soft);color:var(--ent-brand)}
 .scoreGlyph svg{width:17px}
-.scoreContext{font-size:9px;letter-spacing:.1em;font-weight:900;color:var(--ent-muted)}
+.scoreContext{font-size:12px;letter-spacing:.1em;font-weight:900;color:var(--ent-muted)}
 .scoreCardNumber{font-size:48px;line-height:1.05;letter-spacing:-.055em;font-weight:900;color:var(--ent-text);margin:17px 0 7px}
 .scoreCardNumber span{font-size:15px;font-weight:700;letter-spacing:0;color:var(--ent-muted);margin-left:4px}
-.scoreTarget{display:block;font-size:12px;color:var(--ent-text);overflow-wrap:anywhere}
-.dashboardScoreCard>small{display:block;color:var(--ent-muted);font-size:10px;margin-top:4px;line-height:1.5}
+.scoreTarget{display:block;font-size:14px;color:var(--ent-text);overflow-wrap:anywhere}
+.dashboardScoreCard>small{display:block;color:var(--ent-muted);font-size:13px;margin-top:4px;line-height:1.5}
 .dashboardScoreCard .link{margin-top:10px;padding:0}
 .dashboardMetrics .card{border-left:3px solid color-mix(in srgb,var(--ent-brand) 52%,var(--ent-border))!important}
 .dashboardMetrics .card:nth-child(1){border-left-color:#c43d4a!important}
@@ -91,22 +91,22 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .dashboardEmpty>svg{width:26px;height:26px;color:var(--ent-green);flex:0 0 auto}
 .dashboardEmpty>div{min-width:0;flex:1}
 .dashboardEmpty b,.dashboardEmpty span{display:block}
-.dashboardEmpty b{font-size:12px}
-.dashboardEmpty span{font-size:11px;color:var(--ent-muted);line-height:1.5;margin-top:3px}
+.dashboardEmpty b{font-size:14px}
+.dashboardEmpty span{font-size:13px;color:var(--ent-muted);line-height:1.5;margin-top:3px}
 .dashboardEmpty .link{white-space:nowrap}
 .priorityList>button{min-height:66px;padding:13px 17px}
-.priorityList>button b{font-size:12px;line-height:1.4}
-.priorityList>button small{font-size:10px;line-height:1.5}
+.priorityList>button b{font-size:14px;line-height:1.4}
+.priorityList>button small{font-size:13px;line-height:1.5}
 .coverageGrid>div{padding:15px}
-.coverageGrid small{font-size:9px}
+.coverageGrid small{font-size:12px}
 .coverageGrid b{font-size:24px}
-.coverageGrid span{font-size:10px;line-height:1.4}
+.coverageGrid span{font-size:13px;line-height:1.4}
 .executiveGrid{grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin:16px 0}
 .executiveGrid>section{min-width:0;padding:16px;border-radius:15px}
-.executiveHead h3{font-size:13px;line-height:1.35}
+.executiveHead h3{font-size:15px;line-height:1.35}
 .executiveNumber{font-size:28px!important}
-.healthFacts span,.automationFacts span{font-size:10px}
-.postureTrend .muted{font-size:11px;line-height:1.5}
+.healthFacts span,.automationFacts span{font-size:13px}
+.postureTrend .muted{font-size:13px;line-height:1.5}
 
 /* Mobile navigation gets a real drawer, visible search, and a usable thumb zone. */
 @media(min-width:1101px){
@@ -131,7 +131,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .side .mobileClose{display:grid!important;margin-left:auto;place-items:center;width:38px;height:38px;border-radius:10px;border:1px solid #26364b;background:#122039;color:#e8effa}
   .appHeader{height:62px;padding:0 12px;gap:8px;z-index:50}
   .headerContext{min-width:0;flex:1}
-  .headerContext .breadcrumb strong{max-width:30vw;font-size:13px}
+  .headerContext .breadcrumb strong{max-width:30vw;font-size:15px}
   .headerActions{gap:5px;flex:0 0 auto}
   .commandTrigger{display:flex!important;width:38px!important;min-width:38px!important;height:38px;padding:0!important;justify-content:center;align-items:center;flex:0 0 auto}
   .commandTrigger span,.commandTrigger kbd{display:none!important}
@@ -140,11 +140,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .newScanButton{width:38px!important;height:38px!important;min-width:38px!important}
   .content{padding:17px 14px calc(28px + env(safe-area-inset-bottom));}
   .workspaceTitle h2,.pageActions h2{font-size:23px}
-  .workspaceTitle p,.pageActions p{font-size:12px}
+  .workspaceTitle p,.pageActions p{font-size:14px}
   .dashboardIntro{grid-template-columns:1fr;gap:13px}
   .dashboardWelcome{padding:12px 0 5px}
   .dashboardWelcome h1{font-size:31px;max-width:540px}
-  .dashboardWelcome>p{font-size:13px}
+  .dashboardWelcome>p{font-size:15px}
   .dashboardActions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:17px}
   .dashboardActions button{width:100%;justify-content:center}
   .dashboardScoreCard{padding:16px 18px}
@@ -154,31 +154,31 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .dashboardMetrics .card strong{font-size:23px}
   .executiveGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
   .executiveGrid>section{min-height:0;padding:12px}
-  .executiveHead h3{font-size:12px}
+  .executiveHead h3{font-size:14px}
   .executiveNumber{font-size:24px!important}
   .healthFacts{grid-template-columns:repeat(2,minmax(0,1fr))}
   .portfolioGrid,.grid2{grid-template-columns:1fr!important;gap:12px}
   .panel{margin-top:12px}
   .panelHead{min-height:48px;padding:0 14px}
-  .panelHead h3{font-size:12px}
+  .panelHead h3{font-size:14px}
   .coverageGrid{padding:10px;gap:7px}
   .coverageGrid>div{padding:11px}
   .coverageGrid b{font-size:21px}
   .priorityList>button{padding:12px;gap:9px}
-  .priorityList>button b{font-size:11px}
-  .priorityList>button small{font-size:9px}
+  .priorityList>button b{font-size:13px}
+  .priorityList>button small{font-size:12px}
   .dashboardEmpty{padding:15px;flex-wrap:wrap}
   .dashboardEmpty>div{min-width:calc(100% - 45px)}
   .dashboardEmpty .link{margin-left:38px}
   .mobileDock{left:8px!important;right:8px!important;bottom:max(8px,env(safe-area-inset-bottom))!important;height:66px!important;padding:5px!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;border-radius:17px!important;z-index:100!important;background:color-mix(in srgb,var(--ent-surface) 94%,#0b1525 6%)!important;border:1px solid var(--ent-border)!important;box-shadow:0 12px 38px rgba(5,12,25,.24)!important}
-  .mobileDock button{min-width:0!important;min-height:52px!important;gap:3px!important;font-size:9px!important;font-weight:750!important;color:var(--ent-muted)!important;position:relative}
+  .mobileDock button{min-width:0!important;min-height:52px!important;gap:3px!important;font-size:12px!important;font-weight:750!important;color:var(--ent-muted)!important;position:relative}
   .mobileDock button svg{width:18px!important;height:18px!important}
-  .mobileDock button span{font-size:9px!important;white-space:nowrap}
+  .mobileDock button span{font-size:12px!important;white-space:nowrap}
   .mobileDock button.active{background:var(--ent-brand-soft)!important;color:var(--ent-brand)!important}
   .mobileDock button em{top:0!important;right:calc(50% - 22px)!important}
   .filterBar{display:flex;flex-wrap:wrap;align-items:stretch}
   .searchField{min-width:100%;flex-basis:100%;height:42px}
-  .filterBar select{flex:1;min-width:calc(50% - 6px);font-size:12px}
+  .filterBar select{flex:1;min-width:calc(50% - 6px);font-size:14px}
   .filterBar .iconButton{min-width:40px}
   .enterpriseFilters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
   .enterpriseFilters .searchField{grid-column:1/-1;min-width:0}
@@ -201,17 +201,17 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .issueOpsTable .tableRow>.selectCell{grid-area:select;align-self:start;padding-top:9px}
   .issueOpsTable .tableRow>.issueOpen{grid-area:issue;min-width:0;width:100%;padding:4px 0;text-align:left}
   .issueOpsTable .tableRow>.issueScopeCell{grid-area:scope;min-width:0;display:flex;align-items:baseline;flex-wrap:wrap;gap:3px 8px;padding:5px 0 5px 2px;border-top:1px solid var(--ent-border)}
-  .issueOpsTable .issueScopeCell:before,.issueOpsTable .issueOwnerCell:before,.issueOpsTable .issueSlaCell:before{font-size:8px;letter-spacing:.1em;font-weight:900;color:var(--ent-muted);flex:0 0 100%}
+  .issueOpsTable .issueScopeCell:before,.issueOpsTable .issueOwnerCell:before,.issueOpsTable .issueSlaCell:before{font-size:12px;letter-spacing:.1em;font-weight:900;color:var(--ent-muted);flex:0 0 100%}
   .issueOpsTable .issueScopeCell:before{content:"TARGET / PROJECT"}
   .issueOpsTable .tableRow>.issueStateCell{grid-area:state;align-self:center}
-  .issueOpsTable .tableRow>.issueOwnerCell{grid-area:owner;min-width:0;align-self:center;font-size:10px;overflow-wrap:anywhere}
+  .issueOpsTable .tableRow>.issueOwnerCell{grid-area:owner;min-width:0;align-self:center;font-size:13px;overflow-wrap:anywhere}
   .issueOpsTable .issueOwnerCell:before{content:"OWNER";display:block}
   .issueOpsTable .tableRow>.issueSlaCell{grid-area:sla;min-width:0;padding-top:7px;border-top:1px solid var(--ent-border);display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
   .issueOpsTable .issueSlaCell:before{content:"REMEDIATION SLA";flex-basis:auto}
   .issueOpsTable .issueSlaCell small{margin-left:auto}
   .issueOpsTable .tableRow>.rowChevron{grid-area:action;align-self:center;width:28px;height:34px}
   .issueIdentity{min-width:0}
-  .issueIdentity b{font-size:12px!important;line-height:1.4;overflow-wrap:anywhere}
+  .issueIdentity b{font-size:14px!important;line-height:1.4;overflow-wrap:anywhere}
   .issueIdentity small{white-space:normal;overflow-wrap:anywhere}
   .lifecycle,.sev{white-space:normal;line-height:1.25}
   .assetOpsTable{display:grid;gap:9px;overflow:visible!important;border:0!important;background:transparent!important;box-shadow:none!important}
@@ -222,9 +222,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .assetOpsTable .assetHttpCell{grid-area:http;justify-self:end}
   .assetOpsTable .assetTypeCell{grid-area:type}
   .assetOpsTable .assetDepthCell{grid-area:depth;justify-self:end}
-  .assetOpsTable .assetLatencyCell{grid-area:latency;color:var(--ent-muted);font-size:10px}
+  .assetOpsTable .assetLatencyCell{grid-area:latency;color:var(--ent-muted);font-size:13px}
   .assetOpsTable .rowChevron{grid-area:action}
-  .assetIdentity b{font-size:12px!important;overflow-wrap:anywhere}
+  .assetIdentity b{font-size:14px!important;overflow-wrap:anywhere}
   .assetIdentity small{white-space:normal!important;overflow-wrap:anywhere;word-break:break-word}
   .scanOpsTable{display:grid;gap:9px;overflow:visible!important;border:0!important;background:transparent!important;box-shadow:none!important}
   .scanOpsTable .tableHeader{display:none!important}
@@ -246,14 +246,14 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .targetFlags .link{min-height:36px}
   .findingBody.deep{grid-template-columns:1fr!important;padding:14px!important}
   .workflowBox{border-left:0!important;border-top:1px solid var(--ent-border);padding:15px 0 0!important}
-  .workflowBox label{font-size:12px!important}
+  .workflowBox label{font-size:14px!important}
   .workflowBox select,.workflowBox input,.workflowBox textarea{font-size:14px!important;min-height:42px}
   .assetSheet{width:100%!important;max-width:none!important;border-radius:18px 18px 0 0!important;max-height:90dvh!important;align-self:end}
   .assetBackdrop{padding:0!important;align-items:end!important}
   .modal{width:100%!important;max-width:620px;max-height:calc(100dvh - 22px)!important;padding:0 17px 17px!important;border-radius:17px!important}
   .modalHead{position:sticky;top:0;z-index:4;background:var(--ent-surface);padding:15px 0!important}
   .modalHead h2{font-size:19px!important}
-  .modal label{font-size:12px!important}
+  .modal label{font-size:14px!important}
   .modalActions{bottom:-17px!important}
   .reportDownloads{flex-wrap:wrap}
   .reportDownloads a,.reportDownloads button{min-height:38px}
@@ -261,13 +261,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 }
 @media(max-width:480px){
   .appHeader{padding:0 8px;gap:5px}
-  .headerContext .breadcrumb strong{font-size:12px;max-width:26vw}
+  .headerContext .breadcrumb strong{font-size:14px;max-width:26vw}
   .brand b{font-size:14px}
   .content{padding:13px 10px calc(26px + env(safe-area-inset-bottom))}
   .dashboardWelcome h1{font-size:28px}
   .dashboardMetrics{gap:8px}
   .dashboardMetrics .card{min-height:82px;padding:11px!important}
-  .dashboardMetrics .card small{font-size:9px!important}
+  .dashboardMetrics .card small{font-size:12px!important}
   .dashboardMetrics .card strong{font-size:21px}
   .executiveGrid{grid-template-columns:1fr!important}
   .executiveGrid>section{padding:13px}
@@ -283,7 +283,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .savedViewActions{flex-direction:column}
   .notificationInbox .inboxItem{grid-template-columns:34px minmax(0,1fr) 14px}
   .mobileDock{left:5px!important;right:5px!important;bottom:max(5px,env(safe-area-inset-bottom))!important}
-  .mobileDock button span{font-size:8px!important}
+  .mobileDock button span{font-size:12px!important}
   .headerNotificationBadge{right:-3px;top:-3px}
   .projectCard{padding:13px!important}
   .scanTop{padding:15px!important;align-items:flex-start}
@@ -297,19 +297,19 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .notificationShortcut{display:none}
   .headerActions{gap:4px}
   .dashboardWelcome h1{font-size:26px}
-  .dashboardActions .primary,.dashboardActions .ghost{font-size:12px;padding:0 9px}
-  .mobileDock button span{font-size:7px!important}
+  .dashboardActions .primary,.dashboardActions .ghost{font-size:14px;padding:0 9px}
+  .mobileDock button span{font-size:12px!important}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.side{transition:none!important}.primary:hover{transform:none!important}}
 
 /* Public-facing clarity: make illustrative product data unmistakable. */
 .previewChrome{gap:7px}
 .previewChrome span{margin-left:7px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.previewSampleTag{margin-left:auto;flex:0 0 auto;font-size:7px;letter-spacing:.09em;font-weight:900;color:#b7c9e5;border:1px solid #34465e;border-radius:999px;padding:4px 6px}
-.publicNav nav a{font-size:12px;font-weight:700}
+.previewSampleTag{margin-left:auto;flex:0 0 auto;font-size:12px;letter-spacing:.09em;font-weight:900;color:#b7c9e5;border:1px solid #34465e;border-radius:999px;padding:4px 6px}
+.publicNav nav a{font-size:14px;font-weight:700}
 .publicNav nav a.active{background:#edf3ff;color:#245df5}
 .publicNav nav a:focus-visible,.publicActions a:focus-visible{outline:3px solid #8cb0ff;outline-offset:3px}
-@media(max-width:760px){.previewSampleTag{font-size:6px;padding:3px 4px}.publicProofBar{top:62px!important}.publicNav nav a{min-height:42px;display:flex;align-items:center}}
+@media(max-width:760px){.previewSampleTag{font-size:12px;padding:3px 4px}.publicProofBar{top:62px!important}.publicNav nav a{min-height:42px;display:flex;align-items:center}}
 
 
 /* User-first visual refinement — calmer hierarchy, predictable controls, and readable content. */
@@ -432,7 +432,7 @@ button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
   background: var(--ent-surface, #fff);
   color: var(--ent-text, #162238);
   box-shadow: 0 8px 26px rgba(6, 17, 35, .2);
-  font-size: 13px;
+  font-size:15px;
   font-weight: 800;
   text-decoration: none;
   transition: transform .16s ease;
@@ -457,65 +457,65 @@ button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
 .authBrandTop>span svg{width:25px;height:25px}
 .authBrandTop b,.authBrandTop small{display:block}
 .authBrandTop b{font-size:19px;letter-spacing:-.035em;color:#fff}
-.authBrandTop small{font-size:8px;letter-spacing:.13em;color:#a7bbd9;margin-top:4px;font-weight:850}
+.authBrandTop small{font-size:12px;letter-spacing:.13em;color:#a7bbd9;margin-top:4px;font-weight:850}
 .authBrandStory{max-width:620px}
-.authBrandEyebrow{display:inline-flex;align-items:center;gap:9px;color:#a9c3ed;font-size:9px;letter-spacing:.13em;font-weight:900}
+.authBrandEyebrow{display:inline-flex;align-items:center;gap:9px;color:#a9c3ed;font-size:12px;letter-spacing:.13em;font-weight:900}
 .authBrandEyebrow i{width:7px;height:7px;border-radius:50%;background:#55d7ad;box-shadow:0 0 0 5px rgba(85,215,173,.12)}
 .authBrandStory h2{font-size:clamp(30px,3.25vw,48px);line-height:1.06;letter-spacing:-.055em;margin:18px 0 14px;color:#f7faff;max-width:600px;text-wrap:balance}
-.authBrandStory p{font-size:13px;line-height:1.75;color:#afc0d8;max-width:560px;margin:0}
+.authBrandStory p{font-size:15px;line-height:1.75;color:#afc0d8;max-width:560px;margin:0}
 .authVisualCard{position:relative;max-width:640px;margin:28px 0 0;padding:12px;border:1px solid rgba(172,197,236,.22);border-radius:17px;background:rgba(255,255,255,.065);box-shadow:0 22px 48px rgba(0,0,0,.15);backdrop-filter:blur(14px);animation:authVisualIn .65s ease both}
 .authVisualTop{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:3px 3px 11px;color:#c3d3eb}
-.authVisualTop>span{display:flex;align-items:center;gap:7px;font-size:8px;letter-spacing:.12em;font-weight:900}
+.authVisualTop>span{display:flex;align-items:center;gap:7px;font-size:12px;letter-spacing:.12em;font-weight:900}
 .authVisualTop>span i{width:6px;height:6px;border-radius:50%;background:#55d7ad}
-.authVisualTop>b{font-size:6px;letter-spacing:.1em;border:1px solid rgba(185,207,243,.28);border-radius:5px;padding:5px 6px;color:#a8bcda}
+.authVisualTop>b{font-size:12px;letter-spacing:.1em;border:1px solid rgba(185,207,243,.28);border-radius:5px;padding:5px 6px;color:#a8bcda}
 .authVisualScore{display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid rgba(147,177,224,.12);border-radius:12px;padding:14px 15px;background:linear-gradient(115deg,#142c4a,#0b192c)}
-.authVisualScore small{display:block;color:#90a9cc;font-size:7px;letter-spacing:.12em;font-weight:850}
+.authVisualScore small{display:block;color:#90a9cc;font-size:12px;letter-spacing:.12em;font-weight:850}
 .authVisualScore strong{display:block;font-size:31px;line-height:1.2;letter-spacing:-.05em;color:#fff;margin:5px 0}
-.authVisualScore strong em{font-size:11px;font-style:normal;color:#91a8c8;letter-spacing:0}
-.authVisualScore>div:first-child>span{display:flex;align-items:center;gap:5px;font-size:8px;color:#60d4a8}
+.authVisualScore strong em{font-size:13px;font-style:normal;color:#91a8c8;letter-spacing:0}
+.authVisualScore>div:first-child>span{display:flex;align-items:center;gap:5px;font-size:12px;color:#60d4a8}
 .authVisualScore>div:first-child>span svg{width:12px;height:12px}
 .authVisualBars{height:52px;display:flex;align-items:flex-end;gap:5px;flex:none}
 .authVisualBars i{display:block;width:7px;min-height:5px;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,#7db3ff,#2564eb);animation:authBarsPulse 2s ease-in-out infinite alternate}
 .authVisualBars i:nth-child(2n){animation-delay:-.7s}
 .authVisualStats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:8px}
 .authVisualStats>div{position:relative;min-width:0;border:1px solid rgba(172,197,236,.16);border-radius:9px;padding:10px;background:rgba(8,21,38,.5)}
-.authVisualStats small{display:block;color:#93a9c8;font-size:6px;font-weight:850;letter-spacing:.08em;overflow-wrap:anywhere}
+.authVisualStats small{display:block;color:#93a9c8;font-size:12px;font-weight:850;letter-spacing:.08em;overflow-wrap:anywhere}
 .authVisualStats b{display:block;font-size:18px;color:#fff;margin:5px 0 3px}
-.authVisualStats span{font-size:7px;color:#9eb1cd}
+.authVisualStats span{font-size:12px;color:#9eb1cd}
 .authVisualStats .authStatDown{color:#ff9fa8}.authVisualStats .authStatUp{color:#68dfb4}
 .authVisualFinding{display:flex;align-items:center;gap:9px;margin-top:8px;padding:10px;border:1px solid rgba(172,197,236,.16);border-radius:9px;background:rgba(8,21,38,.5)}
-.authFindingBadge{flex:none;border-radius:5px;padding:5px 6px;background:#612d3c;color:#ffb6bf;font-size:7px;font-weight:950}
+.authFindingBadge{flex:none;border-radius:5px;padding:5px 6px;background:#612d3c;color:#ffb6bf;font-size:12px;font-weight:950}
 .authVisualFinding>div{min-width:0;flex:1}
 .authVisualFinding b,.authVisualFinding small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.authVisualFinding b{font-size:8px;color:#edf4ff}
-.authVisualFinding small{font-size:7px;color:#91a8c8;margin-top:4px}
+.authVisualFinding b{font-size:12px;color:#edf4ff}
+.authVisualFinding small{font-size:12px;color:#91a8c8;margin-top:4px}
 .authVisualFinding>svg{width:14px;flex:none;color:#90a8ca}
 .authBrandExperience .authBenefits{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 18px;margin-top:22px}
-.authBrandExperience .authBenefits div{align-items:flex-start;gap:8px;color:#c3d1e5;font-size:10px;line-height:1.45}
+.authBrandExperience .authBenefits div{align-items:flex-start;gap:8px;color:#c3d1e5;font-size:13px;line-height:1.45}
 .authBrandExperience .authBenefits svg{width:15px;height:15px;flex:none;margin-top:1px;color:#56d3aa}
 .authBrandFooter{display:flex;align-items:center;gap:17px;flex-wrap:wrap;border-top:1px solid rgba(190,211,245,.15);padding-top:16px;margin-top:22px;color:#8fa6c7}
-.authBrandFooter span{display:flex;align-items:center;gap:6px;font-size:8px;font-weight:800}
+.authBrandFooter span{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800}
 .authBrandFooter svg{width:13px;height:13px;color:#76a5ff}
 .authCard.authCardExperience{position:relative;width:min(470px,calc(100% - 64px));margin:auto;padding:clamp(25px,3vw,40px);border:1px solid #e0e7f1;border-radius:22px;background:rgba(255,255,255,.97);box-shadow:0 26px 70px rgba(25,47,84,.1),0 3px 10px rgba(25,47,84,.035)}
 .authFormHeading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
-.authFormHeading>.eyebrow{font-size:9px;letter-spacing:.13em;color:#3468c8}
-.authFormSecure{display:flex;align-items:center;gap:5px;color:#64809f;font-size:8px;font-weight:800;white-space:nowrap}
+.authFormHeading>.eyebrow{font-size:12px;letter-spacing:.13em;color:#3468c8}
+.authFormSecure{display:flex;align-items:center;gap:5px;color:#64809f;font-size:12px;font-weight:800;white-space:nowrap}
 .authFormSecure svg{width:13px;height:13px;color:#258a67}
 .authCardExperience h1{font-size:clamp(27px,2.4vw,33px);line-height:1.1;letter-spacing:-.045em;color:#132239;margin:0 0 10px}
-.authCardExperience>p{font-size:12px;line-height:1.7;color:#728198;margin:0 0 23px}
-.authCardExperience label{font-size:11px;color:#354761;margin:14px 0}
-.authCardExperience input{min-height:45px;border-color:#d7e0ed;border-radius:10px;background:#fbfcfe;font-size:13px;transition:border-color .16s,box-shadow .16s,background .16s}
+.authCardExperience>p{font-size:14px;line-height:1.7;color:#728198;margin:0 0 23px}
+.authCardExperience label{font-size:13px;color:#354761;margin:14px 0}
+.authCardExperience input{min-height:45px;border-color:#d7e0ed;border-radius:10px;background:#fbfcfe;font-size:15px;transition:border-color .16s,box-shadow .16s,background .16s}
 .authCardExperience input:focus{background:#fff;border-color:#5c8ef4;box-shadow:0 0 0 4px rgba(44,103,236,.11)}
-.authCardExperience .authSubmit{height:48px;border-radius:10px;margin-top:11px;font-size:12px;box-shadow:0 8px 18px rgba(23,105,255,.2);transition:transform .16s,box-shadow .16s}
+.authCardExperience .authSubmit{height:48px;border-radius:10px;margin-top:11px;font-size:14px;box-shadow:0 8px 18px rgba(23,105,255,.2);transition:transform .16s,box-shadow .16s}
 .authCardExperience .authSubmit:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 12px 24px rgba(23,105,255,.25)}
-.authCardExperience .authSwitch{font-size:11px;line-height:1.8}
+.authCardExperience .authSwitch{font-size:13px;line-height:1.8}
 .authCardExperience .authError,.authCardExperience .successBox{margin:13px 0}
 .authCardExperience .authSwitch button:focus-visible,.authCardExperience .authSubmit:focus-visible{outline:3px solid rgba(36,102,239,.32);outline-offset:3px}
 @keyframes authVisualIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes authBarsPulse{from{filter:brightness(.85);opacity:.72}to{filter:brightness(1.15);opacity:1}}
 @media(max-width:1100px){.authPage.authExperience{grid-template-columns:minmax(0,1fr) minmax(380px,.9fr)}.authBrand.authBrandExperience{padding:38px 34px}.authBrandStory h2{font-size:clamp(30px,4vw,42px)}.authCard.authCardExperience{width:calc(100% - 38px);padding:27px}.authBrandFooter{gap:10px}}
 @media(max-width:850px){.authPage.authExperience{grid-template-columns:minmax(0,1fr);gap:0}.authBrand.authBrandExperience{padding:30px clamp(20px,6vw,54px) 25px}.authBrandTop{margin-bottom:27px}.authBrandStory{max-width:760px}.authBrandStory h2{font-size:clamp(29px,5.2vw,42px);max-width:680px}.authVisualCard{max-width:760px;margin-top:21px}.authBrandExperience .authBenefits{max-width:760px}.authCard.authCardExperience{width:min(520px,calc(100% - 40px));margin:28px auto 42px}.authBrandFooter{margin-top:17px}}
-@media(max-width:520px){.authBrand.authBrandExperience{padding:23px 17px 22px}.authBrandTop{margin-bottom:23px}.authBrandTop>span{width:40px;height:40px;border-radius:12px}.authBrandTop b{font-size:17px}.authBrandTop small{font-size:7px}.authBrandStory h2{font-size:30px;margin:14px 0 10px}.authBrandStory p{font-size:12px;line-height:1.65}.authVisualCard{padding:8px;margin-top:17px;border-radius:13px}.authVisualTop{padding-bottom:8px}.authVisualTop>span{font-size:7px}.authVisualScore{padding:10px;gap:7px}.authVisualScore strong{font-size:26px}.authVisualBars{height:38px;gap:3px}.authVisualBars i{width:5px}.authVisualStats{gap:5px}.authVisualStats>div{padding:7px 6px}.authVisualStats small{font-size:5px}.authVisualStats b{font-size:15px}.authVisualStats span{font-size:6px}.authVisualFinding{padding:8px;gap:6px}.authVisualFinding b{font-size:7px}.authVisualFinding small{font-size:6px}.authBrandExperience .authBenefits{grid-template-columns:1fr 1fr;gap:9px;margin-top:16px}.authBrandExperience .authBenefits div{font-size:9px}.authBrandFooter{gap:8px;padding-top:12px;margin-top:14px}.authBrandFooter span{font-size:7px}.authCard.authCardExperience{width:calc(100% - 28px);margin:18px auto 28px;padding:23px 19px;border-radius:17px}.authCardExperience h1{font-size:28px}.authFormSecure{font-size:7px}}
+@media(max-width:520px){.authBrand.authBrandExperience{padding:23px 17px 22px}.authBrandTop{margin-bottom:23px}.authBrandTop>span{width:40px;height:40px;border-radius:12px}.authBrandTop b{font-size:17px}.authBrandTop small{font-size:12px}.authBrandStory h2{font-size:30px;margin:14px 0 10px}.authBrandStory p{font-size:14px;line-height:1.65}.authVisualCard{padding:8px;margin-top:17px;border-radius:13px}.authVisualTop{padding-bottom:8px}.authVisualTop>span{font-size:12px}.authVisualScore{padding:10px;gap:7px}.authVisualScore strong{font-size:26px}.authVisualBars{height:38px;gap:3px}.authVisualBars i{width:5px}.authVisualStats{gap:5px}.authVisualStats>div{padding:7px 6px}.authVisualStats small{font-size:12px}.authVisualStats b{font-size:15px}.authVisualStats span{font-size:12px}.authVisualFinding{padding:8px;gap:6px}.authVisualFinding b{font-size:12px}.authVisualFinding small{font-size:12px}.authBrandExperience .authBenefits{grid-template-columns:1fr 1fr;gap:9px;margin-top:16px}.authBrandExperience .authBenefits div{font-size:12px}.authBrandFooter{gap:8px;padding-top:12px;margin-top:14px}.authBrandFooter span{font-size:12px}.authCard.authCardExperience{width:calc(100% - 28px);margin:18px auto 28px;padding:23px 19px;border-radius:17px}.authCardExperience h1{font-size:28px}.authFormSecure{font-size:12px}}
 @media(max-width:360px){.authBrandExperience .authBenefits{grid-template-columns:1fr}.authVisualStats{grid-template-columns:1fr 1fr}.authVisualStats>div:last-child{grid-column:1/-1}.authBrandFooter{display:grid;gap:7px}}
 @media(prefers-reduced-motion:reduce){.authVisualCard,.authVisualBars i{animation:none!important;transition:none!important}}
 
@@ -526,19 +526,19 @@ button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
 .authSpecialFlow>div>span{width:30px;height:30px;display:grid;place-items:center;border-radius:9px;background:rgba(60,112,215,.22);color:#94bcff;margin-bottom:10px}
 .authSpecialFlow>div>span svg{width:16px;height:16px}
 .authSpecialFlow b,.authSpecialFlow small{display:block}
-.authSpecialFlow b{font-size:9px;color:#f2f6ff;line-height:1.4}
-.authSpecialFlow small{font-size:7px;color:#9cb2d1;margin-top:4px;line-height:1.45}
+.authSpecialFlow b{font-size:12px;color:#f2f6ff;line-height:1.4}
+.authSpecialFlow small{font-size:12px;color:#9cb2d1;margin-top:4px;line-height:1.45}
 .authSpecialFlow>svg{width:15px;height:15px;color:#7696c7}
 .authSpecialNotice{display:flex;align-items:center;gap:9px;padding:11px 12px;margin-top:8px;border:1px solid rgba(85,215,173,.18);border-radius:10px;background:rgba(31,133,101,.08)}
 .authSpecialNotice>svg{width:19px;height:19px;color:#65d9b3;flex:none}
 .authSpecialNotice b,.authSpecialNotice small{display:block}
-.authSpecialNotice b{font-size:9px;color:#e7f5ff}
-.authSpecialNotice small{font-size:8px;color:#a0b6d3;margin-top:3px;line-height:1.45}
+.authSpecialNotice b{font-size:12px;color:#e7f5ff}
+.authSpecialNotice small{font-size:12px;color:#a0b6d3;margin-top:3px;line-height:1.45}
 .authSpecialCard{align-self:center}
 .authSpecialCard .successBox{display:flex;align-items:flex-start;gap:9px;border-radius:10px;padding:12px;background:#eaf8f1;border:1px solid #cbead9;color:#176f4e}
 .authSpecialCard .successBox>svg{width:17px;height:17px;flex:none}
-.authSpecialCard .successBox p{font-size:11px;line-height:1.6;margin:0}
-@media(max-width:520px){.authBrandSpecial .authBrandTop{margin-bottom:20px}.authBrandSpecial .authSpecialVisual{margin-top:17px}.authSpecialFlow{grid-template-columns:1fr;gap:6px}.authSpecialFlow>svg{transform:rotate(90deg);justify-self:center}.authSpecialFlow>div{display:grid;grid-template-columns:30px 1fr;column-gap:8px;align-items:center;padding:8px}.authSpecialFlow>div>span{grid-row:1/3;margin:0;width:27px;height:27px}.authSpecialFlow b{font-size:8px}.authSpecialFlow small{font-size:7px;margin-top:2px}}
+.authSpecialCard .successBox p{font-size:13px;line-height:1.6;margin:0}
+@media(max-width:520px){.authBrandSpecial .authBrandTop{margin-bottom:20px}.authBrandSpecial .authSpecialVisual{margin-top:17px}.authSpecialFlow{grid-template-columns:1fr;gap:6px}.authSpecialFlow>svg{transform:rotate(90deg);justify-self:center}.authSpecialFlow>div{display:grid;grid-template-columns:30px 1fr;column-gap:8px;align-items:center;padding:8px}.authSpecialFlow>div>span{grid-row:1/3;margin:0;width:27px;height:27px}.authSpecialFlow b{font-size:12px}.authSpecialFlow small{font-size:12px;margin-top:2px}}
 
 /* Authentication form controls: visible focus, functional password reveal and explicit trusted-device consent. */
 .authPasswordField{position:relative;display:flex;align-items:center;width:100%;min-width:0}
@@ -547,28 +547,28 @@ button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
 .authPasswordToggle svg{width:17px;height:17px}
 .authPasswordToggle:hover{background:#edf3ff;color:#205fe3}
 .authPasswordToggle:focus-visible{outline:3px solid rgba(40,101,233,.28);outline-offset:1px;border-color:#8eaff5}
-.authFieldHint{display:block;font-size:9px;line-height:1.5;color:#7d8ca2;margin-top:6px}
+.authFieldHint{display:block;font-size:12px;line-height:1.5;color:#7d8ca2;margin-top:6px}
 .authFieldHint.authFieldError{color:#bd3b4d;font-weight:750}
 .authRemember{display:flex!important;align-items:flex-start;gap:10px!important;margin:7px 0 11px!important;padding:12px 13px;border:1px solid #e0e8f3;border-radius:10px;background:#f7f9fd;cursor:pointer}
 .authRemember>input{width:16px!important;height:16px;min-height:16px!important;margin:2px 0 0;flex:none;accent-color:#2563eb}
 .authRemember>span{display:block;min-width:0}
 .authRemember b,.authRemember small{display:block}
-.authRemember b{font-size:10px;color:#263a55;line-height:1.5}
-.authRemember small{font-size:8px;line-height:1.5;color:#7888a0;margin-top:3px;font-weight:500}
+.authRemember b{font-size:13px;color:#263a55;line-height:1.5}
+.authRemember small{font-size:12px;line-height:1.5;color:#7888a0;margin-top:3px;font-weight:500}
 .authSetupSteps{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px;padding:10px;border:1px solid rgba(172,197,236,.14);border-radius:9px;background:rgba(8,21,38,.38)}
-.authSetupSteps span{display:flex;align-items:center;gap:5px;color:#b9cbe5;font-size:7px;font-weight:800}
-.authSetupSteps span b{display:grid;place-items:center;width:17px;height:17px;border-radius:5px;background:rgba(71,126,245,.25);color:#a7c6ff;font-size:6px}
+.authSetupSteps span{display:flex;align-items:center;gap:5px;color:#b9cbe5;font-size:12px;font-weight:800}
+.authSetupSteps span b{display:grid;place-items:center;width:17px;height:17px;border-radius:5px;background:rgba(71,126,245,.25);color:#a7c6ff;font-size:12px}
 .authSetupSteps>svg{width:11px;height:11px;color:#6885ad}
 .authRecoveryNote{display:flex;align-items:flex-start;gap:9px;margin-top:8px;padding:10px;border:1px solid rgba(172,197,236,.14);border-radius:9px;background:rgba(8,21,38,.38)}
 .authRecoveryNote>svg{width:17px;height:17px;flex:none;color:#92b8ff}
 .authRecoveryNote b,.authRecoveryNote small{display:block}
-.authRecoveryNote b{font-size:8px;color:#eaf2ff}
-.authRecoveryNote small{font-size:7px;line-height:1.55;color:#9db2d1;margin-top:3px}
-.authCardExperience .authError[role=alert]{padding:11px 12px;border:1px solid #f1c8ce;border-radius:9px;background:#fff3f4;color:#a82e41;font-size:11px;line-height:1.6}
+.authRecoveryNote b{font-size:12px;color:#eaf2ff}
+.authRecoveryNote small{font-size:12px;line-height:1.55;color:#9db2d1;margin-top:3px}
+.authCardExperience .authError[role=alert]{padding:11px 12px;border:1px solid #f1c8ce;border-radius:9px;background:#fff3f4;color:#a82e41;font-size:13px;line-height:1.6}
 .authCardExperience .successBox{display:flex;align-items:flex-start;gap:9px;padding:12px;border:1px solid #c9ead9;border-radius:10px;background:#ecf9f2;color:#176d4d}
 .authCardExperience .successBox>svg{width:17px;height:17px;flex:none;color:#198a60}
-.authCardExperience .successBox p{font-size:11px;line-height:1.65;margin:0}
-@media(max-width:520px){.authRemember{padding:10px}.authSetupSteps{gap:5px}.authSetupSteps span{font-size:6px}.authSetupSteps>svg{width:9px}}
+.authCardExperience .successBox p{font-size:13px;line-height:1.65;margin:0}
+@media(max-width:520px){.authRemember{padding:10px}.authSetupSteps{gap:5px}.authSetupSteps span{font-size:12px}.authSetupSteps>svg{width:9px}}
 @media(prefers-reduced-motion:reduce){.authPasswordToggle{transition:none!important}}
 
 
@@ -589,7 +589,7 @@ button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
   font-size:15px!important;
   line-height:1.72!important;
 }
-.authBrandEyebrow{font-size:10px!important;letter-spacing:.13em!important}
+.authBrandEyebrow{font-size:13px!important;letter-spacing:.13em!important}
 .authCard.authCardExperience{
   width:min(500px,calc(100% - 64px))!important;
   padding:38px!important;
@@ -609,7 +609,7 @@ button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
   margin-bottom:24px!important;
 }
 .authCardExperience label{
-  font-size:12px!important;
+  font-size:14px!important;
   line-height:1.45!important;
   color:#2f415c!important;
   font-weight:760!important;
@@ -623,16 +623,16 @@ button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
   color:#1a2b43;
 }
 .authPasswordField>input{padding-right:48px!important}
-.authFieldHint{font-size:10px!important;line-height:1.55!important}
-.authRemember b{font-size:11px!important}
-.authRemember small{font-size:9px!important}
+.authFieldHint{font-size:13px!important;line-height:1.55!important}
+.authRemember b{font-size:13px!important}
+.authRemember small{font-size:12px!important}
 .authCardExperience .authSubmit{
   height:50px!important;
   border-radius:10px!important;
-  font-size:12px!important;
+  font-size:14px!important;
   font-weight:850!important;
 }
-.authCardExperience .authSwitch{font-size:12px!important}
+.authCardExperience .authSwitch{font-size:14px!important}
 .authVisualCard{
   max-width:680px!important;
   padding:14px!important;
@@ -675,7 +675,7 @@ button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
   display:flex;
   align-items:center;
   gap:7px;
-  font-size:8px;
+  font-size:12px;
   letter-spacing:.12em;
   font-weight:900;
   color:#9fc0f7;
@@ -683,7 +683,7 @@ button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
 .authPhotoBand>div>span svg{width:14px;height:14px;color:#63d7af}
 .authPhotoBand p{
   margin:10px 0 12px;
-  font-size:11px;
+  font-size:13px;
   line-height:1.65;
   color:#d6e2f2;
 }
@@ -693,14 +693,14 @@ button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
   gap:5px;
   color:#91acd1;
   text-decoration:none;
-  font-size:7px;
+  font-size:12px;
   font-weight:750;
 }
 .authPhotoBand a:hover{color:#fff}
 .authPhotoBand a svg{width:10px;height:10px}
 .authBrandExperience .authBenefits{margin-top:18px!important}
-.authBrandExperience .authBenefits div{font-size:11px!important;line-height:1.5!important}
-.authBrandFooter span{font-size:9px!important}
+.authBrandExperience .authBenefits div{font-size:13px!important;line-height:1.5!important}
+.authBrandFooter span{font-size:12px!important}
 
 @media(max-width:850px){
   .authBrandStory h2{font-size:clamp(34px,6vw,48px)!important}
@@ -710,15 +710,15 @@ button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
 }
 @media(max-width:520px){
   .authBrandStory h2{font-size:32px!important;line-height:1.04!important}
-  .authBrandStory p{font-size:13px!important}
+  .authBrandStory p{font-size:15px!important}
   .authCard.authCardExperience{width:calc(100% - 28px)!important;padding:24px 20px!important}
   .authCardExperience h1{font-size:29px!important}
-  .authCardExperience>p{font-size:13px!important}
-  .authCardExperience label{font-size:11px!important}
-  .authCardExperience input{min-height:46px!important;font-size:13px!important}
+  .authCardExperience>p{font-size:15px!important}
+  .authCardExperience label{font-size:13px!important}
+  .authCardExperience input{min-height:46px!important;font-size:15px!important}
   .authPhotoBand{min-height:155px;border-radius:13px}
   .authPhotoBand>div{width:78%;padding:18px 15px}
-  .authPhotoBand p{font-size:9px;line-height:1.55}
-  .authPhotoBand>div>span{font-size:7px}
-  .authBrandExperience .authBenefits div{font-size:10px!important}
+  .authPhotoBand p{font-size:12px;line-height:1.55}
+  .authPhotoBand>div>span{font-size:12px}
+  .authBrandExperience .authBenefits div{font-size:13px!important}
 }

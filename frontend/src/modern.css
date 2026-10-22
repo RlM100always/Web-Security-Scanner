@@ -68,23 +68,23 @@
   box-shadow:0 10px 25px rgba(31,96,229,.24)!important;
 }
 .publicSite .publicBrand b{font-size:15px!important;font-weight:800!important;letter-spacing:-.035em!important;color:#0f1e33!important}
-.publicSite .publicBrand small{font-size:7px!important;letter-spacing:.12em!important;color:#718198!important}
+.publicSite .publicBrand small{font-size:12px!important;letter-spacing:.12em!important;color:#718198!important}
 .publicSite .publicNavLinks{gap:2px!important}
 .publicSite .publicNavLinks>a{
   min-height:38px!important;padding:0 11px!important;border-radius:10px!important;
-  font-size:11px!important;font-weight:760!important;color:#40516a!important;
+  font-size:13px!important;font-weight:760!important;color:#40516a!important;
 }
 .publicSite .publicNavLinks>a:hover{background:#f2f6fc!important;color:#173c79!important}
 .publicSite .publicNavLinks>a.active{background:#eaf1ff!important;color:#1f5fdd!important}
-.publicSite .publicNavInner>.publicActions .textLink{font-size:11px!important;color:#263951!important}
-.publicSite .publicNavInner>.publicActions .publicPrimary{min-height:42px!important;border-radius:10px!important;font-size:10px!important}
+.publicSite .publicNavInner>.publicActions .textLink{font-size:13px!important;color:#263951!important}
+.publicSite .publicNavInner>.publicActions .publicPrimary{min-height:42px!important;border-radius:10px!important;font-size:13px!important}
 .publicSite .publicProofBar{
   top:72px!important;height:36px!important;min-height:36px!important;
   background:#091525!important;border-bottom:1px solid rgba(255,255,255,.04)!important;
 }
 .publicSite .publicProofInner{width:min(1460px,100%)!important;padding:0 clamp(18px,2.8vw,34px)!important}
-.publicSite .publicProofInner>span{font-size:8px!important;color:#c9d6e6!important}
-.publicSite .publicProofInner a{font-size:8px!important;color:#8fa3bf!important}
+.publicSite .publicProofInner>span{font-size:12px!important;color:#c9d6e6!important}
+.publicSite .publicProofInner a{font-size:12px!important;color:#8fa3bf!important}
 .publicSite .publicProofInner a:hover{color:#fff!important}
 
 /* typography */
@@ -92,7 +92,7 @@
 .publicSite .sectionHead>span,
 .publicSite .pageHeroEyebrow,
 .publicSite .publicCTA>div>span{
-  font-size:10px!important;
+  font-size:13px!important;
   line-height:1.35!important;
   letter-spacing:.14em!important;
   font-weight:900!important;
@@ -156,7 +156,7 @@
 }
 .publicSite .redesignedHeroCopy>p{max-width:620px!important;font-size:17px!important;line-height:1.72!important;color:#5b6d86!important}
 .publicSite .heroCtas{gap:10px!important;margin-top:28px!important}
-.publicSite .heroCtas>a{min-height:50px!important;padding:0 19px!important;border-radius:12px!important;font-size:11px!important}
+.publicSite .heroCtas>a{min-height:50px!important;padding:0 19px!important;border-radius:12px!important;font-size:13px!important}
 .publicSite .heroHighlights{
   display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
   gap:8px!important;margin-top:31px!important;
@@ -166,8 +166,8 @@
   background:rgba(255,255,255,.64)!important;backdrop-filter:blur(10px);box-shadow:none!important;
 }
 .publicSite .heroHighlights article>span{width:32px!important;height:32px!important;border-radius:9px!important;background:#edf3ff!important;color:#2564e7!important}
-.publicSite .heroHighlights article b{font-size:10px!important;line-height:1.3!important;color:#1c2d47!important}
-.publicSite .heroHighlights article small{font-size:8px!important;line-height:1.45!important;color:#77879d!important}
+.publicSite .heroHighlights article b{font-size:13px!important;line-height:1.3!important;color:#1c2d47!important}
+.publicSite .heroHighlights article small{font-size:12px!important;line-height:1.45!important;color:#77879d!important}
 .publicSite .redesignedHeroTrust{
   display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;
   gap:0!important;margin-top:25px!important;padding-top:18px!important;border-top:1px solid #d9e3ef!important;
@@ -177,8 +177,8 @@
 }
 .publicSite .redesignedHeroTrust>span:last-child{border-right:0!important}
 .publicSite .redesignedHeroTrust svg{width:14px!important;height:14px!important;margin-bottom:6px;color:#2467ef!important}
-.publicSite .redesignedHeroTrust b{font-size:9px!important;color:#23364f!important}
-.publicSite .redesignedHeroTrust small{font-size:7px!important;line-height:1.35!important;color:#8593a6!important;margin-top:2px!important}
+.publicSite .redesignedHeroTrust b{font-size:12px!important;color:#23364f!important}
+.publicSite .redesignedHeroTrust small{font-size:12px!important;line-height:1.35!important;color:#8593a6!important;margin-top:2px!important}
 
 /* product hero */
 .publicSite .heroVisual{max-width:760px!important;padding:28px 0 22px!important}
@@ -205,8 +205,8 @@
   border:1px solid #e3e9f2!important;border-radius:16px!important;background:#fff!important;
   box-shadow:0 8px 28px rgba(18,39,73,.035);
 }
-.publicSite .logoStrip>span{font-size:8px!important;color:#8a99ad!important}
-.publicSite .logoStrip>b{font-size:9px!important;color:#4b5d75!important}
+.publicSite .logoStrip>span{font-size:12px!important;color:#8a99ad!important}
+.publicSite .logoStrip>b{font-size:12px!important;color:#4b5d75!important}
 
 /* bento product modules */
 .publicSite .homeWhatSection{padding-top:96px!important}
@@ -217,8 +217,8 @@
   box-shadow:0 16px 42px rgba(14,36,71,.12)!important;
 }
 .publicSite .homeWhatCallout>span{background:#183965!important;color:#8cb5ff!important}
-.publicSite .homeWhatCallout b{color:#fff!important;font-size:12px!important}
-.publicSite .homeWhatCallout p{color:#9fb1ca!important;font-size:10px!important}
+.publicSite .homeWhatCallout b{color:#fff!important;font-size:14px!important}
+.publicSite .homeWhatCallout p{color:#9fb1ca!important;font-size:13px!important}
 .publicSite .homeModuleGrid{
   display:grid!important;grid-template-columns:repeat(12,minmax(0,1fr))!important;gap:16px!important;margin-top:36px!important;
 }
@@ -230,11 +230,11 @@
 .publicSite .homeModuleCard:nth-child(2){grid-column:span 5}
 .publicSite .homeModuleCard:nth-child(3){grid-column:span 12;display:grid!important;grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)!important;gap:30px!important;align-items:center}
 .publicSite .homeModuleCard:hover{transform:translateY(-4px)!important;border-color:#b8cae6!important;box-shadow:0 22px 56px rgba(19,42,79,.1)!important}
-.publicSite .homeModuleIndex{font-size:9px!important}
+.publicSite .homeModuleIndex{font-size:12px!important}
 .publicSite .homeModuleIcon{width:44px!important;height:44px!important;margin-top:17px!important}
 .publicSite .homeModuleCopy h3{font-size:23px!important;line-height:1.15!important;letter-spacing:-.035em!important}
-.publicSite .homeModuleCopy p{font-size:13px!important;line-height:1.72!important;min-height:0!important}
-.publicSite .homeModuleCopy>a{font-size:10px!important}
+.publicSite .homeModuleCopy p{font-size:15px!important;line-height:1.72!important;min-height:0!important}
+.publicSite .homeModuleCopy>a{font-size:13px!important}
 .publicSite .homeModuleVisual{border-radius:15px!important;border-color:#dce5f0!important;background:#f5f8fc!important}
 
 /* dark workflow band */
@@ -258,7 +258,7 @@
 .publicSite .modernFlowSection .workflowCard>span{color:#7699cb!important}
 .publicSite .modernFlowSection .workflowCard>svg{color:#71a4ff!important}
 .publicSite .modernFlowSection .workflowCard h3{color:#fff!important;font-size:17px!important}
-.publicSite .modernFlowSection .workflowCard p{color:#a6b8cf!important;font-size:12px!important}
+.publicSite .modernFlowSection .workflowCard p{color:#a6b8cf!important;font-size:14px!important}
 
 /* operations + evidence */
 .publicSite .modernOpsSection{
@@ -273,7 +273,7 @@
 .publicSite .featureCard:nth-child(1),
 .publicSite .featureCard:nth-child(4){background:linear-gradient(145deg,#fff,#f4f8ff)!important}
 .publicSite .featureCard h3{font-size:18px!important}
-.publicSite .featureCard p{font-size:13px!important}
+.publicSite .featureCard p{font-size:15px!important}
 .publicSite .modernEvidenceSection{padding-top:104px!important;padding-bottom:104px!important}
 .publicSite .modernEvidenceSection .splitStory{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr)!important;gap:70px!important}
 .publicSite .findingMock{
@@ -312,7 +312,7 @@
 .publicSite .publicFaqSection{grid-template-columns:minmax(0,.68fr) minmax(0,1.32fr)!important;gap:74px!important;padding-top:92px!important}
 .publicSite .publicFaqIntro h2{font-size:clamp(34px,3.5vw,48px)!important}
 .publicSite .publicFaqItem summary{font-size:14px!important;padding:22px 2px!important}
-.publicSite .publicFaqItem>p{font-size:13px!important;line-height:1.8!important;color:#627189!important}
+.publicSite .publicFaqItem>p{font-size:15px!important;line-height:1.8!important;color:#627189!important}
 
 /* real-world photography */
 .publicSite .realWorldSection{
@@ -324,7 +324,7 @@
 .publicSite .realWorldCopy>p{font-size:15px!important}
 .publicSite .realWorldPoints article{padding:18px 0!important}
 .publicSite .realWorldPoints h3{font-size:14px!important}
-.publicSite .realWorldPoints p{font-size:12px!important}
+.publicSite .realWorldPoints p{font-size:14px!important}
 
 /* final CTA */
 .publicSite .modernFinalCta,
@@ -361,7 +361,7 @@
   background:linear-gradient(180deg,#fff,#fbfcff)!important;box-shadow:0 12px 34px rgba(19,42,79,.05)!important;
 }
 .publicSite .pageDetailGrid h2{font-size:21px!important}
-.publicSite .pageDetailGrid p{font-size:13px!important;line-height:1.75!important}
+.publicSite .pageDetailGrid p{font-size:15px!important;line-height:1.75!important}
 .publicSite .pageWorkflowSection{
   width:min(1320px,calc(100% - 32px))!important;max-width:none!important;margin:0 auto!important;padding:70px 58px!important;
   border:0!important;border-radius:28px!important;background:linear-gradient(145deg,#081321,#0c1c31)!important;color:#fff;
@@ -382,10 +382,10 @@
 .publicSite .publicFooterInner{width:min(1360px,100%)!important;padding:66px 28px 26px!important}
 .publicSite .publicFooterLead{gap:70px!important;padding-bottom:42px!important}
 .publicSite .publicFooterLead>.publicFooterCta h2{font-size:26px!important}
-.publicSite .publicFooterLead>div:first-child>p{font-size:12px!important;max-width:520px!important}
+.publicSite .publicFooterLead>div:first-child>p{font-size:14px!important;max-width:520px!important}
 .publicSite .footerGrid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:34px 46px!important}
-.publicSite .footerGrid b{font-size:9px!important}
-.publicSite .footerGrid a{font-size:9px!important;color:#879bb7!important}
+.publicSite .footerGrid b{font-size:12px!important}
+.publicSite .footerGrid a{font-size:12px!important;color:#879bb7!important}
 .publicSite .publicFooterBottom{margin-top:38px!important}
 
 /* auth */
@@ -408,21 +408,21 @@
 .authBrandExperience:before{opacity:.18!important}
 .authBrandTop>span{width:48px!important;height:48px!important;border-radius:14px!important}
 .authBrandTop b{font-size:19px!important}
-.authBrandTop small{font-size:7px!important}
+.authBrandTop small{font-size:12px!important}
 .authBrandStory{max-width:670px!important}
 .authBrandStory h2{font-size:clamp(38px,4.05vw,60px)!important;line-height:1!important;letter-spacing:-.062em!important}
 .authBrandStory p{font-size:14px!important;line-height:1.72!important;color:#afc0d8!important}
 .authVisualCard{max-width:690px!important;border-radius:20px!important;background:rgba(255,255,255,.06)!important;box-shadow:0 26px 70px rgba(0,0,0,.18)!important}
 .authPhotoBand{max-width:690px!important;border-radius:18px!important}
 .authBrandExperience .authBenefits{max-width:690px!important;grid-template-columns:repeat(2,minmax(0,1fr))!important}
-.authBrandExperience .authBenefits div{font-size:10px!important;color:#c3d0e2!important}
+.authBrandExperience .authBenefits div{font-size:13px!important;color:#c3d0e2!important}
 .authCard.authCardExperience{
   width:min(510px,calc(100% - 64px))!important;padding:40px!important;border:1px solid #e0e7f0!important;border-radius:24px!important;
   box-shadow:0 28px 80px rgba(23,45,82,.11)!important;
 }
 .authCardExperience h1{font-size:35px!important;letter-spacing:-.05em!important}
-.authCardExperience>p{font-size:13px!important}
-.authCardExperience label{font-size:11px!important}
+.authCardExperience>p{font-size:15px!important}
+.authCardExperience label{font-size:13px!important}
 .authCardExperience input{min-height:49px!important;border-radius:11px!important;background:#fbfcfe!important}
 .authCardExperience input:focus{border-color:#6691f2!important;box-shadow:0 0 0 4px rgba(36,103,242,.1)!important}
 .authCardExperience .authSubmit{height:50px!important;border-radius:11px!important;background:linear-gradient(180deg,#2f74ff,#205bdc)!important;box-shadow:0 10px 24px rgba(36,103,242,.2)!important}

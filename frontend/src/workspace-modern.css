@@ -30,25 +30,25 @@
   box-shadow:0 10px 25px rgba(25,86,210,.28)!important;
 }
 .app .brand b{font-size:14px!important;letter-spacing:-.025em!important;color:#f7faff!important}
-.app .brand small{font-size:7px!important;letter-spacing:.11em!important;color:#7f93b0!important}
+.app .brand small{font-size:12px!important;letter-spacing:.11em!important;color:#7f93b0!important}
 .app .workspace{
   margin:14px 12px 11px!important;padding:11px!important;border:1px solid rgba(155,184,226,.12)!important;border-radius:14px!important;
   background:rgba(255,255,255,.045)!important;
 }
-.app .workspace>small{font-size:8px!important;letter-spacing:.12em!important;color:#6f86a8!important}
+.app .workspace>small{font-size:12px!important;letter-spacing:.12em!important;color:#6f86a8!important}
 .app .workspace select{
   min-height:38px!important;margin-top:6px!important;padding:0 9px!important;border:1px solid rgba(160,189,229,.14)!important;
-  border-radius:9px!important;background:#0d1d31!important;color:#e8f0fb!important;font-size:11px!important;font-weight:750!important;
+  border-radius:9px!important;background:#0d1d31!important;color:#e8f0fb!important;font-size:13px!important;font-weight:750!important;
 }
-.app .workspace>span{margin-top:7px!important;font-size:7px!important;letter-spacing:.08em!important;color:#7fa8ff!important}
+.app .workspace>span{margin-top:7px!important;font-size:12px!important;letter-spacing:.08em!important;color:#7fa8ff!important}
 .app .groupedNav{padding:3px 10px 16px!important}
 .app .navGroup{margin-top:9px!important}
 .app .navGroupLabel{
-  display:block;padding:10px 10px 6px!important;font-size:8px!important;letter-spacing:.14em!important;font-weight:900!important;color:#607798!important;
+  display:block;padding:10px 10px 6px!important;font-size:12px!important;letter-spacing:.14em!important;font-weight:900!important;color:#607798!important;
 }
 .app .side nav button{
   min-height:42px!important;margin:2px 0!important;padding:0 10px!important;border-radius:10px!important;
-  color:#8fa3bd!important;font-size:11px!important;font-weight:720!important;gap:10px!important;
+  color:#8fa3bd!important;font-size:13px!important;font-weight:720!important;gap:10px!important;
 }
 .app .side nav button svg{width:17px!important;height:17px!important;color:#6f86a7!important}
 .app .side nav button:hover{background:rgba(255,255,255,.055)!important;color:#eef5ff!important}
@@ -61,7 +61,7 @@
 .app .adminLaunch{margin:8px 10px!important;border-radius:10px!important}
 .app .sideFoot{
   margin:12px!important;padding:11px!important;border:1px solid rgba(158,185,224,.1)!important;border-radius:11px!important;
-  background:rgba(255,255,255,.03)!important;color:#7590b1!important;font-size:9px!important;
+  background:rgba(255,255,255,.03)!important;color:#7590b1!important;font-size:12px!important;
 }
 .app .safeDot{box-shadow:0 0 0 5px rgba(39,183,131,.09)!important}
 
@@ -73,18 +73,18 @@
   box-shadow:0 5px 20px rgba(18,39,73,.025)!important;
   backdrop-filter:blur(18px) saturate(145%)!important;
 }
-.app .headerContext>small{font-size:7px!important;letter-spacing:.13em!important;color:var(--ent-muted,var(--ux-muted))!important}
+.app .headerContext>small{font-size:12px!important;letter-spacing:.13em!important;color:var(--ent-muted,var(--ux-muted))!important}
 .app .breadcrumb{gap:7px!important}
-.app .breadcrumb b{font-size:11px!important;color:var(--ent-muted,var(--ux-muted))!important;font-weight:700!important}
-.app .breadcrumb strong{font-size:13px!important;color:var(--ent-text,var(--ux-ink))!important;font-weight:800!important}
+.app .breadcrumb b{font-size:13px!important;color:var(--ent-muted,var(--ux-muted))!important;font-weight:700!important}
+.app .breadcrumb strong{font-size:15px!important;color:var(--ent-text,var(--ux-ink))!important;font-weight:800!important}
 .app .breadcrumb svg{width:13px!important;color:var(--ent-muted,var(--ux-muted))!important}
 .app .headerActions{gap:7px!important}
 .app .commandTrigger{
   min-width:230px!important;height:40px!important;padding:0 10px!important;border:1px solid var(--ent-border,var(--ux-border))!important;
   border-radius:11px!important;background:var(--ent-surface,var(--ux-surface))!important;box-shadow:0 2px 8px rgba(20,42,79,.025)!important;
 }
-.app .commandTrigger span{font-size:10px!important;color:var(--ent-muted,var(--ux-muted))!important}
-.app .commandTrigger kbd{font-size:8px!important;border-radius:6px!important}
+.app .commandTrigger span{font-size:13px!important;color:var(--ent-muted,var(--ux-muted))!important}
+.app .commandTrigger kbd{font-size:12px!important;border-radius:6px!important}
 .app .notificationShortcut,.app .iconButton,.app .avatarBtn{
   width:40px!important;height:40px!important;border-radius:11px!important;border:1px solid var(--ent-border,var(--ux-border))!important;
   background:var(--ent-surface,var(--ux-surface))!important;box-shadow:0 2px 8px rgba(20,42,79,.025)!important;
@@ -92,7 +92,7 @@
 .app .avatarBtn{
   background:linear-gradient(145deg,#e8f0ff,#dce8ff)!important;color:#245fd7!important;border-color:#cbdaf5!important;font-weight:850!important;
 }
-.app .refreshButton,.app .newScanButton{height:40px!important;border-radius:10px!important;font-size:10px!important;font-weight:800!important}
+.app .refreshButton,.app .newScanButton{height:40px!important;border-radius:10px!important;font-size:13px!important;font-weight:800!important}
 .app .newScanButton{box-shadow:0 8px 18px rgba(36,93,245,.17)!important}
 
 /* content */
@@ -103,8 +103,8 @@
 .app .workspaceTitle h2,.app .pageActions h2{
   font-size:30px!important;line-height:1.08!important;letter-spacing:-.045em!important;font-weight:780!important;color:var(--ent-text,var(--ux-ink))!important;
 }
-.app .workspaceTitle p,.app .pageActions p{font-size:13px!important;line-height:1.7!important;color:var(--ent-muted,var(--ux-muted))!important}
-.app .eyebrow{font-size:8px!important;letter-spacing:.14em!important;font-weight:900!important;color:var(--ent-brand,var(--ux-blue))!important}
+.app .workspaceTitle p,.app .pageActions p{font-size:15px!important;line-height:1.7!important;color:var(--ent-muted,var(--ux-muted))!important}
+.app .eyebrow{font-size:12px!important;letter-spacing:.14em!important;font-weight:900!important;color:var(--ent-brand,var(--ux-blue))!important}
 
 /* dashboard */
 .app .dashboardIntro{
@@ -127,7 +127,7 @@
 }
 .app .dashboardWelcome>p{max-width:650px!important;font-size:14px!important;line-height:1.72!important;color:var(--ent-muted,var(--ux-muted))!important}
 .app .dashboardActions{gap:8px!important;margin-top:22px!important}
-.app .dashboardActions .primary,.app .dashboardActions .ghost{min-height:43px!important;border-radius:10px!important;font-size:10px!important}
+.app .dashboardActions .primary,.app .dashboardActions .ghost{min-height:43px!important;border-radius:10px!important;font-size:13px!important}
 .app .dashboardScoreCard{
   position:relative;z-index:1;padding:23px!important;border:1px solid rgba(125,158,210,.18)!important;border-radius:19px!important;
   background:linear-gradient(145deg,#0a1729,#102642)!important;color:#fff!important;box-shadow:0 22px 50px rgba(7,20,39,.16)!important;
@@ -151,7 +151,7 @@
 .app .dashboardMetrics .card:nth-child(2):before{background:#d79a35}
 .app .dashboardMetrics .card:nth-child(3):before{background:#367ae4}
 .app .dashboardMetrics .card:nth-child(4):before{background:#22a677}
-.app .card small{font-size:9px!important;letter-spacing:.075em!important;color:var(--ent-muted,var(--ux-muted))!important}
+.app .card small{font-size:12px!important;letter-spacing:.075em!important;color:var(--ent-muted,var(--ux-muted))!important}
 .app .card strong{font-size:30px!important;letter-spacing:-.045em!important;color:var(--ent-text,var(--ux-ink))!important}
 
 /* panels */
@@ -163,14 +163,14 @@
 .app .panelHead{
   min-height:58px!important;padding:0 18px!important;border-bottom:1px solid var(--ent-border,var(--ux-border))!important;
 }
-.app .panelHead h3{font-size:13px!important;letter-spacing:-.01em!important;font-weight:790!important}
+.app .panelHead h3{font-size:15px!important;letter-spacing:-.01em!important;font-weight:790!important}
 .app .portfolioGrid,.app .grid2{gap:16px!important}
 .app .priorityList>button{
   min-height:62px!important;padding:13px 16px!important;border-bottom:1px solid var(--ent-border,var(--ux-border))!important;
 }
 .app .priorityList>button:hover{background:var(--ent-surface-2,var(--ux-bg))!important}
-.app .priorityList>button b{font-size:11px!important}
-.app .priorityList>button small{font-size:9px!important;line-height:1.5!important}
+.app .priorityList>button b{font-size:13px!important}
+.app .priorityList>button small{font-size:12px!important;line-height:1.5!important}
 .app .dashboardEmpty{margin:12px!important;padding:18px!important;border-radius:14px!important;background:var(--ent-surface-2,var(--ux-bg))!important}
 
 /* tables and list surfaces */
@@ -181,26 +181,26 @@
 .app table{border-collapse:separate!important;border-spacing:0!important}
 .app table thead th{
   height:42px!important;padding:0 14px!important;background:var(--ent-surface-2,var(--ux-bg))!important;
-  color:var(--ent-muted,var(--ux-muted))!important;font-size:8px!important;letter-spacing:.09em!important;font-weight:900!important;
+  color:var(--ent-muted,var(--ux-muted))!important;font-size:12px!important;letter-spacing:.09em!important;font-weight:900!important;
 }
-.app table tbody td{padding:14px!important;border-top:1px solid var(--ent-border,var(--ux-border))!important;font-size:11px!important}
+.app table tbody td{padding:14px!important;border-top:1px solid var(--ent-border,var(--ux-border))!important;font-size:13px!important}
 .app table tbody tr:hover td{background:color-mix(in srgb,var(--ent-brand,var(--ux-blue)) 4%,var(--ent-surface,var(--ux-surface)))!important}
-.app table td b{font-size:11px!important}
-.app table td small{display:block;margin-top:3px;font-size:9px!important;color:var(--ent-muted,var(--ux-muted))!important}
+.app table td b{font-size:13px!important}
+.app table td small{display:block;margin-top:3px;font-size:12px!important;color:var(--ent-muted,var(--ux-muted))!important}
 .app .tableHeader{background:var(--ent-surface-2,var(--ux-bg))!important;border-bottom:1px solid var(--ent-border,var(--ux-border))!important}
 .app .tableRow{border-bottom:1px solid var(--ent-border,var(--ux-border))!important}
 .app .tableRow:hover{background:color-mix(in srgb,var(--ent-brand,var(--ux-blue)) 4%,var(--ent-surface,var(--ux-surface)))!important}
 
 /* controls */
 .app .primary,.app .ghost,.app .dangerButton{
-  min-height:42px!important;border-radius:10px!important;font-size:11px!important;font-weight:790!important;
+  min-height:42px!important;border-radius:10px!important;font-size:13px!important;font-weight:790!important;
 }
 .app .primary{background:linear-gradient(180deg,#2d70fb,#205bd9)!important;box-shadow:0 7px 18px rgba(36,93,245,.17)!important}
 .app .ghost{background:var(--ent-surface,var(--ux-surface))!important;border:1px solid var(--ent-border,var(--ux-border))!important;color:var(--ent-text,var(--ux-ink))!important}
 .app .ghost:hover{background:var(--ent-surface-2,var(--ux-bg))!important}
 .app input,.app select,.app textarea{
   border:1px solid var(--ent-border,var(--ux-border))!important;border-radius:10px!important;background:var(--ent-surface,var(--ux-surface))!important;
-  color:var(--ent-text,var(--ux-ink))!important;font-size:12px!important;
+  color:var(--ent-text,var(--ux-ink))!important;font-size:14px!important;
 }
 .app input:focus,.app select:focus,.app textarea:focus{
   outline:0!important;border-color:color-mix(in srgb,var(--ent-brand,var(--ux-blue)) 65%,var(--ent-border,var(--ux-border)))!important;
@@ -217,7 +217,7 @@
 .app .scanTop h2{font-size:24px!important;letter-spacing:-.035em!important}
 .app .scoreRing{border:1px solid var(--ent-border,var(--ux-border))!important;box-shadow:none!important}
 .app .findings details{border-radius:13px!important}
-.app .findingBody{font-size:12px!important;line-height:1.7!important}
+.app .findingBody{font-size:14px!important;line-height:1.7!important}
 
 /* modals */
 .app .backdrop{background:rgba(4,11,22,.66)!important;backdrop-filter:blur(5px)!important}
@@ -228,7 +228,7 @@
 .app .modalHead{padding:20px 0 17px!important;border-bottom:1px solid var(--ent-border,var(--ux-border))!important}
 .app .modalHead h2{font-size:22px!important;letter-spacing:-.035em!important}
 .app .modalHead>button{width:36px!important;height:36px!important;border-radius:10px!important}
-.app .modal label{font-size:11px!important;font-weight:740!important}
+.app .modal label{font-size:13px!important;font-weight:740!important}
 .app .modal input,.app .modal select{min-height:44px!important}
 .app .modal textarea{min-height:96px!important;padding:11px!important}
 .app .modalActions{padding-top:14px!important}
@@ -250,7 +250,7 @@
   .app .dashboardIntro{grid-template-columns:1fr!important;padding:18px!important;border-radius:19px!important}
   .app .dashboardWelcome{padding:4px 0!important}
   .app .dashboardWelcome h1{font-size:34px!important}
-  .app .dashboardWelcome>p{font-size:13px!important}
+  .app .dashboardWelcome>p{font-size:15px!important}
   .app .dashboardScoreCard{padding:18px!important}
   .app .scoreCardNumber{font-size:46px!important}
   .app .dashboardMetrics{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}
