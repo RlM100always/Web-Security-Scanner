@@ -123,6 +123,32 @@ test('public exposure management page explains contextual workflow',async({page}
   await expect(page.getByText(/Contextual prioritisation/i).first()).toBeVisible();
 });
 
+test('public site mobile layout keeps header, detail hero and footer aligned to the left edge',async({page})=>{
+  for(const width of [320,390,430,768]){
+    await page.setViewportSize({width,height:900});
+    for(const path of ['/product','/developers','/enterprise']){
+      await page.goto(path);
+      const layout=await page.evaluate(()=>({
+        viewport:document.documentElement.clientWidth,
+        document:document.documentElement.scrollWidth,
+        headerLeft:document.querySelector('.publicNav')?.getBoundingClientRect().left??999,
+        brandLeft:document.querySelector('.publicNav .publicBrand')?.getBoundingClientRect().left??999,
+        heroLeft:document.querySelector('.pageHeroVisual')?.getBoundingClientRect().left??999,
+        copyLeft:document.querySelector('.pageHeroCopy')?.getBoundingClientRect().left??999,
+        footerLeft:document.querySelector('.publicFooter')?.getBoundingClientRect().left??999,
+        heroWidth:document.querySelector('.pageHeroVisual')?.getBoundingClientRect().width??0
+      }));
+      expect(layout.document).toBeLessThanOrEqual(layout.viewport+2);
+      expect(layout.headerLeft).toBeLessThanOrEqual(1);
+      expect(layout.brandLeft).toBeLessThanOrEqual(25);
+      expect(layout.heroLeft).toBeLessThanOrEqual(1);
+      expect(layout.copyLeft).toBeLessThanOrEqual(25);
+      expect(layout.footerLeft).toBeLessThanOrEqual(1);
+      expect(layout.heroWidth).toBeGreaterThan(0);
+    }
+  }
+});
+
 test('public detail pages use a balanced visual hero instead of an empty side column',async({page})=>{
   const paths=['/product','/features','/solutions','/enterprise','/developers','/docs','/security','/trust','/status','/standards','/workflow','/exposure-management','/asset-inventory','/scan-profiles','/vulnerability-management','/continuous-monitoring','/governance','/getting-started','/methodology','/research','/reports','/integrations','/deployment','/architecture','/scanner-checks','/responsible-use'];
   for(const path of paths){
