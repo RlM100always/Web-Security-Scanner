@@ -243,3 +243,64 @@ test('public shell never inherits the workspace sidebar offset on phones',async(
     }
   }
 });
+
+test('professional public design system keeps readable type cards and loaded real-world imagery',async({page})=>{
+  for(const width of [390,768,1440]){
+    await page.setViewportSize({width,height:1000});
+    for(const path of ['/','/product','/developers','/enterprise']){
+      await page.goto(path);
+      const story=page.locator('.realWorldSection').first();
+      await expect(story).toBeVisible();
+      const image=story.locator('.realWorldMedia img');
+      await expect(image).toBeVisible();
+      await expect.poll(async()=>image.evaluate((el:any)=>el.complete&&el.naturalWidth>0)).toBe(true);
+      const metrics=await page.evaluate(()=> {
+        const sectionHeading=document.querySelector('.sectionHead h2') as HTMLElement|null;
+        const storyHeading=document.querySelector('.realWorldCopy>h2') as HTMLElement|null;
+        const cardHeading=document.querySelector('.featureCard h3,.homeModuleCard h3,.pageDetailGrid h2') as HTMLElement|null;
+        const story=document.querySelector('.realWorldSection')?.getBoundingClientRect();
+        return {
+          sectionFont:sectionHeading?parseFloat(getComputedStyle(sectionHeading).fontSize):0,
+          storyFont:storyHeading?parseFloat(getComputedStyle(storyHeading).fontSize):0,
+          cardFont:cardHeading?parseFloat(getComputedStyle(cardHeading).fontSize):0,
+          storyLeft:story?.left??-99,
+          storyRight:story?.right??-99,
+          client:document.documentElement.clientWidth,
+          scroll:document.documentElement.scrollWidth
+        };
+      });
+      expect(metrics.storyFont).toBeGreaterThanOrEqual(width<680?30:34);
+      if(metrics.sectionFont) expect(metrics.sectionFont).toBeGreaterThanOrEqual(width<680?30:34);
+      if(metrics.cardFont) expect(metrics.cardFont).toBeGreaterThanOrEqual(width<680?17:17);
+      expect(metrics.storyLeft).toBeGreaterThanOrEqual(-1);
+      expect(metrics.storyRight).toBeLessThanOrEqual(metrics.client+1);
+      expect(metrics.scroll).toBeLessThanOrEqual(metrics.client+2);
+    }
+  }
+});
+
+test('authentication photography loads and form typography remains usable',async({page})=>{
+  for(const width of [390,1024,1440]){
+    await page.setViewportSize({width,height:1000});
+    for(const path of ['/login','/signup']){
+      await page.goto(path);
+      const image=page.locator('.authPhotoBand img');
+      await expect(image).toBeVisible();
+      await expect.poll(async()=>image.evaluate((el:any)=>el.complete&&el.naturalWidth>0)).toBe(true);
+      const metrics=await page.evaluate(()=> {
+        const title=document.querySelector('.authCardExperience h1') as HTMLElement|null;
+        const input=document.querySelector('.authCardExperience input') as HTMLElement|null;
+        return {
+          title:title?parseFloat(getComputedStyle(title).fontSize):0,
+          input:input?parseFloat(getComputedStyle(input).fontSize):0,
+          scroll:document.documentElement.scrollWidth,
+          client:document.documentElement.clientWidth
+        };
+      });
+      expect(metrics.title).toBeGreaterThanOrEqual(width<520?28:33);
+      expect(metrics.input).toBeGreaterThanOrEqual(width<520?13:14);
+      expect(metrics.scroll).toBeLessThanOrEqual(metrics.client+2);
+    }
+  }
+});
+
