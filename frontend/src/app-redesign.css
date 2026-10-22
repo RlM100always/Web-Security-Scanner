@@ -419,3 +419,126 @@
   .app .memberActivityStats,.app .relationSummary,.app .riskMiniList{grid-template-columns:1fr}
   .app .reviewMember{grid-template-columns:1fr}
 }
+
+
+/* Product clarity, role visibility and profile UX */
+.app .roleContext{display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap}
+.app .roleContext>span,.app .profileRoles .rolePill{display:inline-flex;align-items:center;gap:5px;min-height:22px;padding:0 7px;border:1px solid var(--app-line);border-radius:999px;background:var(--app-surface-2);color:var(--app-muted);font-size:9px;font-weight:800}
+.app .systemAdminRole{border-color:color-mix(in srgb,var(--app-blue) 32%,var(--app-line))!important;background:color-mix(in srgb,var(--app-blue) 8%,var(--app-surface))!important;color:var(--app-blue)!important}
+.app .systemAdminRole svg{width:12px;height:12px}
+.app .adminLaunch{width:100%;min-height:42px;padding:0 10px;border:1px solid #24405f;border-radius:10px;background:#0d2035;color:#9fc0ff;display:flex;align-items:center;gap:9px;font-size:11px;font-weight:800;cursor:pointer}
+.app .adminLaunch:hover{background:#143055;color:#fff}
+.app .helpShortcut{display:grid}
+.app .accountRoleExplanation,.app .profileEditIntro,.app .authRoleNotice{
+  display:flex;align-items:flex-start;gap:10px;padding:13px;border:1px solid var(--app-line);border-radius:12px;background:var(--app-surface-2)
+}
+.app .accountRoleExplanation{margin:14px 0}
+.app .accountRoleExplanation>svg,.app .profileEditIntro>svg{width:19px;color:var(--app-blue);flex:none}
+.app .accountRoleExplanation b,.app .profileEditIntro b{font-size:12px}
+.app .accountRoleExplanation p,.app .profileEditIntro p{margin:4px 0 0;color:var(--app-muted);font-size:10px;line-height:1.55}
+.app .profileRoles{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.app .accountActions{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
+.app .profileEditIntro{margin-bottom:13px}
+.app .profileAvatar.large{width:48px;height:48px;font-size:18px;flex:none}
+.app .appearanceChoice{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px}
+.app .appearanceChoice button{min-height:94px;padding:14px;border:1px solid var(--app-line);border-radius:13px;background:var(--app-surface);color:var(--app-text);display:grid;grid-template-columns:28px minmax(0,1fr) 18px;gap:10px;align-items:start;text-align:left;cursor:pointer}
+.app .appearanceChoice button>svg:first-child{width:22px;color:var(--app-muted)}
+.app .appearanceChoice button>svg:last-child{width:16px;color:transparent}
+.app .appearanceChoice button.active{border-color:color-mix(in srgb,var(--app-blue) 45%,var(--app-line));background:color-mix(in srgb,var(--app-blue) 7%,var(--app-surface))}
+.app .appearanceChoice button.active>svg:first-child,.app .appearanceChoice button.active>svg:last-child{color:var(--app-blue)}
+.app .appearanceChoice span{display:grid;gap:4px}.app .appearanceChoice b{font-size:12px}.app .appearanceChoice small{font-size:10px;line-height:1.45;color:var(--app-muted)}
+.authRoleNotice{margin:12px 0 4px;padding:11px!important;border-color:#dce5f0!important;background:#f7f9fd!important;color:#17273e!important}
+.authRoleNotice>svg{width:18px;color:#2b67f6;flex:none}.authRoleNotice b{font-size:11px}.authRoleNotice p{margin:3px 0 0!important;font-size:10px!important;line-height:1.5!important;color:#718096!important}
+
+/* Permanent product guide */
+.app .workspaceGuide{display:grid;gap:18px}
+.app .guideHero{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(280px,.75fr);gap:18px;padding:28px;border:1px solid var(--app-line);border-radius:22px;background:var(--app-surface);box-shadow:var(--app-shadow);overflow:hidden}
+.app .guideHero h1{max-width:760px;margin:9px 0 12px;font-size:clamp(34px,3.6vw,50px);line-height:1.02;letter-spacing:-.06em}
+.app .guideHero>div>p{max-width:760px;margin:0;color:var(--app-muted);font-size:14px;line-height:1.7}
+.app .guideHero aside{align-self:stretch;padding:20px;border-radius:17px;background:#091725;color:#fff;display:flex;flex-direction:column;align-items:flex-start}
+.app .guideHero aside>span{font-size:9px;font-weight:850;letter-spacing:.09em;color:#7590af}
+.app .guideHero aside>b{margin:9px 0 7px;font-size:21px}.app .guideHero aside>p{margin:0 0 16px;color:#92a7c1;font-size:11px;line-height:1.55}
+.app .guideHero aside .ghost{margin-top:auto;border-color:#244363;background:#10243b;color:#dbe8fa}
+.app .guideFlow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.app .guideFlow article{min-height:215px;padding:20px;border:1px solid var(--app-line);border-radius:16px;background:var(--app-surface)}
+.app .guideFlow article>span{font-size:10px;font-weight:850;color:#8996a8}.app .guideFlow article>svg{display:block;width:27px;height:27px;margin:26px 0 16px;color:var(--app-blue)}
+.app .guideFlow h2{margin:0 0 7px;font-size:17px}.app .guideFlow p{margin:0;color:var(--app-muted);font-size:11px;line-height:1.55}
+.app .guideSectionHead{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-top:16px}
+.app .guideSectionHead h2{margin:5px 0 0;font-size:25px;letter-spacing:-.04em}.app .guideSectionHead>p{max-width:460px;margin:0;color:var(--app-muted);font-size:12px;line-height:1.6}
+.app .guidePanelMap{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.app .guidePanelMap>button{min-height:122px;padding:16px;border:1px solid var(--app-line);border-radius:14px;background:var(--app-surface);color:var(--app-text);display:grid;grid-template-columns:40px minmax(0,1fr) 18px;gap:12px;align-items:start;text-align:left;cursor:pointer}
+.app .guidePanelMap>button:hover{border-color:color-mix(in srgb,var(--app-blue) 35%,var(--app-line));background:color-mix(in srgb,var(--app-blue) 3%,var(--app-surface));transform:translateY(-1px)}
+.app .guidePanelMap>button>span{width:40px;height:40px;border-radius:11px;background:color-mix(in srgb,var(--app-blue) 10%,var(--app-surface));color:var(--app-blue);display:grid;place-items:center}
+.app .guidePanelMap>button>span svg{width:19px}.app .guidePanelMap>button>svg{width:16px;color:#8997aa;margin-top:10px}
+.app .guidePanelMap small{font-size:8px;font-weight:850;letter-spacing:.08em;color:var(--app-muted)}.app .guidePanelMap h3{margin:4px 0 5px;font-size:14px}.app .guidePanelMap p{margin:0;color:var(--app-muted);font-size:10px;line-height:1.5}
+.app .guideRoleGrid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:30px;padding:22px;border:1px solid var(--app-line);border-radius:16px;background:var(--app-surface-2)}
+.app .guideRoleGrid h2{margin:5px 0 6px;font-size:23px}.app .guideRoleGrid p{margin:0;color:var(--app-muted);font-size:11px;line-height:1.55}
+.app .guideRoleGrid ul{list-style:none;margin:0;padding:0;display:grid;gap:9px}.app .guideRoleGrid li{display:flex;align-items:flex-start;gap:8px;color:var(--app-text);font-size:11px;line-height:1.45}.app .guideRoleGrid li svg{width:15px;color:var(--app-green);flex:none;margin-top:1px}
+
+/* Admin clarity and functional actions */
+.adminApp .adminSectionIntro{display:flex;justify-content:space-between;gap:24px;margin-bottom:14px}
+.adminApp .adminSectionIntro h2{margin:5px 0 4px;font-size:25px;letter-spacing:-.04em}.adminApp .adminSectionIntro p{margin:0;max-width:700px;color:var(--app-muted);font-size:12px;line-height:1.6}
+.adminApp .adminUserActions{display:flex;flex-wrap:wrap;gap:5px}.adminApp .adminUserActions .mini{min-height:32px;padding:0 8px;font-size:9px}
+.adminApp .rolePill{display:inline-flex;align-items:center;min-height:23px;padding:0 7px;border-radius:999px;font-size:9px;font-weight:850}
+
+/* Theme consistency: normalize secondary surfaces that legacy structural CSS used to hard-code */
+.app .notice,.app .verifyBanner,.app .offlineBanner,.app .onboardingJourney,.app .executiveHead,.app .executiveGrid>div,.app .coverageGrid>div,.app .queue>div,.app .policySummary>div,.app .standardsGrid>div,.app .assetDiff,.app .riskDistribution,.app .postureTrend,.app .escalationStrip,.app .savedViewBar,.app .bulkBar,.app .liveBar,.app .verifyBanner,.app .overrideBanner,.app .successBox,.app .error,.app .toast{
+  border-color:var(--app-line)!important;color:var(--app-text)
+}
+.app .notice,.app .onboardingJourney,.app .executiveHead,.app .executiveGrid>div,.app .coverageGrid>div,.app .queue>div,.app .policySummary>div,.app .standardsGrid>div,.app .assetDiff,.app .riskDistribution,.app .postureTrend,.app .savedViewBar,.app .bulkBar{background:var(--app-surface)!important}
+.app .verifyBanner,.app .liveBar{background:color-mix(in srgb,var(--app-blue) 7%,var(--app-surface))!important}
+.app .offlineBanner,.app .overrideBanner{background:color-mix(in srgb,var(--app-amber) 9%,var(--app-surface))!important}
+.app .error{background:color-mix(in srgb,var(--app-red) 8%,var(--app-surface))!important;color:var(--app-red)!important}
+.app .toast{background:var(--app-navy-2)!important;color:#fff!important}
+.app .muted,.app p.muted{color:var(--app-muted)!important}
+.app .link{border:0;background:none;color:var(--app-blue);font-size:10px;font-weight:800;cursor:pointer}
+.app .dangerText{color:var(--app-red)!important}
+.app .status{border:1px solid transparent}
+.app .status.completed,.app .status.pass,.app .status.verified,.app .status.healthy,.app .good{background:color-mix(in srgb,var(--app-green) 12%,var(--app-surface))!important;color:var(--app-green)!important}
+.app .status.warning,.app .status.queued,.app .status.in_progress,.app .status.scanning{background:color-mix(in srgb,var(--app-amber) 13%,var(--app-surface))!important;color:var(--app-amber)!important}
+.app .status.failed,.app .status.error,.app .status.cancelled,.app .bad{background:color-mix(in srgb,var(--app-red) 11%,var(--app-surface))!important;color:var(--app-red)!important}
+.app .sev.critical,.app .sev.high{background:color-mix(in srgb,var(--app-red) 11%,var(--app-surface))!important;color:var(--app-red)!important}
+.app .sev.medium{background:color-mix(in srgb,var(--app-amber) 12%,var(--app-surface))!important;color:var(--app-amber)!important}
+.app .sev.low,.app .sev.info{background:color-mix(in srgb,var(--app-blue) 10%,var(--app-surface))!important;color:var(--app-blue)!important}
+:root[data-theme="dark"] body{background:var(--app-bg);color:var(--app-text)}
+:root[data-theme="dark"] .app .codeBox,:root[data-theme="dark"] .app .secretReveal{background:#050d17;color:#dce8f7}
+:root[data-theme="dark"] .app .profileAvatar{background:#173657!important;color:#8db3ff!important}
+:root[data-theme="dark"] .app .rolePill{background:#12243a!important;border-color:#26415f!important;color:#a9bdd6!important}
+:root[data-theme="dark"] .app .progress,:root[data-theme="dark"] .app .miniProgress{background:#1b2a3d!important}
+:root[data-theme="dark"] .app input:disabled{background:#0b1522!important;color:#728299!important}
+:root[data-theme="dark"] .app .skeleton{background:linear-gradient(90deg,#142236,#1c2d43,#142236)!important}
+:root[data-theme="dark"] .adminApp,:root[data-theme="dark"] .adminMain{background:var(--app-bg)!important;color:var(--app-text)!important}
+:root[data-theme="dark"] .adminHeader,:root[data-theme="dark"] .adminApp .panel,:root[data-theme="dark"] .adminApp .tableWrap,:root[data-theme="dark"] .adminApp .metric,:root[data-theme="dark"] .adminApp input,:root[data-theme="dark"] .adminApp select,:root[data-theme="dark"] .adminApp textarea{background:var(--app-surface)!important;color:var(--app-text)!important;border-color:var(--app-line)!important}
+:root[data-theme="dark"] .adminApp table thead th{background:var(--app-surface-2)!important;color:var(--app-muted)!important;border-color:var(--app-line)!important}
+:root[data-theme="dark"] .adminApp table tbody td{background:var(--app-surface)!important;color:var(--app-text)!important;border-color:var(--app-line-2)!important}
+:root[data-theme="dark"] .adminApp .ghost{background:var(--app-surface)!important;color:var(--app-text)!important;border-color:var(--app-line)!important}
+:root[data-theme="dark"] .adminApp .muted,:root[data-theme="dark"] .adminApp p,:root[data-theme="dark"] .adminApp small{color:var(--app-muted)}
+:root[data-theme="dark"] .authPage.authExperience{background:#f3f6fa;color:#112036} /* auth remains intentionally light for consistent unauthenticated branding */
+
+/* Responsive clarity */
+@media(max-width:1020px){
+  .app .guideFlow{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .app .guideHero{grid-template-columns:1fr}
+  .app .guideHero aside{min-height:180px}
+}
+@media(max-width:860px){
+  .app .roleContext{display:none}
+  .app .guidePanelMap{grid-template-columns:1fr}
+  .app .guideRoleGrid{grid-template-columns:1fr;gap:16px}
+  .app .appearanceChoice{grid-template-columns:1fr}
+  .adminApp .adminUserActions{min-width:190px}
+  .adminApp .tableWrap{overflow:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+}
+@media(max-width:620px){
+  .app .helpShortcut{display:grid!important}
+  .app .guideHero{padding:18px;border-radius:17px}.app .guideHero h1{font-size:31px}.app .guideHero>div>p{font-size:12px}
+  .app .guideFlow{grid-template-columns:1fr}.app .guideFlow article{min-height:0;padding:17px}.app .guideFlow article>svg{margin:18px 0 12px}
+  .app .guideSectionHead{align-items:flex-start;flex-direction:column;gap:7px}.app .guideSectionHead h2{font-size:22px}
+  .app .guidePanelMap>button{min-height:110px;padding:14px}.app .guideRoleGrid{padding:17px}
+  .app .accountActions{display:grid;grid-template-columns:1fr}.app .accountActions>*{width:100%}
+  .app .profile{align-items:flex-start}.app .profileRoles{margin-top:5px}
+  .app .appearanceChoice{padding:11px}.app .appearanceChoice button{min-height:84px;padding:12px}
+  .authRoleNotice{padding:10px!important}
+  .adminApp .adminSectionIntro{display:block}.adminApp .adminSectionIntro h2{font-size:23px}
+  .adminApp .adminUserActions{display:grid;grid-template-columns:1fr;min-width:150px}
+}
