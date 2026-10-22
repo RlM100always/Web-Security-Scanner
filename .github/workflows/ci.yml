@@ -36,10 +36,18 @@ jobs:
           node-version: '22'
       - run: cd frontend && npm install --no-fund --no-audit && npm run build
 
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the production hosting image
+        run: docker build --pull -t sentinelscope:ci .
+
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    needs: [backend, frontend]
+    needs: [backend, frontend, container]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
