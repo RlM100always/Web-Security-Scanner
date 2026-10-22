@@ -80,6 +80,16 @@ def create_admin_blueprint():
         audit("SYSTEM_USER_UPDATED","user",user_id,changed)
         return {"ok":True,**changed}
 
+    @bp.post("/users/<user_id>/revoke-sessions")
+    @require_system_admin
+    def user_revoke_sessions(user_id):
+        ident=current_identity();target=repo().get_user_by_id(user_id)
+        if not target:return {"error":"User not found"},404
+        if user_id==ident["user_id"]:return {"error":"Use sign out or account settings to end your own current session"},400
+        repo().revoke_other_sessions(user_id,"")
+        audit("SYSTEM_USER_SESSIONS_REVOKED","user",user_id,{"email":target.get("email")})
+        return {"ok":True}
+
     @bp.get("/organizations")
     @require_system_admin
     def organizations():

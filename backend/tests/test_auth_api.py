@@ -213,3 +213,17 @@ def test_read_only_demo_login_is_seeded_and_cannot_create_projects():
         blocked=client.post("/api/v1/projects",json={"name":"Should be blocked"},
                             headers={"X-CSRF-Token":payload["csrf_token"]})
         assert blocked.status_code==403
+
+
+def test_profile_update_changes_display_name_and_validates_length():
+    with tempfile.TemporaryDirectory() as d:
+        app=build(os.path.join(d,"profile.sqlite3"));client=app.test_client()
+        signup=client.post("/api/v1/auth/signup",json={"name":"Original User","email":"profile@example.com","password":"correct-horse-battery","organization_name":"Acme"})
+        assert signup.status_code==201
+        csrf=signup.get_json()["csrf_token"]
+        updated=client.patch("/api/v1/auth/profile",json={"name":"Updated User"},headers={"X-CSRF-Token":csrf})
+        assert updated.status_code==200 and updated.get_json()["name"]=="Updated User"
+        me=client.get("/api/v1/auth/me")
+        assert me.status_code==200 and me.get_json()["user"]["name"]=="Updated User"
+        invalid=client.patch("/api/v1/auth/profile",json={"name":"x"},headers={"X-CSRF-Token":csrf})
+        assert invalid.status_code==400

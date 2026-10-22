@@ -306,6 +306,15 @@ class Repository:
     def update_user_password(self,user_id,password_hash):
         with self.conn() as c:c.execute("update users set password_hash=? where id=?",(password_hash,user_id))
 
+    def update_user_profile(self,user_id,name):
+        name=(name or "").strip()
+        if len(name)<2 or len(name)>120:
+            raise ValueError("Name must be between 2 and 120 characters")
+        with self.conn() as c:
+            cur=c.execute("update users set name=? where id=?",(name,user_id))
+            if not cur.rowcount:return None
+        return self.get_user_by_id(user_id)
+
     def list_sessions(self,user_id):
         with self.conn() as c:
             return [dict(r) for r in c.execute("""select id,created_at,last_seen_at,user_agent,ip,expires_at,revoked_at

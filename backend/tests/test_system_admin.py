@@ -136,3 +136,14 @@ def test_system_admin_restore_requires_maintenance_workers_offline_and_idle_queu
         restored=restore()
         assert restored.status_code==200
         assert restored.get_json()["ok"] is True
+
+
+def test_system_admin_can_revoke_another_users_sessions():
+    with tempfile.TemporaryDirectory() as d:
+        path=os.path.join(d,"admin-sessions.sqlite3");app=build(path);admin=app.test_client();user=app.test_client()
+        a=signup(admin,"root@example.com","Root");csrf=a.get_json()["csrf_token"]
+        u=signup(user,"member@example.com","Member");uid=u.get_json()["user"]["user_id"]
+        assert user.get("/api/v1/auth/me").status_code==200
+        revoked=admin.post("/api/v1/admin/users/"+uid+"/revoke-sessions",json={},headers={"X-CSRF-Token":csrf})
+        assert revoked.status_code==200
+        assert user.get("/api/v1/auth/me").status_code==401

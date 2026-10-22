@@ -250,6 +250,16 @@ def create_blueprint():
         ident=current_identity();repo().revoke_session(ident['session_id']);audit('LOGOUT','user',ident['user_id'])
         response=jsonify({'ok':True});response.delete_cookie('wss_session',path='/');return response
 
+    @bp.patch('/auth/profile')
+    @require_auth
+    def update_profile():
+        ident=current_identity();d=request.get_json(force=True) or {}
+        try:user=repo().update_user_profile(ident['user_id'],d.get('name'))
+        except ValueError as e:return {'error':str(e)},400
+        if not user:return {'error':'Account not found'},404
+        audit('PROFILE_UPDATED','user',ident['user_id'],{'name':user['name']})
+        return {'ok':True,'name':user['name'],'email':user['email']}
+
     @bp.post('/auth/password')
     @require_auth
     def change_password():
