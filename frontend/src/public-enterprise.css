@@ -562,3 +562,7 @@
 .pageHero.pageHeroVisual>.pageVisual{width:100%;max-width:720px;justify-self:end;padding:43px 0 46px}
 @media(max-width:900px){.pageHero.pageHeroVisual>.pageVisual{width:100%;max-width:760px;justify-self:center;padding:38px 10px 42px}}
 @media(max-width:620px){.pageHero.pageHeroVisual>.pageVisual{width:100%;max-width:none;padding:38px 0 37px}}
+
+/* Keep the comparison full-width when embedded inside a constrained detail-page section. */
+.pageDeepDiveSection .workflowCompareSection{padding-left:24px;padding-right:24px}
+@media(max-width:620px){.pageDeepDiveSection .workflowCompareSection{padding-left:17px;padding-right:17px}}
