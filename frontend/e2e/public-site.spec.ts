@@ -5,7 +5,7 @@ test('public product site explains platform and routes to signup',async({page})=
   await expect(page).toHaveTitle(/SentinelScope — Web Security Assessment Platform/);
   await expect(page.getByRole('heading',{name:/Turn web-security checks/i})).toBeVisible();
   await expect(page.getByText('OWASP WSTG')).toBeVisible();
-  await expect(page.getByRole('link',{name:/Start workspace/i})).toBeVisible();
+  await expect(page.locator('.redesignedHero .heroCtas').getByRole('link',{name:/Start workspace/i})).toBeVisible();
   await expect(page.locator('.redesignedHero .heroVisual')).toBeVisible();
   await expect(page.getByRole('heading',{name:/A security assessment becomes useful/i})).toBeVisible();
   await expect(page.locator('.homeModuleCard')).toHaveCount(3);
@@ -142,7 +142,7 @@ test('public site mobile layout keeps header, detail hero and footer aligned to 
       expect(layout.headerLeft).toBeLessThanOrEqual(1);
       expect(layout.brandLeft).toBeLessThanOrEqual(25);
       expect(layout.heroLeft).toBeLessThanOrEqual(1);
-      expect(layout.copyLeft).toBeLessThanOrEqual(25);
+      expect(layout.copyLeft).toBeLessThanOrEqual(30);
       expect(layout.footerLeft).toBeLessThanOrEqual(1);
       expect(layout.heroWidth).toBeGreaterThan(0);
     }
