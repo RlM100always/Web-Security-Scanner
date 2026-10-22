@@ -7,6 +7,13 @@ test('public product site explains platform and routes to signup',async({page})=
   await expect(page.getByText('OWASP WSTG')).toBeVisible();
   await expect(page.getByRole('link',{name:/Start workspace/i})).toBeVisible();
   await expect(page.locator('.redesignedHero .heroVisual')).toBeVisible();
+  await expect(page.getByRole('heading',{name:/A security assessment becomes useful/i})).toBeVisible();
+  await expect(page.locator('.homeModuleCard')).toHaveCount(3);
+  await expect(page.locator('.evidenceLifecycleRail article')).toHaveCount(5);
+  await expect(page.locator('.workflowCompareSection')).toBeVisible();
+  const firstFaq=page.locator('.publicFaqItem').first();
+  await firstFaq.locator('summary').click();
+  await expect(firstFaq).toHaveAttribute('open','');
 
   await page.goto('/security');
   await expect(page.getByRole('heading',{name:/Safe-by-default behaviour/i})).toBeVisible();
@@ -152,4 +159,26 @@ test('login, signup and account action pages have branded responsive visual pane
       expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.client+2);
     }
   }
+});
+
+test('signup password controls, matching validation and trusted-device choice work',async({page})=>{
+  await page.goto('/signup');
+  const password=page.getByPlaceholder('12+ characters');
+  const confirmation=page.getByPlaceholder('Re-enter your password');
+  await password.fill('unique-demo-passphrase-123');
+  await confirmation.fill('different-demo-passphrase-456');
+  await expect(page.locator('.authSubmit')).toBeDisabled();
+  await expect(page.getByText('Passwords do not match yet.')).toBeVisible();
+  await confirmation.fill('unique-demo-passphrase-123');
+  await expect(page.locator('.authSubmit')).toBeEnabled();
+  await page.locator('.authPasswordToggle').first().click();
+  await expect(password).toHaveAttribute('type','text');
+  await page.locator('.authPasswordToggle').first().click();
+  await expect(password).toHaveAttribute('type','password');
+
+  await page.goto('/login');
+  const remember=page.getByRole('checkbox',{name:/Keep me signed in for 30 days/i});
+  await expect(remember).not.toBeChecked();
+  await remember.check();
+  await expect(remember).toBeChecked();
 });
