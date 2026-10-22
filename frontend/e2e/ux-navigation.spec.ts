@@ -14,6 +14,22 @@ test('workspace navigation, command search and mobile layout are user-friendly',
   await expect(page).toHaveTitle('Dashboard | SentinelScope');
   await expect(page.getByRole('heading',{name:'Know what needs attention.'})).toBeVisible();
   await expect(page.locator('.dashboardIntro')).toBeVisible();
+  const visual=await page.evaluate(()=> {
+    const intro=document.querySelector('.dashboardIntro') as HTMLElement|null;
+    const side=document.querySelector('.side') as HTMLElement|null;
+    const score=document.querySelector('.dashboardScoreCard') as HTMLElement|null;
+    const dock=document.querySelector('.mobileDock') as HTMLElement|null;
+    return {
+      introRadius:intro?parseFloat(getComputedStyle(intro).borderRadius):0,
+      sideWidth:side?.getBoundingClientRect().width||0,
+      scoreBg:score?getComputedStyle(score).backgroundImage:'',
+      dockRadius:dock?parseFloat(getComputedStyle(dock).borderRadius):0
+    };
+  });
+  expect(visual.introRadius).toBeGreaterThanOrEqual(18);
+  expect(visual.scoreBg).not.toBe('none');
+  if(testInfo.project.name==='mobile-chromium') expect(visual.dockRadius).toBeGreaterThanOrEqual(16);
+  else expect(visual.sideWidth).toBeGreaterThanOrEqual(220);
 
   const skip=page.getByRole('link',{name:'Skip to main content'});
   await expect(skip).toBeAttached();
