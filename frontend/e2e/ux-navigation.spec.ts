@@ -6,8 +6,9 @@ test('workspace navigation, command search and mobile layout are user-friendly',
   await page.getByLabel('Full name').fill('UX Test Owner');
   await page.getByLabel('Workspace name').fill('UX Review Workspace');
   await page.getByLabel('Email address').fill(email);
-  await page.getByLabel('Password').fill('ux-review-password-123');
-  await page.getByRole('button',{name:'Create account'}).click();
+  await page.getByLabel('Password',{exact:true}).fill('ux-review-password-123');
+  await page.getByLabel('Confirm password').fill('ux-review-password-123');
+  await page.getByRole('button',{name:'Create secure workspace'}).click();
 
   await expect(page.getByRole('heading',{name:'Dashboard'})).toBeVisible();
   await expect(page).toHaveTitle('Dashboard | SentinelScope');
