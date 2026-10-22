@@ -12,8 +12,9 @@ test('workspace remediation governance persists on desktop and mobile',async({pa
   await page.getByLabel('Full name').fill('Governance Owner');
   await page.getByLabel('Workspace name').fill('Security Operations');
   await page.getByLabel('Email address').fill(email);
-  await page.getByLabel('Password').fill('governance-password-123');
-  await page.getByRole('button',{name:'Create account'}).click();
+  await page.getByLabel('Password',{exact:true}).fill('governance-password-123');
+  await page.getByLabel('Confirm password').fill('governance-password-123');
+  await page.getByRole('button',{name:'Create secure workspace'}).click();
   await expect(page.getByRole('heading',{name:'Dashboard'})).toBeVisible();
 
   await openNav(page,'Settings');
