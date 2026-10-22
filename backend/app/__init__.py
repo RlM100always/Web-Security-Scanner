@@ -69,17 +69,29 @@ def create_app(config_object=None):
                 with repo.conn() as c:
                     c.execute("update users set email_verified=1,active=1 where id=?",(demo_user_id,))
                     c.execute("update memberships set role='viewer',active=1 where user_id=?",(demo_user_id,))
-                projects=repo.list_projects(demo_org_id)
-                demo_project=next((p for p in projects if p.get("name")=="Demo security workspace"),None)
-                if not demo_project:
-                    demo_project=repo.create_project(
-                        "Demo security workspace",
-                        "Read-only sample workspace for exploring SentinelScope. The example target is not authorised for scanning.",
-                        demo_org_id,demo_user_id,tags=["demo","read-only"])
-                    repo.create_target(
-                        demo_project["id"],"https://example.com","Example domain (demo only)",
-                        authorized=False,verified=False,created_by=demo_user_id,
-                        environment="test",tags=["demo","read-only"])
+                # Serialise the sample-workspace check/insert: all Gunicorn workers share this SQLite file.
+                with repo.conn() as c:
+                    c.execute("BEGIN IMMEDIATE")
+                    demo_project=c.execute(
+                        "select id from projects where organization_id=? and name=? order by created_at limit 1",
+                        (demo_org_id,"Demo security workspace")).fetchone()
+                    if demo_project:
+                        demo_project_id=demo_project["id"]
+                    else:
+                        demo_project_id=repo._id()
+                        c.execute(
+                            "insert into projects(id,name,description,organization_id,created_by,created_at,status,tags_json) values(?,?,?,?,?,?,?,?)",
+                            (demo_project_id,"Demo security workspace",
+                             "Read-only sample workspace for exploring SentinelScope. The example target is not authorised for scanning.",
+                             demo_org_id,demo_user_id,repo.now(),"active",'["demo","read-only"]'))
+                    demo_target=c.execute(
+                        "select id from targets where project_id=? and name=? limit 1",
+                        (demo_project_id,"Example domain (demo only)")).fetchone()
+                    if not demo_target:
+                        c.execute(
+                            "insert into targets(id,project_id,url,name,authorized,verified,created_by,created_at,criticality,environment,tags_json) values(?,?,?,?,?,?,?,?,?,?,?)",
+                            (repo._id(),demo_project_id,"https://example.com","Example domain (demo only)",
+                             0,0,demo_user_id,repo.now(),"medium","test",'["demo","read-only"]'))
         else:
             app.logger.warning("Read-only demo login is enabled but the configured email or password is invalid.")
     app.extensions["repo"]=repo
