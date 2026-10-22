@@ -69,7 +69,7 @@ export default function App(){
     if(publicPaths.includes(specialPath))return <PublicSite path={specialPath}/>;
     if(!['/signup','/login'].includes(specialPath))return <PublicSite path="/404"/>;
     const routedMode=specialPath==='/signup'?'signup':specialPath==='/login'?'login':authMode;
-    return <AuthScreen mode={routedMode} setMode={setAuthMode} onAuth={(u:User,c:string)=>{setCsrfToken(c);setUser(u)}} setErr={setErr} err={err}/>;
+    return <AuthScreen mode={routedMode} setMode={setAuthMode} onAuth={(u:User,c:string)=>{setCsrfToken(c);setUser(u);setNav('Dashboard');window.history.replaceState({view:'Dashboard'},'','/')}} setErr={setErr} err={err}/>;
   }
   if(specialPath==='/admin')return user.system_admin?<SystemAdminPanel user={user}/>:<AdminAccessDenied/>;
 
