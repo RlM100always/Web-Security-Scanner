@@ -110,12 +110,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 
 /* Mobile navigation gets a real drawer, visible search, and a usable thumb zone. */
 @media(min-width:1101px){
-  .app>main{margin-left:260px}
+  .app>main{margin-left:260px;width:calc(100% - 260px)}
   .mobileDock{display:none!important}
 }
 @media(min-width:821px) and (max-width:1100px){
   .side{width:224px}
-  .app>main{margin-left:224px}
+  .app>main{margin-left:224px;width:calc(100% - 224px)}
   .content{padding:24px 22px 44px}
   .dashboardIntro{grid-template-columns:minmax(0,1.2fr) minmax(250px,.8fr);gap:14px}
   .executiveGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -124,7 +124,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 }
 @media(max-width:820px){
   body{padding-bottom:calc(82px + env(safe-area-inset-bottom))}
-  .app>main{margin-left:0!important;min-width:0;width:100%}
+  .app>main{margin-left:0!important;min-width:0;width:100%!important}
   .side{position:fixed!important;left:0;top:0;bottom:0;width:min(88vw,340px)!important;z-index:120!important;transform:translateX(-105%)!important;transition:transform .22s ease;overflow-y:auto;overscroll-behavior:contain}
   .side.open{transform:translateX(0)!important}
   .drawerScrim{display:block;position:fixed;inset:0;z-index:110;border:0;background:rgba(4,10,20,.58);backdrop-filter:blur(2px);cursor:pointer}
