@@ -102,7 +102,7 @@ test('public navigation remains usable and keyboard accessible on mobile',async(
   await menu.click();
   await expect(menu).toHaveAttribute('aria-expanded','true');
   await page.locator('.publicNav nav').getByRole('link',{name:'Solutions',exact:true}).click();
-  await expect(page).toHaveURL(/\\/solutions$/);
+  await expect(page).toHaveURL(/\/solutions$/);
   await expect(page.getByRole('heading',{name:/practical security workspace/i})).toBeVisible();
 });
 
