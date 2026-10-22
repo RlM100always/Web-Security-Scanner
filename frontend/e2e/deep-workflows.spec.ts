@@ -17,8 +17,9 @@ test('deep scan policy and API key workflow works',async({page},testInfo)=>{
   await page.getByLabel('Full name').fill('Deep Feature Owner');
   await page.getByLabel('Workspace name').fill('Deep Feature Workspace');
   await page.getByLabel('Email address').fill(email);
-  await page.getByLabel('Password').fill('deep-feature-password-123');
-  await page.getByRole('button',{name:'Create account'}).click();
+  await page.getByLabel('Password',{exact:true}).fill('deep-feature-password-123');
+  await page.getByLabel('Confirm password').fill('deep-feature-password-123');
+  await page.getByRole('button',{name:'Create secure workspace'}).click();
   await expect(page.getByRole('heading',{name:'Dashboard'})).toBeVisible();
   await expect(page.getByText('WORKSPACE READINESS')).toBeVisible();
 
