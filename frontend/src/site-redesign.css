@@ -196,7 +196,7 @@
 .publicSite .homeModuleMiniRows{margin-top:8px;border-radius:10px;overflow:hidden}.publicSite .homeModuleMiniRows>div{padding:10px;border-bottom:1px solid #e9eef4;background:#fff;font-size:11px}.publicSite .homeModuleMiniRows>div:last-child{border-bottom:0}
 
 /* workflow */
-.publicSite .modernFlowSection,.publicSite .pageWorkflowSection{width:min(1240px,calc(100% - 32px));margin:10px auto 34px;padding:70px 52px;border-radius:26px;background:#081421;color:#fff}
+.publicSite .modernFlowSection,.publicSite .pageWorkflowSection{width:min(1240px,calc(100% - 32px));margin:10px auto 34px;padding:70px 52px;border-radius:26px;background:linear-gradient(145deg,#07121f 0%,#0a1a2d 100%);color:#fff}
 .publicSite .modernFlowSection .sectionHead>span,.publicSite .pageWorkflowSection .pageHeroEyebrow{color:#82a8ff}
 .publicSite .modernFlowSection .sectionHead h2,.publicSite .pageWorkflowSection h2{color:#fff}
 .publicSite .modernFlowSection .sectionHead p,.publicSite .pageWorkflowSection p{color:#9caec3}
