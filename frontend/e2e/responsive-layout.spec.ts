@@ -32,8 +32,9 @@ test('authenticated shell switches between desktop and mobile navigation models'
   await page.getByLabel('Full name').fill('Responsive Owner');
   await page.getByLabel('Workspace name').fill('Responsive Workspace');
   await page.getByLabel('Email address').fill('responsive-'+testInfo.project.name+'-'+Date.now()+'@example.com');
-  await page.getByLabel('Password').fill('responsive-secure-password-123');
-  await page.getByRole('button',{name:'Create account'}).click();
+  await page.getByLabel('Password',{exact:true}).fill('responsive-secure-password-123');
+  await page.getByLabel('Confirm password').fill('responsive-secure-password-123');
+  await page.getByRole('button',{name:'Create secure workspace'}).click();
   await expect(page.getByRole('heading',{name:'Dashboard'})).toBeVisible();
   await noPageOverflow(page);
 
