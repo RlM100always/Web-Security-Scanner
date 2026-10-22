@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: sentinelscope
+    runtime: docker
+    plan: starter
+    region: singapore
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    numInstances: 1
+    maxShutdownDelaySeconds: 60
+    disk:
+      name: sentinelscope-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DATABASE_PATH
+        value: /data/scanner.sqlite3
+      - key: BACKUP_DIR
+        value: /data/backups
+      - key: SCANNER_ALLOW_PRIVATE
+        value: "0"
+      - key: SESSION_COOKIE_SECURE
+        value: "1"
+      - key: SESSION_COOKIE_SAMESITE
+        value: Lax
+      - key: TRUST_PROXY_HEADERS
+        value: "1"
+      - key: TRUST_PROXY_HOPS
+        value: "1"
+      - key: APP_ENCRYPTION_KEY
+        generateValue: true
+      - key: SYSTEM_ADMIN_EMAILS
+        sync: false
