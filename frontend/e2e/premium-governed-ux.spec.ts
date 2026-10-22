@@ -6,8 +6,9 @@ async function signup(page:any){
   await page.getByLabel('Full name').fill('Governed UX Owner');
   await page.getByLabel('Workspace name').fill('Governed UX');
   await page.getByLabel('Email address').fill('governed-'+Date.now()+'@example.com');
-  await page.getByLabel('Password').fill('governed-secure-password-123');
-  await page.getByRole('button',{name:'Create account'}).click();
+  await page.getByLabel('Password',{exact:true}).fill('governed-secure-password-123');
+  await page.getByLabel('Confirm password').fill('governed-secure-password-123');
+  await page.getByRole('button',{name:'Create secure workspace'}).click();
   await expect(page.getByRole('heading',{name:'Dashboard'})).toBeVisible();
 }
 
