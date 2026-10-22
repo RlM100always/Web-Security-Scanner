@@ -47,7 +47,7 @@ export default function App(){
   useEffect(()=>{setSelected(null);setSelectedIssue(null);setAudit([]);setInvitations([]);setAccessReviews([]);setWebhooks([]);setWebhookDeliveries([]);setBackups([]);setIssues([]);setIssueSummary({});setEscalations([]);setAssets([]);setAssetSummary({});setExposure(null)},[user?.organization_id]);
   useEffect(()=>{document.documentElement.dataset.theme=theme;localStorage.setItem('sentinel-theme',theme)},[theme]);
   useEffect(()=>{const up=()=>setOnline(true),down=()=>setOnline(false);window.addEventListener('online',up);window.addEventListener('offline',down);return()=>{window.removeEventListener('online',up);window.removeEventListener('offline',down)}},[]);
-  useEffect(()=>{if(!mobile)return;const previous=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=previous}},[mobile]);
+  useEffect(()=>{if(!mobile)return;const previousOverflow=document.body.style.overflow;const returnFocus=document.activeElement instanceof HTMLElement?document.activeElement:null;document.body.style.overflow='hidden';document.querySelector<HTMLButtonElement>('.mobileClose')?.focus();return()=>{document.body.style.overflow=previousOverflow;returnFocus?.focus()}},[mobile]);
   useEffect(()=>{const key=(e:KeyboardEvent)=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();setCmdOpen(v=>!v)}else if(e.key==='Escape'){setCmdOpen(false);setMobile(false)}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key)},[]);
   useEffect(()=>{if(!selected||!user||!['QUEUED','SCANNING','CREATED'].includes(selected.status))return;
     const es=new EventSource('/api/v1/scans/'+selected.id+'/events',{withCredentials:true} as any);
