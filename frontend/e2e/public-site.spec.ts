@@ -5,7 +5,8 @@ test('public product site explains platform and routes to signup',async({page})=
   await expect(page).toHaveTitle(/SentinelScope — Web Security Assessment Platform/);
   await expect(page.getByRole('heading',{name:/Turn web-security checks/i})).toBeVisible();
   await expect(page.getByText('OWASP WSTG')).toBeVisible();
-  await expect(page.getByRole('link',{name:/Create secure workspace/i})).toBeVisible();
+  await expect(page.getByRole('link',{name:/Start workspace/i})).toBeVisible();
+  await expect(page.locator('.redesignedHero .heroVisual')).toBeVisible();
 
   await page.goto('/security');
   await expect(page.getByRole('heading',{name:/Safe-by-default behaviour/i})).toBeVisible();
@@ -113,4 +114,42 @@ test('public exposure management page explains contextual workflow',async({page}
   await expect(page.getByRole('heading',{name:/Connect governed scope/i})).toBeVisible();
   await expect(page.getByText(/Relationship map/i).first()).toBeVisible();
   await expect(page.getByText(/Contextual prioritisation/i).first()).toBeVisible();
+});
+
+test('public detail pages use a balanced visual hero instead of an empty side column',async({page})=>{
+  const paths=['/product','/features','/solutions','/enterprise','/developers','/docs','/security','/trust','/status','/standards','/workflow','/exposure-management','/asset-inventory','/scan-profiles','/vulnerability-management','/continuous-monitoring','/governance','/getting-started','/methodology','/research','/reports','/integrations','/deployment','/architecture','/scanner-checks','/responsible-use'];
+  for(const path of paths){
+    await page.goto(path);
+    await expect(page.locator('.pageHeroVisual')).toBeVisible();
+    await expect(page.locator('.pageHeroCopy h1')).toBeVisible();
+    await expect(page.locator('.pageVisual')).toBeVisible();
+    const dimensions=await page.evaluate(()=>({
+      hero:document.querySelector('.pageHeroVisual')?.getBoundingClientRect().width||0,
+      copy:document.querySelector('.pageHeroCopy')?.getBoundingClientRect().width||0,
+      visual:document.querySelector('.pageVisual')?.getBoundingClientRect().width||0,
+      scroll:document.documentElement.scrollWidth,
+      client:document.documentElement.clientWidth
+    }));
+    expect(dimensions.hero).toBeGreaterThan(0);
+    expect(dimensions.copy).toBeGreaterThan(0);
+    expect(dimensions.visual).toBeGreaterThan(0);
+    expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.client+2);
+  }
+});
+
+test('login, signup and account action pages have branded responsive visual panels',async({page})=>{
+  for(const width of [320,390,768,1024,1440]){
+    await page.setViewportSize({width,height:900});
+    for(const path of ['/login','/signup','/verify-email','/reset-password','/accept-invite']){
+      await page.goto(path);
+      await expect(page.locator('.authExperience')).toBeVisible();
+      await expect(page.locator('.authBrand')).toBeVisible();
+      await expect(page.locator('.authVisualCard')).toBeVisible();
+      await expect(page.locator('.authCardExperience')).toBeVisible();
+      const dimensions=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,client:document.documentElement.clientWidth,brand:document.querySelector('.authBrand')?.getBoundingClientRect().width||0,card:document.querySelector('.authCardExperience')?.getBoundingClientRect().width||0}));
+      expect(dimensions.brand).toBeGreaterThan(0);
+      expect(dimensions.card).toBeGreaterThan(0);
+      expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.client+2);
+    }
+  }
 });
