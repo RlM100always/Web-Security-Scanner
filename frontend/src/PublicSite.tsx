@@ -254,19 +254,35 @@ function PageVisual({page}:{page:string}){
 
 function StaticPage({page}:{page:string}){
   const pages:any={
-    product:{eyebrow:'PLATFORM',title:'One workflow from authorised target to verified remediation.',intro:'SentinelScope combines asset discovery, bounded web assessment, issue lifecycle management, reporting and operational governance in a single security workspace.',sections:[
-      ['Assess with governed profiles','Project baselines and named versioned scan profiles control crawl depth, page limits, request pacing, path scope and checks. Every scan keeps immutable profile and policy provenance.',Radar],
-      ['Manage findings beyond one scan','Stable fingerprints create a continuing finding record with owner, due date, status, risk reason, comments, occurrence count and detection history.',Workflow],
-      ['Understand your web estate','The asset inventory shows the latest discovered surface for every target and highlights drift between completed scans.',Globe2],
-      ['Operate the platform','Persistent jobs, worker heartbeat, schedules, backups, audit events, quotas, retention and system administration support repeatable operation.',ServerCog]
+    product:{eyebrow:'PRODUCT WORKFLOW',title:'One governed path from authorised target to verified remediation.',intro:'SentinelScope connects the entire security assessment lifecycle: define approved scope, run bounded checks, correlate findings, assign remediation, verify the fix and retain reviewable evidence.',sectionTitle:'Every stage has a purpose—and a record.',sectionIntro:'The product keeps target context, policy provenance, finding state and verification history connected so a scan does not become a dead-end report.',sections:[
+      ['Target management & authorisation','Create projects and exact HTTP(S) targets with environment, criticality, tags and an accountable owner. Explicit permission acknowledgement and required ownership verification keep the assessment boundary visible.',Globe2],
+      ['Scan execution & policy','Run a bounded assessment using reusable profiles for page limits, crawl depth, pacing, path scope and enabled checks. Completed scans retain the policy snapshot used for that run.',Radar],
+      ['Issue detection & evidence','Capture the affected URL, response evidence, severity, confidence, impact, remediation guidance and standards references where justified.',TriangleAlert],
+      ['Prioritisation & ownership','Use severity, target criticality, recurrence, assignment and due dates to decide what needs attention first. Keep investigation notes and risk rationale on the issue.',Users],
+      ['Remediation workflow','Move persistent findings through acknowledgement, in-progress work, governed risk acceptance or false-positive review without losing the detection history.',Workflow],
+      ['Verification scans','Queue a fresh bounded assessment after a fix and record whether the same fingerprint is no longer observed or remains present.',GitCompareArrows],
+      ['Reporting & evidence export','Prepare PDF, HTML or JSON reports with scan context, mapped checks, issue evidence and export provenance where supported.',FileText],
+      ['Audit trail & operations','Retain user actions, role boundaries, scan history, worker/queue visibility, schedules and operational controls for later review.',History]
+    ],workflow:[
+      ['01','Define authorised scope','Create a project and verify the exact target and its business context.',Globe2],
+      ['02','Run a bounded assessment','Apply a named policy and capture repeatable evidence.',Radar],
+      ['03','Assign and remediate','Correlate findings, set an owner and due date, and record the decision.',Workflow],
+      ['04','Verify and report','Re-assess the target, record the outcome and preserve the evidence.',CheckCircle2]
     ]},
-    features:{eyebrow:'CAPABILITIES',title:'Depth across identity, scanning, remediation and operations.',intro:'The platform is designed as a connected system: controls are enforced by the API and important state is persisted rather than living only in the browser.',sections:[
-      ['Identity & access','HttpOnly sessions, CSRF, login throttling, email verification, password reset, TOTP MFA, session revocation, workspaces and Owner/Admin/Analyst/Viewer permissions.',LockKeyhole],
-      ['Target governance','Explicit authorisation acknowledgement plus DNS TXT or well-known-file ownership verification for verified assessment workflows.',ShieldCheck],
-      ['Assessment engine','TLS, headers, CSP/HSTS quality, cookies, CORS behaviour, forms, mixed content, methods, disclosure, security.txt and bounded same-origin discovery.',Radar],
-      ['Evidence & reporting','Severity, confidence, evidence, impact, remediation, standards mapping, PDF/HTML/JSON reports and ZAP comparison.',FileText],
-      ['Automation','Persistent SQLite queue, separate worker, SSE live progress, recurring scans, scoped expiring API keys and machine-readable exports.',Braces],
-      ['Security operations','Global issue inbox, asset inventory, lifecycle triage, remediation verification, audit trail, notifications and system-admin controls.',Activity]
+    features:{eyebrow:'CAPABILITY MAP',title:'Eight connected capability groups. One consistent operating model.',intro:'Features are grouped around the work teams need to complete—not a flat list of technical checkboxes. Each module connects to the same permission, evidence and lifecycle model.',sectionTitle:'Explore the platform by the job to be done.',sectionIntro:'From the first approved target to reporting and team handoff, these modules share context rather than creating separate islands of data.',sections:[
+      ['Assessment & scan profiles','Configure bounded crawl depth, page limits, pacing, path scope and enabled checks. Reuse named, versioned profiles and preserve the exact policy snapshot for each completed scan.',Radar],
+      ['Findings & prioritisation','Review severity, confidence, evidence, impact and remediation guidance. Correlate repeated detections and use target criticality, due dates and state to focus the queue.',TriangleAlert],
+      ['Asset inventory & exposure','Keep discovered same-origin assets, source pages, response metadata, provenance and baseline drift connected to the authorised targets that produced them.',Globe2],
+      ['Workflow & remediation','Assign accountable owners, track status, add investigation notes, govern risk decisions and verify a fix through a new assessment.',Workflow],
+      ['Governance & access','Use workspace roles, invitations, session controls, MFA, scoped API keys, access reviews and separation between workspace and platform administration.',LockKeyhole],
+      ['Reporting & standards mapping','Export PDF, HTML and JSON evidence. Map individual checks to relevant OWASP WSTG/ASVS references without claiming blanket compliance.',FileText],
+      ['Automation & integrations','Use scoped credentials, versioned endpoints, signed webhooks, recurring schedules and machine-readable exports for approved workflows.',Braces],
+      ['Team collaboration & audit','Keep assignments, due dates, comments, activity, risk rationale, review dates and recorded administrative actions available to the right workspace roles.',Users]
+    ],workflow:[
+      ['01','Configure','Choose a reusable profile and define the authorised assessment boundary.',SlidersHorizontal],
+      ['02','Observe','Collect bounded findings, assets and evidence from a completed scan.',Radar],
+      ['03','Coordinate','Use shared ownership and issue state to move remediation forward.',Users],
+      ['04','Prove','Re-check the change and export evidence for review.',CheckCircle2]
     ]},
     'exposure-management':{eyebrow:'CONTEXTUAL EXPOSURE',title:'Connect governed scope, discovered surface, active risk and accountable ownership.',intro:'SentinelScope builds an exposure view from its own persisted project, target, asset and finding relationships. It helps teams prioritise real assessment context without claiming internet-wide attack-surface discovery.',sections:[
       ['Relationship map','Projects connect to authorised targets, targets connect to discovered same-origin assets and persistent issues, and assigned issues connect to workspace owners.',Network],
@@ -425,7 +441,7 @@ function StaticPage({page}:{page:string}){
     ]}
   };
   const p=pages[page]||pages.product;
-  const workflow=p.sections.slice(0,4);
+  const workflow=p.workflow||p.sections.slice(0,4);
   return <main className="publicInnerPage">
     <section className="pageHero pageHeroVisual">
       <div className="pageHeroCopy">
