@@ -408,3 +408,8 @@
 @media(max-width:1040px){.publicNav{padding-left:24px;padding-right:24px}}
 @media(max-width:760px){.publicNav{padding:0 16px}.publicSection.tinted{padding-left:18px;padding-right:18px}.publicFooter{padding:38px 20px}}
 @media(max-width:620px){.redesignedHero{padding:44px 17px 38px}.pageWorkflowSection{padding:48px 17px}}
+
+/* Preserve the single-column hero and compact section rhythm after the wide-screen width reset. */
+@media(max-width:960px){.redesignedHero{grid-template-columns:minmax(0,1fr);gap:28px;padding:54px 24px 46px}}
+@media(max-width:760px){.redesignedHero{padding:44px 17px 38px;gap:20px}}
+@media(max-width:620px){.pageWorkflowSection{padding:48px 17px}}
