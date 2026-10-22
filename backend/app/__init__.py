@@ -1,5 +1,6 @@
 def create_app(config_object=None):
     import re
+    import sqlite3
     from flask import Flask, request
     from flask_cors import CORS
     from werkzeug.middleware.proxy_fix import ProxyFix
@@ -40,9 +41,20 @@ def create_app(config_object=None):
             demo_user_id=None
             demo_org_id=None
             if not demo_user:
-                created=repo.create_signup(demo_email,"SentinelScope Demo",hash_password(demo_password),"SentinelScope Demo Workspace")
-                demo_user_id=created["user_id"]
-                demo_org_id=created["organization_id"]
+                try:
+                    created=repo.create_signup(demo_email,"SentinelScope Demo",hash_password(demo_password),"SentinelScope Demo Workspace")
+                    demo_user_id=created["user_id"]
+                    demo_org_id=created["organization_id"]
+                except sqlite3.IntegrityError:
+                    # Multiple Gunicorn workers can boot at once; another worker may win the insert race.
+                    demo_user=repo.get_user_by_email(demo_email)
+                    if demo_user and demo_user.get("name")=="SentinelScope Demo":
+                        demo_user_id=demo_user["id"]
+                        memberships=repo.list_memberships_for_user(demo_user_id)
+                        if memberships:
+                            demo_org_id=memberships[0]["organization_id"]
+                    else:
+                        raise
             elif demo_user.get("name")=="SentinelScope Demo":
                 demo_user_id=demo_user["id"]
                 memberships=repo.list_memberships_for_user(demo_user_id)
