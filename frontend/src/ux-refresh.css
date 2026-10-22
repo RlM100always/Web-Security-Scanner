@@ -539,3 +539,34 @@ button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
 .authSpecialCard .successBox>svg{width:17px;height:17px;flex:none}
 .authSpecialCard .successBox p{font-size:11px;line-height:1.6;margin:0}
 @media(max-width:520px){.authBrandSpecial .authBrandTop{margin-bottom:20px}.authBrandSpecial .authSpecialVisual{margin-top:17px}.authSpecialFlow{grid-template-columns:1fr;gap:6px}.authSpecialFlow>svg{transform:rotate(90deg);justify-self:center}.authSpecialFlow>div{display:grid;grid-template-columns:30px 1fr;column-gap:8px;align-items:center;padding:8px}.authSpecialFlow>div>span{grid-row:1/3;margin:0;width:27px;height:27px}.authSpecialFlow b{font-size:8px}.authSpecialFlow small{font-size:7px;margin-top:2px}}
+
+/* Authentication form controls: visible focus, functional password reveal and explicit trusted-device consent. */
+.authPasswordField{position:relative;display:flex;align-items:center;width:100%;min-width:0}
+.authPasswordField>input{width:100%;min-width:0;padding-right:48px!important}
+.authPasswordToggle{position:absolute;right:7px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:34px;height:34px;border:1px solid transparent;border-radius:8px;background:transparent;color:#72839c;cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.authPasswordToggle svg{width:17px;height:17px}
+.authPasswordToggle:hover{background:#edf3ff;color:#205fe3}
+.authPasswordToggle:focus-visible{outline:3px solid rgba(40,101,233,.28);outline-offset:1px;border-color:#8eaff5}
+.authFieldHint{display:block;font-size:9px;line-height:1.5;color:#7d8ca2;margin-top:6px}
+.authFieldHint.authFieldError{color:#bd3b4d;font-weight:750}
+.authRemember{display:flex!important;align-items:flex-start;gap:10px!important;margin:7px 0 11px!important;padding:12px 13px;border:1px solid #e0e8f3;border-radius:10px;background:#f7f9fd;cursor:pointer}
+.authRemember>input{width:16px!important;height:16px;min-height:16px!important;margin:2px 0 0;flex:none;accent-color:#2563eb}
+.authRemember>span{display:block;min-width:0}
+.authRemember b,.authRemember small{display:block}
+.authRemember b{font-size:10px;color:#263a55;line-height:1.5}
+.authRemember small{font-size:8px;line-height:1.5;color:#7888a0;margin-top:3px;font-weight:500}
+.authSetupSteps{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px;padding:10px;border:1px solid rgba(172,197,236,.14);border-radius:9px;background:rgba(8,21,38,.38)}
+.authSetupSteps span{display:flex;align-items:center;gap:5px;color:#b9cbe5;font-size:7px;font-weight:800}
+.authSetupSteps span b{display:grid;place-items:center;width:17px;height:17px;border-radius:5px;background:rgba(71,126,245,.25);color:#a7c6ff;font-size:6px}
+.authSetupSteps>svg{width:11px;height:11px;color:#6885ad}
+.authRecoveryNote{display:flex;align-items:flex-start;gap:9px;margin-top:8px;padding:10px;border:1px solid rgba(172,197,236,.14);border-radius:9px;background:rgba(8,21,38,.38)}
+.authRecoveryNote>svg{width:17px;height:17px;flex:none;color:#92b8ff}
+.authRecoveryNote b,.authRecoveryNote small{display:block}
+.authRecoveryNote b{font-size:8px;color:#eaf2ff}
+.authRecoveryNote small{font-size:7px;line-height:1.55;color:#9db2d1;margin-top:3px}
+.authCardExperience .authError[role=alert]{padding:11px 12px;border:1px solid #f1c8ce;border-radius:9px;background:#fff3f4;color:#a82e41;font-size:11px;line-height:1.6}
+.authCardExperience .successBox{display:flex;align-items:flex-start;gap:9px;padding:12px;border:1px solid #c9ead9;border-radius:10px;background:#ecf9f2;color:#176d4d}
+.authCardExperience .successBox>svg{width:17px;height:17px;flex:none;color:#198a60}
+.authCardExperience .successBox p{font-size:11px;line-height:1.65;margin:0}
+@media(max-width:520px){.authRemember{padding:10px}.authSetupSteps{gap:5px}.authSetupSteps span{font-size:6px}.authSetupSteps>svg{width:9px}}
+@media(prefers-reduced-motion:reduce){.authPasswordToggle{transition:none!important}}
