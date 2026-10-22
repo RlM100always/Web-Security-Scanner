@@ -892,3 +892,450 @@ html,body,#root{width:100%;max-width:100%;min-width:0;margin:0;padding:0}
   .publicFooterBadges{grid-template-columns:1fr}
   .publicSite .footerGrid{grid-template-columns:1fr!important}
 }
+
+
+/* Public visual system v3 — professional type scale, card density and real-world photography. */
+.publicSite{
+  --ink-950:#0d1b2e;
+  --ink-900:#14233a;
+  --ink-700:#41516a;
+  --ink-600:#60708a;
+  --ink-500:#7788a1;
+  --line:#dfe6f0;
+  --line-strong:#cfd9e8;
+  --surface:#ffffff;
+  --surface-soft:#f6f8fc;
+  --surface-blue:#f1f6ff;
+  --blue:#1f63ea;
+  --blue-strong:#174fd0;
+  --green:#158a61;
+  --radius-lg:22px;
+  --radius-md:16px;
+  --shadow-soft:0 14px 38px rgba(17,39,76,.07);
+  --shadow-card:0 8px 24px rgba(17,39,76,.055);
+  color:var(--ink-900);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:16px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+.publicSite main{color:var(--ink-900)}
+.publicSite p{letter-spacing:-.006em}
+.publicSite .sectionHead{max-width:860px}
+.publicSite .sectionHead>span,
+.publicSite .pageHeroEyebrow,
+.publicSite .heroKicker{
+  font-size:11px!important;
+  line-height:1.4!important;
+  letter-spacing:.13em!important;
+  font-weight:850!important;
+}
+.publicSite .sectionHead h2{
+  max-width:820px;
+  margin:14px 0 14px;
+  font-size:clamp(34px,3.5vw,48px)!important;
+  line-height:1.08!important;
+  letter-spacing:-.045em!important;
+  font-weight:760!important;
+  text-wrap:balance;
+  color:var(--ink-950);
+}
+.publicSite .sectionHead p{
+  max-width:760px;
+  margin:0;
+  font-size:16px!important;
+  line-height:1.75!important;
+  color:var(--ink-600)!important;
+}
+.publicSite .publicSection{
+  width:min(1320px,100%);
+  margin:0 auto;
+  padding:88px 28px;
+  box-sizing:border-box;
+}
+.publicSite .publicSection.tinted{
+  width:100%;
+  max-width:none;
+  padding-left:max(28px,calc((100vw - 1320px)/2 + 28px));
+  padding-right:max(28px,calc((100vw - 1320px)/2 + 28px));
+}
+.publicSite .redesignedHero{
+  padding-top:84px;
+  padding-bottom:74px;
+}
+.publicSite .redesignedHeroCopy h1,
+.publicSite .pageHero.pageHeroVisual .pageHeroCopy h1{
+  font-weight:780!important;
+  text-wrap:balance;
+}
+.publicSite .redesignedHeroCopy h1{
+  font-size:clamp(48px,5.1vw,72px)!important;
+  line-height:.98!important;
+  letter-spacing:-.058em!important;
+}
+.publicSite .redesignedHeroCopy>p{
+  max-width:620px;
+  font-size:18px!important;
+  line-height:1.7!important;
+  color:#5d6e87!important;
+}
+.publicSite .pageHero.pageHeroVisual .pageHeroCopy h1{
+  max-width:720px;
+  font-size:clamp(42px,4.2vw,62px)!important;
+  line-height:1.02!important;
+  letter-spacing:-.052em!important;
+}
+.publicSite .pageHero.pageHeroVisual .pageHeroCopy>p{
+  max-width:650px;
+  font-size:17px!important;
+  line-height:1.72!important;
+  color:#5d6e87!important;
+}
+.publicSite main .publicPrimary,
+.publicSite main .publicSecondary{
+  min-height:48px;
+  padding:0 18px!important;
+  border-radius:11px!important;
+  font-size:12px!important;
+  font-weight:800!important;
+  letter-spacing:-.01em;
+}
+.publicSite main .publicPrimary{box-shadow:0 8px 20px rgba(31,99,234,.2)}
+.publicSite main .publicPrimary:hover{background:var(--blue-strong);transform:translateY(-1px)}
+.publicSite main .publicSecondary{background:#fff!important;border:1px solid #cfd9e8!important;color:#263b58!important}
+.publicSite main .publicSecondary:hover{border-color:#9fb7df!important;background:#f8fbff!important}
+
+.publicSite .workflowRail,
+.publicSite .featureGrid,
+.publicSite .roleGrid,
+.publicSite .homeModuleGrid,
+.publicSite .pageDetailGrid{
+  gap:18px!important;
+}
+.publicSite .workflowCard,
+.publicSite .featureCard,
+.publicSite .roleGrid article,
+.publicSite .homeModuleCard,
+.publicSite .pageDetailGrid article{
+  border:1px solid var(--line)!important;
+  border-radius:var(--radius-md)!important;
+  background:linear-gradient(180deg,#fff 0%,#fbfcfe 100%)!important;
+  box-shadow:var(--shadow-card)!important;
+}
+.publicSite .workflowCard,
+.publicSite .featureCard,
+.publicSite .roleGrid article{
+  padding:26px!important;
+}
+.publicSite .workflowCard:hover,
+.publicSite .featureCard:hover,
+.publicSite .roleGrid article:hover,
+.publicSite .homeModuleCard:hover,
+.publicSite .pageDetailGrid article:hover{
+  transform:translateY(-3px);
+  border-color:#b9cae5!important;
+  box-shadow:0 18px 40px rgba(17,39,76,.1)!important;
+}
+.publicSite .workflowCard h3,
+.publicSite .featureCard h3,
+.publicSite .roleGrid h3,
+.publicSite .homeModuleCopy h3,
+.publicSite .pageDetailGrid h2{
+  color:var(--ink-950)!important;
+  font-size:19px!important;
+  line-height:1.28!important;
+  letter-spacing:-.025em!important;
+  font-weight:760!important;
+}
+.publicSite .workflowCard p,
+.publicSite .featureCard p,
+.publicSite .roleGrid p,
+.publicSite .homeModuleCopy p,
+.publicSite .pageDetailGrid p{
+  color:var(--ink-600)!important;
+  font-size:14px!important;
+  line-height:1.72!important;
+}
+.publicSite .workflowCard>span,
+.publicSite .homeModuleIndex,
+.publicSite .detailCardTop>span{
+  font-size:10px!important;
+  letter-spacing:.12em!important;
+  color:#8a99ae!important;
+}
+.publicSite .featureIcon,
+.publicSite .homeModuleIcon,
+.publicSite .pageWorkflowIcon,
+.publicSite .detailCardTop>svg{
+  background:#eaf1ff!important;
+  color:var(--blue)!important;
+  border:1px solid #d9e6ff;
+}
+.publicSite .featureIcon,
+.publicSite .homeModuleIcon{width:44px!important;height:44px!important;border-radius:12px!important}
+.publicSite .featureIcon svg,
+.publicSite .homeModuleIcon svg{width:20px!important;height:20px!important}
+.publicSite .featureCard a,
+.publicSite .roleGrid article>a,
+.publicSite .homeModuleCopy>a{
+  margin-top:auto!important;
+  padding-top:18px;
+  font-size:11px!important;
+  font-weight:850!important;
+  color:var(--blue)!important;
+}
+.publicSite .pageDetailGrid{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:18px!important;
+}
+.publicSite .pageDetailGrid article{
+  min-height:270px!important;
+  padding:28px!important;
+}
+.publicSite .detailCardFoot{
+  padding-top:22px!important;
+  margin-top:auto!important;
+}
+.publicSite .detailCardFoot>span{font-size:9px!important}
+.publicSite .pageWorkflowHeading h2,
+.publicSite .pageDeepDiveHeader h2,
+.publicSite .publicFaqIntro h2{
+  color:var(--ink-950)!important;
+  font-weight:760!important;
+}
+.publicSite .pageWorkflowHeading h2,
+.publicSite .pageDeepDiveHeader h2{font-size:clamp(32px,3.3vw,46px)!important;line-height:1.08!important}
+.publicSite .pageWorkflowHeading>p,
+.publicSite .pageDeepDiveHeader>p,
+.publicSite .publicFaqIntro p{
+  font-size:15px!important;
+  line-height:1.75!important;
+  color:var(--ink-600)!important;
+}
+.publicSite .pageWorkflowRail article{
+  border-radius:16px!important;
+  padding:24px 20px!important;
+  border:1px solid var(--line)!important;
+  box-shadow:var(--shadow-card);
+}
+.publicSite .pageWorkflowRail h3{font-size:17px!important;line-height:1.35!important}
+.publicSite .pageWorkflowRail p{font-size:13px!important;line-height:1.7!important;color:var(--ink-600)!important}
+.publicSite .pageDeepDiveSteps article{
+  padding:20px 18px!important;
+  border-radius:14px!important;
+}
+.publicSite .pageDeepDiveSteps h3{font-size:15px!important}
+.publicSite .pageDeepDiveSteps p{font-size:13px!important;line-height:1.7!important}
+.publicSite .workflowComparePanel{border-radius:18px!important;padding:28px!important}
+.publicSite .workflowComparePanel h3{font-size:21px!important}
+.publicSite .workflowComparePanel li{font-size:13px!important;line-height:1.65!important}
+.publicSite .publicFaqItem summary{font-size:14px!important;padding:20px 2px!important}
+.publicSite .publicFaqItem>p{font-size:13px!important;line-height:1.78!important;padding-bottom:20px!important}
+.publicSite .publicFaqIntro>a{font-size:11px!important}
+.publicSite .logoStrip{
+  min-height:62px;
+  border-top:1px solid #e7edf5;
+  border-bottom:1px solid #e7edf5;
+  background:#fafcff;
+  gap:26px;
+}
+.publicSite .logoStrip span{font-size:9px!important}
+.publicSite .logoStrip b{font-size:10px!important;color:#65758e}
+
+/* Real-world photography section */
+.realWorldSection{
+  display:grid;
+  grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);
+  gap:clamp(34px,5vw,70px);
+  align-items:center;
+  padding-top:92px!important;
+  padding-bottom:92px!important;
+}
+.realWorldMedia{position:relative;min-width:0}
+.realWorldMedia:before{
+  content:"";
+  position:absolute;
+  z-index:-1;
+  inset:7% -4% -5% 8%;
+  border-radius:28px;
+  background:linear-gradient(145deg,#e6efff,#f6f9ff);
+}
+.realWorldMedia img{
+  display:block;
+  width:100%;
+  aspect-ratio:4/3;
+  object-fit:cover;
+  object-position:center;
+  border-radius:22px;
+  border:1px solid #d3deed;
+  box-shadow:0 28px 65px rgba(13,36,73,.16);
+  filter:saturate(.9) contrast(1.02);
+}
+.realWorldMediaOverlay{
+  position:absolute;
+  left:18px;
+  bottom:42px;
+  display:flex;
+  gap:7px;
+  flex-wrap:wrap;
+}
+.realWorldMediaOverlay span{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  min-height:32px;
+  padding:0 10px;
+  border:1px solid rgba(255,255,255,.32);
+  border-radius:999px;
+  background:rgba(7,20,37,.72);
+  backdrop-filter:blur(12px);
+  color:#f0f5fc;
+  font-size:9px;
+  font-weight:800;
+}
+.realWorldMediaOverlay svg{width:13px;height:13px;color:#7cb0ff}
+.realWorldCredit{
+  position:absolute;
+  right:12px;
+  bottom:10px;
+  display:flex;
+  align-items:center;
+  gap:5px;
+  padding:7px 9px;
+  border-radius:7px;
+  background:rgba(7,20,37,.74);
+  color:#dce7f5!important;
+  text-decoration:none;
+  font-size:8px;
+  font-weight:750;
+  backdrop-filter:blur(10px);
+}
+.realWorldCredit svg{width:11px;height:11px}
+.realWorldCopy>h2{
+  max-width:620px;
+  margin:15px 0 15px;
+  font-size:clamp(34px,3.6vw,50px);
+  line-height:1.06;
+  letter-spacing:-.048em;
+  font-weight:770;
+  text-wrap:balance;
+  color:var(--ink-950);
+}
+.realWorldCopy>p{
+  max-width:600px;
+  margin:0;
+  font-size:16px;
+  line-height:1.75;
+  color:var(--ink-600);
+}
+.realWorldPoints{display:grid;gap:0;margin-top:25px;border-top:1px solid var(--line)}
+.realWorldPoints article{
+  display:grid;
+  grid-template-columns:32px minmax(0,1fr);
+  gap:11px;
+  padding:17px 0;
+  border-bottom:1px solid var(--line);
+}
+.realWorldPoints article>span{
+  display:grid;
+  place-items:center;
+  width:28px;
+  height:28px;
+  border-radius:8px;
+  background:#eaf1ff;
+  color:var(--blue);
+  font-size:9px;
+  font-weight:900;
+}
+.realWorldPoints h3{margin:1px 0 5px;font-size:14px;line-height:1.4;color:var(--ink-900)}
+.realWorldPoints p{margin:0;font-size:12px;line-height:1.65;color:var(--ink-600)}
+.realWorldActions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:24px}
+.realWorldActions .publicPrimary,.realWorldActions .publicSecondary{min-height:45px!important;font-size:11px!important}
+
+/* Premium hierarchy for editorial blocks and mock UI containers */
+.publicSite .splitStory{gap:54px!important;align-items:center}
+.publicSite .splitStory>div:first-child .sectionHead p{max-width:600px}
+.publicSite .findingMock,
+.publicSite .pageEvidenceMock,
+.publicSite .productPreview,
+.publicSite .pageVisualWindow{
+  border-color:#ccd8e8!important;
+  box-shadow:0 20px 52px rgba(14,36,71,.12)!important;
+}
+.publicSite .findingMock{border-radius:18px!important;padding:22px!important}
+.publicSite .findingMock h3{font-size:20px!important;letter-spacing:-.025em!important}
+.publicSite .findingMock>.mockUrl{font-size:12px!important}
+.publicSite .mockEvidence code{font-size:11px!important;line-height:1.6!important}
+.publicSite .mockColumns small{font-size:8px!important}
+.publicSite .mockColumns b{font-size:11px!important}
+.publicSite .publicCTA{
+  border-radius:24px!important;
+  padding:42px 44px!important;
+  box-shadow:0 20px 48px rgba(13,35,69,.14);
+}
+.publicSite .publicCTA span{font-size:10px!important}
+.publicSite .publicCTA h2{
+  max-width:820px;
+  font-size:clamp(28px,3.2vw,42px)!important;
+  line-height:1.1!important;
+  letter-spacing:-.04em!important;
+}
+
+@media(max-width:980px){
+  .realWorldSection{grid-template-columns:1fr;gap:34px}
+  .realWorldMedia{width:min(100%,760px)}
+  .realWorldCopy{max-width:760px}
+  .publicSite .publicSection{padding:72px 24px}
+  .publicSite .pageDetailGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:680px){
+  .publicSite{font-size:15px}
+  .publicSite .publicSection{padding:54px 17px}
+  .publicSite .sectionHead h2{font-size:32px!important;line-height:1.1!important}
+  .publicSite .sectionHead p{font-size:14px!important;line-height:1.7!important}
+  .publicSite .redesignedHeroCopy h1{font-size:clamp(40px,11vw,50px)!important;line-height:1!important}
+  .publicSite .redesignedHeroCopy>p,
+  .publicSite .pageHero.pageHeroVisual .pageHeroCopy>p{font-size:14px!important;line-height:1.67!important}
+  .publicSite .pageHero.pageHeroVisual .pageHeroCopy h1{font-size:clamp(36px,9.4vw,48px)!important}
+  .publicSite main .publicPrimary,
+  .publicSite main .publicSecondary{min-height:46px;font-size:11px!important}
+  .publicSite .workflowCard,
+  .publicSite .featureCard,
+  .publicSite .roleGrid article,
+  .publicSite .homeModuleCard,
+  .publicSite .pageDetailGrid article{padding:20px!important;border-radius:15px!important}
+  .publicSite .workflowCard h3,
+  .publicSite .featureCard h3,
+  .publicSite .roleGrid h3,
+  .publicSite .homeModuleCopy h3,
+  .publicSite .pageDetailGrid h2{font-size:17px!important}
+  .publicSite .workflowCard p,
+  .publicSite .featureCard p,
+  .publicSite .roleGrid p,
+  .publicSite .homeModuleCopy p,
+  .publicSite .pageDetailGrid p{font-size:13px!important}
+  .publicSite .pageDetailGrid{grid-template-columns:1fr}
+  .realWorldSection{padding-top:58px!important;padding-bottom:58px!important}
+  .realWorldMedia img{border-radius:16px;aspect-ratio:16/10}
+  .realWorldMediaOverlay{left:10px;bottom:36px}
+  .realWorldMediaOverlay span{min-height:28px;padding:0 8px;font-size:7px}
+  .realWorldCredit{font-size:6px;right:8px;bottom:8px}
+  .realWorldCopy>h2{font-size:32px;line-height:1.08;margin:13px 0}
+  .realWorldCopy>p{font-size:14px;line-height:1.7}
+  .realWorldPoints{margin-top:20px}
+  .realWorldPoints article{padding:14px 0}
+  .realWorldPoints h3{font-size:13px}
+  .realWorldPoints p{font-size:11px}
+  .publicSite .workflowComparePanel{padding:20px!important}
+  .publicSite .workflowComparePanel h3{font-size:18px!important}
+  .publicSite .workflowComparePanel li{font-size:11px!important}
+  .publicSite .publicFaqItem summary{font-size:12px!important}
+  .publicSite .publicFaqItem>p{font-size:11px!important}
+  .publicSite .publicCTA{padding:28px 22px!important;border-radius:18px!important}
+}
+@media(max-width:420px){
+  .realWorldMediaOverlay span:nth-child(2){display:none}
+  .realWorldActions{display:grid;grid-template-columns:1fr}
+  .realWorldActions a{justify-content:center}
+}
