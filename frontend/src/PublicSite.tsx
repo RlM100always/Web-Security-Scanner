@@ -264,10 +264,10 @@ function StaticPage({page}:{page:string}){
       ['Reporting & evidence export','Prepare PDF, HTML or JSON reports with scan context, mapped checks, issue evidence and export provenance where supported.',FileText],
       ['Audit trail & operations','Retain user actions, role boundaries, scan history, worker/queue visibility, schedules and operational controls for later review.',History]
     ],workflow:[
-      ['01','Define authorised scope','Create a project and verify the exact target and its business context.',Globe2],
-      ['02','Run a bounded assessment','Apply a named policy and capture repeatable evidence.',Radar],
-      ['03','Assign and remediate','Correlate findings, set an owner and due date, and record the decision.',Workflow],
-      ['04','Verify and report','Re-assess the target, record the outcome and preserve the evidence.',CheckCircle2]
+      ['Define authorised scope','Create a project and verify the exact target and its business context.',Globe2],
+      ['Run a bounded assessment','Apply a named policy and capture repeatable evidence.',Radar],
+      ['Assign and remediate','Correlate findings, set an owner and due date, and record the decision.',Workflow],
+      ['Verify and report','Re-assess the target, record the outcome and preserve the evidence.',CheckCircle2]
     ]},
     features:{eyebrow:'CAPABILITY MAP',title:'Eight connected capability groups. One consistent operating model.',intro:'Features are grouped around the work teams need to complete—not a flat list of technical checkboxes. Each module connects to the same permission, evidence and lifecycle model.',sectionTitle:'Explore the platform by the job to be done.',sectionIntro:'From the first approved target to reporting and team handoff, these modules share context rather than creating separate islands of data.',sections:[
       ['Assessment & scan profiles','Configure bounded crawl depth, page limits, pacing, path scope and enabled checks. Reuse named, versioned profiles and preserve the exact policy snapshot for each completed scan.',Radar],
@@ -279,10 +279,10 @@ function StaticPage({page}:{page:string}){
       ['Automation & integrations','Use scoped credentials, versioned endpoints, signed webhooks, recurring schedules and machine-readable exports for approved workflows.',Braces],
       ['Team collaboration & audit','Keep assignments, due dates, comments, activity, risk rationale, review dates and recorded administrative actions available to the right workspace roles.',Users]
     ],workflow:[
-      ['01','Configure','Choose a reusable profile and define the authorised assessment boundary.',SlidersHorizontal],
-      ['02','Observe','Collect bounded findings, assets and evidence from a completed scan.',Radar],
-      ['03','Coordinate','Use shared ownership and issue state to move remediation forward.',Users],
-      ['04','Prove','Re-check the change and export evidence for review.',CheckCircle2]
+      ['Configure','Choose a reusable profile and define the authorised assessment boundary.',SlidersHorizontal],
+      ['Observe','Collect bounded findings, assets and evidence from a completed scan.',Radar],
+      ['Coordinate','Use shared ownership and issue state to move remediation forward.',Users],
+      ['Prove','Re-check the change and export evidence for review.',CheckCircle2]
     ]},
     'exposure-management':{eyebrow:'CONTEXTUAL EXPOSURE',title:'Connect governed scope, discovered surface, active risk and accountable ownership.',intro:'SentinelScope builds an exposure view from its own persisted project, target, asset and finding relationships. It helps teams prioritise real assessment context without claiming internet-wide attack-surface discovery.',sections:[
       ['Relationship map','Projects connect to authorised targets, targets connect to discovered same-origin assets and persistent issues, and assigned issues connect to workspace owners.',Network],
