@@ -10,14 +10,28 @@ test('workspace navigation, command search and mobile layout are user-friendly',
   await page.getByRole('button',{name:'Create account'}).click();
 
   await expect(page.getByRole('heading',{name:'Dashboard'})).toBeVisible();
+  await expect(page).toHaveTitle('Dashboard | SentinelScope');
   await expect(page.getByRole('heading',{name:'Know what needs attention.'})).toBeVisible();
   await expect(page.locator('.dashboardIntro')).toBeVisible();
+
+  const skip=page.getByRole('link',{name:'Skip to main content'});
+  await expect(skip).toBeAttached();
+  await skip.focus();
+  await expect(skip).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#workspace-content')).toBeFocused();
 
   if(testInfo.project.name==='mobile-chromium'){
     await expect(page.locator('.mobileDock')).toBeVisible();
     await page.getByRole('button',{name:'Open navigation'}).click();
     await expect(page.getByRole('button',{name:'Close navigation menu'})).toBeVisible();
-    await page.getByRole('button',{name:'Close navigation menu'}).click();
+    await expect(page.getByRole('button',{name:'Open navigation'})).toHaveAttribute('aria-expanded','true');
+    await page.keyboard.press('Shift+Tab');
+    await expect(page.locator('#workspace-nav').getByRole('button',{name:'Settings',exact:true})).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button',{name:'Close navigation menu'})).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button',{name:'Open navigation'})).toHaveAttribute('aria-expanded','false');
     await expect(page.locator('.drawerScrim')).toHaveCount(0);
     await page.locator('.mobileDock').getByRole('button',{name:'Issues'}).click();
     await expect(page).toHaveURL(/#\/issues$/);

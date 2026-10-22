@@ -2,6 +2,7 @@ import {test,expect} from '@playwright/test';
 
 test('public product site explains platform and routes to signup',async({page})=>{
   await page.goto('/');
+  await expect(page).toHaveTitle(/SentinelScope — Web Security Assessment Platform/);
   await expect(page.getByRole('heading',{name:/Turn web-security checks/i})).toBeVisible();
   await expect(page.getByText('OWASP WSTG')).toBeVisible();
   await expect(page.getByRole('link',{name:/Create secure workspace/i})).toBeVisible();
@@ -79,10 +80,28 @@ test('public product site explains platform and routes to signup',async({page})=
   await expect(page.getByRole('heading',{name:/Start your security workspace/i})).toBeVisible();
 });
 
-test('public navigation remains usable on mobile',async({page},testInfo)=>{
+test('public navigation remains usable and keyboard accessible on mobile',async({page},testInfo)=>{
   test.skip(!testInfo.project.name.includes('mobile'),'mobile-only navigation check');
   await page.goto('/');
-  await page.getByRole('button',{name:'Toggle navigation'}).click();
+
+  const skip=page.getByRole('link',{name:'Skip to main content'});
+  await expect(skip).toHaveCount(1);
+  await page.keyboard.press('Tab');
+  await expect(skip).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#main-content')).toBeFocused();
+
+  const menu=page.getByRole('button',{name:'Toggle navigation'});
+  await expect(menu).toHaveAttribute('aria-expanded','false');
+  await expect(menu).toHaveAttribute('aria-controls','public-primary-nav');
+  await menu.click();
+  await expect(menu).toHaveAttribute('aria-expanded','true');
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveAttribute('aria-expanded','false');
+  await expect(menu).toBeFocused();
+
+  await menu.click();
+  await expect(menu).toHaveAttribute('aria-expanded','true');
   await page.locator('.publicNav nav').getByRole('link',{name:'Solutions',exact:true}).click();
   await expect(page).toHaveURL(/\/solutions$/);
   await expect(page.getByRole('heading',{name:/practical security workspace/i})).toBeVisible();
