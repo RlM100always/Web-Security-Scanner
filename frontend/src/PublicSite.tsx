@@ -67,6 +67,14 @@ function Home(){
       </div>
     </section>
     <section className="logoStrip"><span>BUILT AROUND</span><b>OWASP WSTG</b><b>OWASP ASVS</b><b>Evidence-led findings</b><b>Persistent assessment history</b><b>Mobile-ready workspace</b></section>
+    <section className="publicSection homeWhatSection">
+      <div className="homeWhatHeader"><SectionHead eyebrow="WHAT SENTINELSCOPE DOES" title="A security assessment becomes useful when someone can act on it." text="SentinelScope connects authorised scope, repeatable checks, evidence, accountable ownership and a fresh verification run. It is built to make the work after a scan as clear as the scan itself."/><div className="homeWhatCallout"><span><ShieldCheck/></span><div><b>Built around authorised assessment</b><p>Only assess systems you own or have explicit permission to test. The visual data below is illustrative, not live customer telemetry.</p></div></div></div>
+      <div className="homeModuleGrid">
+        <article className="homeModuleCard"><div className="homeModuleCopy"><span className="homeModuleIndex">01 / SCOPE</span><div className="homeModuleIcon"><Globe2/></div><h3>Know what is in scope.</h3><p>Group approved targets into projects, attach environment and criticality, and keep discovered same-origin assets linked to the assessment that found them.</p><a href="/asset-inventory">Explore asset inventory <ArrowRight/></a></div><HomeModulePreview kind="scope"/></article>
+        <article className="homeModuleCard"><div className="homeModuleCopy"><span className="homeModuleIndex">02 / PRIORITISE</span><div className="homeModuleIcon"><TriangleAlert/></div><h3>Turn signals into owned issues.</h3><p>Keep evidence, confidence, remediation guidance, severity, owner, due date and decision history together as repeat scans update the same finding record.</p><a href="/vulnerability-management">Explore issue management <ArrowRight/></a></div><HomeModulePreview kind="findings"/></article>
+        <article className="homeModuleCard"><div className="homeModuleCopy"><span className="homeModuleIndex">03 / VERIFY</span><div className="homeModuleIcon"><GitCompareArrows/></div><h3>Prove the fix with new evidence.</h3><p>Run a fresh bounded assessment after a change, compare the result with the original finding, and keep the verification outcome and audit history attached.</p><a href="/workflow">Explore the lifecycle <ArrowRight/></a></div><HomeModulePreview kind="verification"/></article>
+      </div>
+    </section>
     <section className="publicSection"><SectionHead eyebrow="OPERATING MODEL" title="Security work should move, not sit in a report." text="SentinelScope connects discovery, assessment, triage and verification so every finding has context, ownership and a next action."/><div className="workflowRail">{[
       ['01','Discover','Build a persistent inventory of in-scope pages and response metadata.',Globe2],
       ['02','Assess','Run policy-bound, non-destructive checks with evidence and confidence.',Radar],
@@ -84,8 +92,122 @@ function Home(){
     <section className="publicSection"><div className="splitStory"><div><SectionHead eyebrow="EXPLAINABLE BY DESIGN" title="A finding should tell you what happened, why it matters and what to do next." text="Each result carries evidence, severity, confidence, standards references, remediation and historical lifecycle context."/>
 <a className="publicSecondary" href="/standards">View standards approach</a></div><div className="findingMock"><div className="mockTop"><span className="severity high">HIGH</span><span>OPEN · 4 occurrences</span></div><h3>HTTP Strict Transport Security</h3><p className="mockUrl">https://app.example.test/account</p><div className="mockEvidence"><small>EVIDENCE</small><code>Strict-Transport-Security: not present</code></div><div className="mockColumns"><div><small>OWNER</small><b>Application Security</b></div><div><small>DUE</small><b>12 Nov</b></div><div><small>STANDARD</small><b>OWASP ASVS V9</b></div></div><a className="mockAction" href="/vulnerability-management">Explore remediation workflow <ArrowRight/></a></div></div></section>
     <section className="publicSection roleSection"><SectionHead eyebrow="BUILT FOR THE OPERATING TEAM" title="One platform, different jobs to be done." text="Each role gets the context it needs without flattening security work into one generic dashboard."/><div className="roleGrid"><article><div className="featureIcon"><ShieldCheck/></div><span>APPSEC / SECURITY</span><h3>Prioritise risk and govern decisions.</h3><p>Use exposure context, persistent issue state, standards mapping, risk acceptance, audit and remediation verification to run a measurable security programme.</p><a href="/governance">Explore governance <ChevronRight/></a></article><article><div className="featureIcon"><Workflow/></div><span>ENGINEERING</span><h3>Know what to fix and prove it is fixed.</h3><p>Move from evidence to owner, due date, comments and a fresh verification scan without losing the original technical context.</p><a href="/vulnerability-management">Explore issue workflow <ChevronRight/></a></article><article><div className="featureIcon"><Activity/></div><span>PLATFORM / OPERATIONS</span><h3>Keep assessment reliable at scale.</h3><p>Manage reusable scan profiles, recurring schedules, workers, queue health, quotas, integrations, retention and backups.</p><a href="/enterprise">Explore platform operations <ChevronRight/></a></article></div></section>
+    <EvidenceLifecycle/>
+    <WorkflowCompare variant="home"/>
+    <PublicFaq page="home"/>
     <section className="publicCTA"><div><span>READY TO ESTABLISH A BASELINE?</span><h2>Start with an authorised target. Keep every decision attached to evidence.</h2></div><a className="publicPrimary large" href="/signup">Create workspace <ArrowRight/></a></section>
   </main>
+}
+
+
+function HomeModulePreview({kind}:{kind:'scope'|'findings'|'verification'}){
+  const data:any={
+    scope:{kicker:'TARGET INVENTORY',title:'Approved web estate',status:'IN SCOPE',stats:[['Targets','08'],['Assets','147'],['Drift','02']],rows:[['VERIFIED','Customer portal','Production · owner assigned'],['ACTIVE','Public API','Staging · bounded scope'],['REVIEW','Help centre','New assets detected']]},
+    findings:{kicker:'PERSISTENT ISSUE INBOX',title:'Priority remediation',status:'TRIAGE',stats:[['Open','18'],['High','04'],['Assigned','12']],rows:[['HIGH','HSTS missing on route','Evidence attached · owner set'],['MEDIUM','CSP directive review','Due in 2 days'],['IN PROGRESS','Cookie flags corrected','Awaiting re-scan']]},
+    verification:{kicker:'REMEDIATION EVIDENCE',title:'Verification history',status:'RE-CHECKED',stats:[['Verified','26'],['Due','03'],['SLA','92%']],rows:[['VERIFIED','Transport header corrected','Fresh scan confirms change'],['IN PROGRESS','CSP policy updated','Verification pending'],['STILL PRESENT','Cookie attribute missing','Keep issue open']]}
+  };
+  const v=data[kind];
+  return <div className={'homeModuleVisual homeModuleVisual-'+kind} aria-label={v.title+' illustrative interface'}>
+    <div className="homeModuleVisualTop"><span><i/>{v.kicker}</span><b>ILLUSTRATIVE</b></div>
+    <div className="homeModuleMiniToolbar"><div><small>WORKSPACE / SAMPLE</small><strong>{v.title}</strong></div><span>{v.status}</span></div>
+    <div className="homeModuleMiniStats">{v.stats.map(([label,value]:string[])=><div key={label}><small>{label}</small><b>{value}</b></div>)}</div>
+    <div className="homeModuleMiniRows">{v.rows.map(([status,title,sub]:string[])=><div key={title}><span className={'homeModuleStatus homeModuleStatus-'+status.toLowerCase().replaceAll(' ','-')}>{status}</span><div><b>{title}</b><small>{sub}</small></div><ChevronRight/></div>)}</div>
+  </div>
+}
+
+function EvidenceLifecycle(){
+  const steps:any=[
+    {n:'01',title:'Capture',text:'A bounded assessment records the check, URL, response evidence and policy snapshot.',icon:Radar},
+    {n:'02',title:'Correlate',text:'A stable fingerprint links repeat detections to one continuing issue record.',icon:Network},
+    {n:'03',title:'Assign',text:'An owner, due date and decision rationale make the next action explicit.',icon:Users},
+    {n:'04',title:'Remediate',text:'Engineering changes the application and records relevant investigation notes.',icon:Workflow},
+    {n:'05',title:'Verify',text:'A fresh assessment records whether the issue is fixed or still present.',icon:CheckCircle2}
+  ];
+  return <section className="publicSection evidenceLifecycleSection"><div className="evidenceLifecycleIntro"><SectionHead eyebrow="THE FINDING LIFECYCLE" title="From first signal to a verified outcome." text="A scan is a point-in-time observation. The lifecycle makes follow-up visible and preserves why a finding changed state."/></div><div className="evidenceLifecycleRail">{steps.map((s:any,i:number)=><article key={s.n}><span className="evidenceLifecycleNum">{s.n}</span><div className="evidenceLifecycleIcon"><s.icon/></div><h3>{s.title}</h3><p>{s.text}</p>{i<steps.length-1&&<span className="evidenceLifecycleConnector"><ArrowRight/></span>}</article>)}</div><div className="evidenceLifecycleFoot"><ShieldCheck/><p><b>Closure is evidence-led.</b> A status change alone is not proof that a weakness has disappeared. Keep the original observation and the verification result together.</p><a href="/vulnerability-management">See issue lifecycle <ArrowRight/></a></div></section>
+}
+
+function WorkflowCompare({variant='home'}:{variant?:string}){
+  const copy:any={
+    home:{eyebrow:'WHY THE WORKFLOW MATTERS',title:'Replace disconnected scan output with accountable security work.',text:'The difference is not another chart. It is the context and evidence that stay connected after a finding is detected.'},
+    product:{eyebrow:'PRODUCT IN PRACTICE',title:'One finding record. A clear next action.',text:'Move from detection to ownership and verification without losing the original evidence or the policy that produced it.'},
+    teams:{eyebrow:'TEAM HANDOFF',title:'Give each team the context it needs.',text:'Security can prioritise and govern; engineering can fix; platform teams can keep recurring assessments reliable.'},
+    governance:{eyebrow:'GOVERNANCE IN PRACTICE',title:'Make security decisions reviewable later.',text:'Roles, rationale, due dates, exports and activity history keep accountability visible across the issue lifecycle.'},
+    automation:{eyebrow:'AUTOMATION WITH GUARDRAILS',title:'Automate repeatable work without bypassing policy.',text:'Scoped credentials and signed events connect approved workflows to the same permission and safety boundaries as the UI.'},
+    onboarding:{eyebrow:'GETTING STARTED',title:'Move from an empty workspace to a useful baseline.',text:'A guided sequence keeps account security, authorised scope, assessment policy and evidence review in the right order.'},
+    trust:{eyebrow:'TRUST BY DESIGN',title:'Safety controls should be visible before a scan starts.',text:'Explicit authorisation, bounded requests, destination validation and evidence limitations are part of the operating model.'}
+  };
+  const v=copy[variant]||copy.product;
+  return <section className="publicSection workflowCompareSection"><SectionHead eyebrow={v.eyebrow} title={v.title} text={v.text}/><div className="workflowCompareGrid">
+    <article className="workflowComparePanel workflowCompareBefore"><div className="workflowCompareLabel"><span>WITHOUT A CONNECTED WORKFLOW</span><span className="workflowCompareIcon"><History/></span></div><h3>Fragmented follow-up</h3><ul><li><X/> Scan results exported and separated from ownership</li><li><X/> Repeat detections create duplicate triage work</li><li><X/> Remediation status depends on manual updates</li><li><X/> Closure is hard to prove from a new observation</li></ul><div className="workflowCompareFoot">Context gets lost between tools.</div></article>
+    <div className="workflowCompareBridge" aria-hidden="true"><ArrowRight/></div>
+    <article className="workflowComparePanel workflowCompareAfter"><div className="workflowCompareLabel"><span>WITH SENTINELSCOPE</span><span className="workflowCompareIcon"><ShieldCheck/></span></div><h3>Connected, reviewable work</h3><ul><li><CheckCircle2/> Evidence and policy snapshot stay attached</li><li><CheckCircle2/> Stable fingerprints preserve finding history</li><li><CheckCircle2/> Owner, due date and decision are explicit</li><li><CheckCircle2/> A fresh assessment records verification</li></ul><div className="workflowCompareFoot">One record follows the work through its lifecycle.</div></article>
+  </div></section>
+}
+
+function PublicFaq({page}:{page:string}){
+  const group:any={
+    home:[
+      ['What is SentinelScope?','A workspace for authorised, bounded web-security assessments that connects target context, findings, remediation ownership, verification and evidence exports.'],
+      ['Is it a replacement for a penetration test?','No. It performs defined non-destructive HTTP/TLS and configuration checks. Business logic, complex authorisation, source-code weaknesses and broader penetration testing still need qualified manual assessment.'],
+      ['Can I scan any public website?','Only scan systems you own or have explicit permission to assess. Target and network-safety controls are designed to keep scope bounded.'],
+      ['Does an OWASP mapping mean the application is compliant?','No. Mapping connects a specific observation to relevant references where justified. It does not certify the whole application or prove complete compliance.'],
+      ['How is a remediation marked as fixed?','The team can request a fresh assessment and record whether the same issue is no longer observed or remains present. The original finding history stays available.']
+    ],
+    product:[
+      ['What happens after a scan completes?','Review evidence and severity, open or correlate persistent findings, assign an owner and due date, document the decision, then verify the fix with a fresh assessment.'],
+      ['Are scan settings preserved?','Completed scans keep execution and policy provenance so later reviewers can understand the configuration that produced the evidence.'],
+      ['Does the asset inventory discover the entire internet-facing estate?','No. It records assets discovered within the authorised target and the crawler's bounded same-origin scope.'],
+      ['Can I export the evidence?','Available report formats include PDF, HTML and JSON, with scan context and export provenance where supported.']
+    ],
+    teams:[
+      ['Who is SentinelScope for?','Application security, engineering and platform operations teams that need a repeatable assessment and remediation workflow. It can also support controlled education and research.'],
+      ['How do teams collaborate on a finding?','The issue workflow can retain assignment, due dates, state, comments or rationale, occurrence history and verification outcome according to workspace permissions.'],
+      ['Does it replace our engineering issue tracker?','It provides security-specific lifecycle context. Integrations and exports can help connect approved workflows, but do not assume it replaces every existing team system.']
+    ],
+    governance:[
+      ['How are permissions handled?','Workspace roles are enforced by the API. System-administration capabilities are separated from ordinary workspace roles.'],
+      ['Can risk be accepted without a reason?','Governed exceptions are designed to capture rationale, and some decisions can require approval and a future review date.'],
+      ['Does an audit trail prove compliance?','It supports review of recorded actions and decisions; it is not, by itself, proof of regulatory compliance or an independent audit.']
+    ],
+    automation:[
+      ['Can automation start a scan?','Approved automation can use scoped credentials and versioned endpoints where available. It remains subject to the same target authorisation and scanner safety controls.'],
+      ['How are webhooks verified?','The developer workflow describes HMAC-SHA256 signatures for supported workspace event deliveries. Consumers should validate signatures and handle retries safely.'],
+      ['Can an API key bypass UI permissions?','No. Bearer credentials are intended to be scoped to explicit permissions rather than act as an unrestricted user session.']
+    ],
+    onboarding:[
+      ['What should I do first?','Secure the account, create a project, add the exact authorised HTTP(S) target, complete any required ownership verification, select a bounded profile and run the first assessment.'],
+      ['Why might a target need verification?','Additional verification helps demonstrate control of the target before workflows that require a stronger authorisation signal.'],
+      ['What should I review after the first baseline?','Check discovered assets, finding evidence and confidence, severity, standards references, ownership and remediation guidance before deciding what to fix first.']
+    ],
+    trust:[
+      ['Does SentinelScope run destructive exploits?','The platform is designed for bounded, non-destructive checks and intentionally avoids destructive exploitation, credential attacks and denial-of-service behaviour.'],
+      ['How are redirects handled?','Destination validation and redirect re-validation are part of the stated network safety model; operators should still define only authorised targets.'],
+      ['Are standards mappings compliance certification?','No. They are evidence-level references to support review and do not replace full testing or independent certification.']
+    ]
+  };
+  const key:any={features:'product','asset-inventory':'product','scan-profiles':'product','vulnerability-management':'product',reports:'product',workflow:'product','continuous-monitoring':'product','exposure-management':'product',solutions:'teams',enterprise:'governance',governance:'governance',developers:'automation',integrations:'automation',api:'automation',docs:'onboarding','getting-started':'onboarding',security:'trust','responsible-use':'trust',standards:'trust',trust:'trust',deployment:'governance',architecture:'governance',research:'product',methodology:'trust','scanner-checks':'trust',about:'product',status:'trust','404':'onboarding'};
+  const items=group[key[page]||page]||group.product;
+  return <section className="publicSection publicFaqSection"><div className="publicFaqIntro"><span className="pageHeroEyebrow"><span className="pageHeroDot"/> COMMON QUESTIONS</span><h2>Clear answers before you start.</h2><p>Understand the product boundary, the evidence it retains and the decisions that remain with your team.</p><a href="/docs">Read the platform guide <ArrowRight/></a></div><div className="publicFaqList">{items.map(([q,a]:string[],i:number)=><details key={q} className="publicFaqItem"><summary><span><small>0{i+1}</small>{q}</span><ChevronRight/></summary><p>{a}</p></details>)}</div></section>
+}
+
+function PageDeepDive({page,workflow}:any){
+  const groupByPage:any={product:'product',features:'product','asset-inventory':'product','scan-profiles':'product','vulnerability-management':'product',reports:'product',workflow:'product','continuous-monitoring':'product','exposure-management':'product',solutions:'teams',enterprise:'governance',governance:'governance',developers:'automation',integrations:'automation',api:'automation',docs:'onboarding','getting-started':'onboarding',security:'trust','responsible-use':'trust',standards:'trust',trust:'trust',deployment:'governance',architecture:'governance',research:'product',methodology:'trust','scanner-checks':'trust',about:'product','404':'onboarding'};
+  const group=groupByPage[page]||'product';
+  const stories:any={
+    product:{eyebrow:'INSIDE THE WORKSPACE',title:'One finding record. A clear next action.',text:'The important context stays connected: original evidence, check confidence, policy provenance, owner, due date, decision history and the verification result.',panel:'FINDING DETAIL',panelTitle:'HSTS missing on authenticated route',panelSub:'Customer portal · /account',status:'IN PROGRESS',owner:'Application Security',metric:'Evidence linked',foot:'Latest assessment · policy snapshot retained',steps:[['01','Capture the observation','Record the affected URL, response evidence and the check that produced the result.'],['02','Make ownership explicit','Assign the issue, due date and remediation decision so the next step is clear.'],['03','Verify before closure','Re-run a bounded assessment and preserve whether the issue is fixed or still present.']]},
+    teams:{eyebrow:'ROLE-BASED HANDOFF',title:'Security, engineering and operations share the same evidence.',text:'Each role sees a different next action, but nobody has to reconstruct the issue from a detached report or an untracked chat thread.',panel:'TEAM HANDOFF',panelTitle:'CSP allows unsafe-inline',panelSub:'Marketing site · configuration review',status:'ASSIGNED',owner:'Web Engineering',metric:'Owner assigned',foot:'Triage notes and due date stay on the issue',steps:[['01','Security triages','Review severity, confidence, evidence and target criticality.'],['02','Engineering fixes','Use remediation guidance and keep investigation notes attached.'],['03','Security re-checks','Confirm the same finding is no longer observed before recording a verified outcome.']]},
+    governance:{eyebrow:'GOVERNANCE IN PRACTICE',title:'Make every privileged action and risk decision reviewable.',text:'Access, risk acceptance, review dates, exports and activity history help explain who made a decision and what evidence was available at the time.',panel:'GOVERNED DECISION',panelTitle:'Temporary risk acceptance',panelSub:'Issue lifecycle · review required',status:'REVIEW DUE',owner:'Workspace Owner',metric:'Rationale recorded',foot:'Illustrative state · approval depends on workspace policy',steps:[['01','Enforce role boundaries','Keep workspace roles separate from platform-level administration.'],['02','Record the decision','Capture the reason, approver and future review date where policy requires it.'],['03','Revisit the exception','Use the review date and current evidence to renew or retire the decision.']]},
+    automation:{eyebrow:'DEVELOPER WORKFLOW',title:'Automate the repeatable steps—not the safety boundary.',text:'Scoped API credentials, versioned endpoints, signed event delivery and structured exports help connect approved tools while retaining target and permission controls.',panel:'AUTOMATION EVENT',panelTitle:'Assessment completed',panelSub:'POST /api/v1/scans · illustrative',status:'SIGNED EVENT',owner:'Workspace integration',metric:'Scoped access',foot:'Validate webhook signatures and apply least privilege',steps:[['01','Authenticate narrowly','Use a credential with only the permissions required for the workflow.'],['02','Run approved work','The API still applies authorisation, policy limits and scanner safety checks.'],['03','Consume evidence safely','Validate event signatures, preserve export context and handle retries idempotently.']]},
+    onboarding:{eyebrow:'GUIDED FIRST BASELINE',title:'A short path from a new account to useful evidence.',text:'A predictable setup sequence reduces mistakes: secure the account, define exact scope, choose bounded policy, then review results before assigning remediation.',panel:'WORKSPACE READINESS',panelTitle:'First baseline checklist',panelSub:'New workspace · illustrative state',status:'2 OF 4 STEPS',owner:'Workspace Owner',metric:'Next: verify target',foot:'The actual checklist reflects persisted workspace state',steps:[['01','Secure the account','Verify email, use a strong unique password and enable MFA when appropriate.'],['02','Define authorised scope','Create a project and add the exact target with owner, environment and criticality.'],['03','Run and review','Select a bounded profile, run the assessment and inspect evidence before acting.']]},
+    trust:{eyebrow:'SAFETY & EVIDENCE BOUNDARIES',title:'Understand what the scanner does—and what it does not claim.',text:'SentinelScope favours bounded HTTP/TLS observations, transparent evidence and clear limitations over opaque exploit claims or blanket compliance language.',panel:'CHECK EVIDENCE',panelTitle:'Transport security observation',panelSub:'Target policy · redirect revalidation',status:'BOUNDED CHECK',owner:'Authorised target only',metric:'Evidence reviewable',foot:'A check result is not a complete security assurance',steps:[['01','Validate the destination','Apply scope and network destination controls before making a request.'],['02','Observe safely','Use bounded requests and record the evidence and confidence for each check.'],['03','Interpret in context','Combine automated results with manual review where logic, identity or architecture is involved.']]}
+  };
+  const s=stories[group]||stories.product;
+  return <section className="publicSection pageDeepDiveSection"><div className="pageDeepDiveHeader"><div><span className="pageHeroEyebrow"><span className="pageHeroDot"/>{s.eyebrow}</span><h2>{s.title}</h2></div><p>{s.text}</p></div>
+    <div className="pageDeepDiveGrid"><div className="pageDeepDiveSteps">{s.steps.map(([n,t,d]:string[])=><article key={n}><span>{n}</span><div><h3>{t}</h3><p>{d}</p></div><CheckCircle2/></article>)}</div>
+      <div className="pageEvidenceMock"><div className="pageEvidenceMockTop"><div><span><i/> {s.panel}</span><small>ILLUSTRATIVE WORKSPACE VIEW</small></div><b><ShieldCheck/> POLICY LINKED</b></div><div className="pageEvidenceMockBody"><div className="pageEvidenceMockTitle"><span className="pageEvidenceMockSeverity">{s.status}</span><h3>{s.panelTitle}</h3><p>{s.panelSub}</p></div><div className="pageEvidenceMockCode"><small>EVIDENCE / CONTEXT</small><code>Observation recorded · target scope retained · source scan linked</code></div><div className="pageEvidenceMockFacts"><div><small>ACCOUNTABLE OWNER</small><b>{s.owner}</b></div><div><small>WORKFLOW SIGNAL</small><b>{s.metric}</b></div></div><div className="pageEvidenceMockFoot"><CheckCircle2/><span><b>History preserved</b><small>{s.foot}</small></span><ChevronRight/></div></div></div>
+    </div>
+    <WorkflowCompare variant={group}/>
+  </section>
 }
 
 function ProductPreview(){
@@ -323,6 +445,8 @@ function StaticPage({page}:{page:string}){
       <div className="pageWorkflowHeading"><div><span className="pageHeroEyebrow"><span className="pageHeroDot"/> FROM SIGNAL TO ACTION</span><h2>Make every step visible. Keep every decision connected.</h2></div><p>Follow the work from the initial assessment through triage, ownership and verification—with evidence retained along the way.</p></div>
       <div className="pageWorkflowRail">{workflow.map(([t,d,I]:any,i:number)=><article key={t}><span className="pageWorkflowNumber">0{i+1}</span><div className="pageWorkflowIcon"><I/></div><h3>{t}</h3><p>{d}</p>{i<workflow.length-1&&<span className="pageWorkflowConnector" aria-hidden="true"><ArrowRight/></span>}</article>)}</div>
     </section>
+    <PageDeepDive page={page} workflow={workflow}/>
+    <PublicFaq page={page}/>
     <section className="publicCTA pageBottomCta"><div><span>AUTHORISATION FIRST · EVIDENCE ALWAYS</span><h2>Security tooling is useful when findings become verified, accountable work.</h2><p>Start with a target you are authorised to assess. Keep the scope bounded and the evidence reviewable.</p></div><a className="publicPrimary large" href="/signup">Create workspace <ArrowRight/></a></section>
   </main>
 }
