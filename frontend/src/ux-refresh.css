@@ -310,3 +310,106 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .publicNav nav a.active{background:#edf3ff;color:#245df5}
 .publicNav nav a:focus-visible,.publicActions a:focus-visible{outline:3px solid #8cb0ff;outline-offset:3px}
 @media(max-width:760px){.previewSampleTag{font-size:6px;padding:3px 4px}.publicProofBar{top:62px!important}.publicNav nav a{min-height:42px;display:flex;align-items:center}}
+
+
+/* User-first visual refinement — calmer hierarchy, predictable controls, and readable content. */
+:root {
+  --ux-space-1: 4px;
+  --ux-space-2: 8px;
+  --ux-space-3: 12px;
+  --ux-space-4: 16px;
+  --ux-space-5: 20px;
+  --ux-space-6: 24px;
+  --ux-focus: 0 0 0 3px color-mix(in srgb, var(--ux-blue) 22%, transparent);
+}
+body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+.app, .adminApp { min-height: 100dvh; }
+.appHeader { backdrop-filter: saturate(150%) blur(14px); }
+.workspaceTitle, .pageActions { gap: 8px; }
+.workspaceTitle p, .pageActions p { color: var(--ent-muted, var(--ux-muted)); }
+.panel, .card, .projectCard, .scheduleCard, .metric {
+  transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+.panel:hover, .projectCard:hover, .scheduleCard:hover {
+  border-color: color-mix(in srgb, var(--ent-brand, var(--ux-blue)) 22%, var(--ent-border, var(--ux-border)));
+}
+.primary, .ghost, .dangerBtn, .link, .iconButton, .notificationShortcut {
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
+}
+.primary:focus-visible, .ghost:focus-visible, .dangerBtn:focus-visible,
+.iconButton:focus-visible, .notificationShortcut:focus-visible {
+  outline: none;
+  box-shadow: var(--ux-focus);
+}
+input, select, textarea { accent-color: var(--ent-brand, var(--ux-blue)); }
+input::placeholder, textarea::placeholder { color: var(--ent-muted, #7b8799); opacity: .82; }
+label { line-height: 1.45; }
+.modal { box-shadow: 0 24px 80px rgba(6, 17, 35, .24); }
+.modalHead { gap: 12px; }
+.modalHead h2, .modalHead h3 { line-height: 1.3; overflow-wrap: anywhere; }
+.toast { z-index: 160; box-shadow: 0 12px 35px rgba(6, 17, 35, .2); }
+.emptyStateCompact { text-wrap: pretty; }
+.enterpriseTable .tableRow:hover { background: color-mix(in srgb, var(--ent-brand, var(--ux-blue)) 4%, var(--ent-surface, #fff)); }
+.enterpriseTable .tableRow:focus-within { outline: 2px solid color-mix(in srgb, var(--ent-brand, var(--ux-blue)) 55%, transparent); outline-offset: -2px; }
+.sev, .lifecycle { max-width: 100%; }
+code, pre { overflow-wrap: anywhere; }
+pre { max-width: 100%; overflow: auto; }
+img, svg { max-width: 100%; }
+button { font: inherit; }
+button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
+
+/* Public pages: keep the product story clear and calls-to-action consistent. */
+.publicSite, .publicPage, .marketingSite { min-width: 0; }
+.publicSite h1, .publicPage h1, .marketingSite h1 {
+  text-wrap: balance;
+  letter-spacing: -.045em;
+  line-height: 1.06;
+}
+.publicSite h2, .publicPage h2, .marketingSite h2 {
+  text-wrap: balance;
+  letter-spacing: -.03em;
+  line-height: 1.18;
+}
+.publicSite p, .publicPage p, .marketingSite p { text-wrap: pretty; }
+.publicSite a, .publicPage a, .marketingSite a { text-underline-offset: 3px; }
+.publicSite a:focus-visible, .publicPage a:focus-visible, .marketingSite a:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--ux-blue) 55%, transparent);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+.publicSite button, .publicPage button, .marketingSite button { min-height: 42px; }
+.publicSite section, .publicPage section, .marketingSite section { scroll-margin-top: 88px; }
+
+/* Avoid narrow-screen overflow and keep high-value actions within reach. */
+@media (min-width: 821px) {
+  .content > * { min-width: 0; }
+  .pageActions { align-items: flex-start; }
+}
+@media (max-width: 820px) {
+  .content { overflow-x: clip; }
+  .appHeader { backdrop-filter: blur(16px); }
+  .workspaceTitle h2, .pageActions h2 { overflow-wrap: anywhere; }
+  .metrics, .dashboardMetrics { min-width: 0; }
+  .modalActions { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  .toast { left: 12px; right: 12px; bottom: calc(86px + env(safe-area-inset-bottom)); max-width: none; }
+  .profileEditorActions { padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+}
+@media (max-width: 420px) {
+  .content { padding-left: 11px; padding-right: 11px; }
+  .appHeader { padding-left: 9px; padding-right: 9px; }
+  .headerContext .breadcrumb strong { max-width: 25vw; }
+  .dashboardWelcome h1 { font-size: clamp(26px, 8vw, 31px); }
+  .dashboardMetrics { gap: 7px; }
+  .dashboardMetrics .card { padding: 11px !important; }
+  .executiveGrid { gap: 7px; }
+  .executiveGrid > section { padding: 10px; }
+  .mobileDock { left: 6px !important; right: 6px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
