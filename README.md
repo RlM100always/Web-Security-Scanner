@@ -6,7 +6,7 @@ SentinelScope is a production-oriented Flask + React security assessment platfor
 
 ## Live application
 
-**Deployment status:** The production hosting configuration is ready, but a live URL has not been assigned yet. Render creates the public URL when the Blueprint is deployed; this README will only show it after that deployment has been verified.
+**Deployment status:** A free Render demo configuration is committed, but the live URL has not been assigned yet. The hosting provider requires account authorization before it can create the service. Free hosting is for preview only: the service sleeps when idle and local SQLite data may be lost. Do not store sensitive or important data on the demo.
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/RlM100always/Web-Security-Scanner)
 
