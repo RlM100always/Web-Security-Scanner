@@ -3,12 +3,13 @@ import {test,expect} from '@playwright/test';
 test('signup opens authenticated workspace and creates a project',async({page})=>{
   const email='e2e-'+Date.now()+'@example.com';
   await page.goto('/signup');
-  await page.getByRole('button',{name:'Create account'}).click();
+  await page.getByRole('button',{name:'Create secure workspace'}).click();
   await page.getByLabel('Full name').fill('E2E Owner');
   await page.getByLabel('Workspace name').fill('E2E Security');
   await page.getByLabel('Email address').fill(email);
-  await page.getByLabel('Password').fill('e2e-secure-password-123');
-  await page.getByRole('button',{name:'Create account'}).click();
+  await page.getByLabel('Password',{exact:true}).fill('e2e-secure-password-123');
+  await page.getByLabel('Confirm password').fill('e2e-secure-password-123');
+  await page.getByRole('button',{name:'Create secure workspace'}).click();
   await expect(page.getByRole('heading',{name:'Dashboard'})).toBeVisible();
   const menu=page.locator('button.menu');
   if(await menu.isVisible()) await menu.click();
