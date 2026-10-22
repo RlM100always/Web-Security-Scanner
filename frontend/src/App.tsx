@@ -89,9 +89,9 @@ export default function App(){
   const latestCompletedTarget=latestCompletedScan?targets.find((t:any)=>t.id===latestCompletedScan.target_id):null;
 
   return <div className="app">
-    {mobile&&<button className="drawerScrim" aria-label="Close navigation menu" onClick={()=>setMobile(false)}/>}
+    {mobile&&<button className="drawerScrim" aria-label="Dismiss navigation menu" onClick={()=>setMobile(false)}/>}
     <aside id="workspace-nav" className={mobile?'side open':'side'} aria-label="Workspace navigation">
-      <div className="brand"><span className="brandmark"><ShieldCheck size={21}/></span><div><b>SentinelScope</b><small>Security Platform</small></div><button className="mobileClose" onClick={()=>setMobile(false)}><X/></button></div>
+      <div className="brand"><span className="brandmark"><ShieldCheck size={21}/></span><div><b>SentinelScope</b><small>Security Platform</small></div><button className="mobileClose" onClick={()=>setMobile(false)} aria-label="Close navigation menu"><X/></button></div>
       <div className="workspace"><small>WORKSPACE</small><select value={user.organization_id} onChange={async e=>{const next=e.target.value;if(next===user.organization_id)return;setWorkspaceLoading(true);setErr('');setSelected(null);setSelectedIssue(null);try{await api('/auth/workspace',{method:'POST',body:JSON.stringify({organization_id:next})});await loadMe()}catch(x:any){setErr(x.message||'Workspace switch failed');await load()}finally{setWorkspaceLoading(false)}}}>{workspaces.map(w=><option key={w.organization_id} value={w.organization_id}>{w.organization_name}</option>)}</select><span>{user.role}</span></div>
       <nav className="groupedNav">{navGroups.map(([label,items]:any)=><div className="navGroup" key={label}><span className="navGroupLabel">{label}</span>{items.map(([n,I]:any)=><button className={(nav===n||(n==='Scans'&&nav==='Findings'))?'active':''} aria-current={nav===n||(n==='Scans'&&nav==='Findings')?'page':undefined} onClick={()=>goNav(n)} key={n}><I size={18}/><span>{n}</span>{n==='Notifications'&&notificationSummary.unread?<em className="navCount">{Math.min(notificationSummary.unread,99)}</em>:null}</button>)}</div>)}</nav>
       {user.system_admin?<button className="adminLaunch" onClick={()=>window.location.href='/admin'}><Shield size={18}/> System Admin</button>:null}
