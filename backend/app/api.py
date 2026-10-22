@@ -124,7 +124,7 @@ def create_blueprint():
         if not memberships:return {'error':'Account has no active workspace'},403
         org_id=(d.get('organization_id') if any(m['organization_id']==d.get('organization_id') for m in memberships) else memberships[0]['organization_id'])
         raw=secrets.token_urlsafe(48);csrf=secrets.token_urlsafe(32)
-        remember_me=bool(d.get('remember_me',False))
+        remember_me=d.get('remember_me') is True
         session_ttl_hours=24*30 if remember_me else current_app.config['SESSION_TTL_HOURS']
         repo().create_session(user['id'],org_id,token_hash(raw),csrf,session_ttl_hours,request.headers.get('User-Agent','')[:300],ip_addr())
         ident=repo().session_identity(token_hash(raw));repo().audit(org_id,user['id'],'LOGIN','user',user['id'],{'remember_me':remember_me,'session_ttl_hours':session_ttl_hours},ip_addr())
