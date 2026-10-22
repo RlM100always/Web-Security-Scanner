@@ -27,5 +27,3 @@ services:
         value: "1"
       - key: APP_ENCRYPTION_KEY
         generateValue: true
-      - key: SYSTEM_ADMIN_EMAILS
-        sync: false
