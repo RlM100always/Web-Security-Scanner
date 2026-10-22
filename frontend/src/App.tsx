@@ -241,7 +241,7 @@ function PasswordModal({close,done}:any){const[current,setCurrent]=useState(''),
 
 function SpecialAuthFlow({path}:any){
   const token=new URLSearchParams(window.location.search).get('token')||'';
-  const[status,setStatus]=useState(''),[error,setError]=useState(''),[name,setName]=useState(''),[password,setPassword]=useState(''),[busy,setBusy]=useState(false),[inviteInfo,setInviteInfo]=useState<any>(null);
+  const[status,setStatus]=useState(''),[error,setError]=useState(''),[name,setName]=useState(''),[password,setPassword]=useState(''),[busy,setBusy]=useState(false),[inviteInfo,setInviteInfo]=useState<any>(null),[showPassword,setShowPassword]=useState(false);
   const missingToken=!token;
   useEffect(()=>{
     setStatus('');setInviteInfo(null);setError(missingToken?'This secure link is incomplete or missing its token. Request a new link and try again.':'');
@@ -277,8 +277,8 @@ function SpecialAuthFlow({path}:any){
     {status&&<div className="successBox"><CheckCircle2/><p>{status}</p></div>}
     {path==='/accept-invite'&&inviteInfo&&!status&&<div className="inviteContext"><div><small>WORKSPACE</small><b>{inviteInfo.organization_name}</b></div><div><small>ROLE</small><b>{inviteInfo.role}</b></div><div><small>INVITED EMAIL</small><b>{inviteInfo.email_masked}</b></div></div>}
     {inviteNeedsAccount&&!status&&<label>Full name<input autoComplete="name" value={name} onChange={e=>setName(e.target.value)}/></label>}
-    {path==='/reset-password'&&!status&&!missingToken&&<label>New password<input type="password" minLength={12} autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)}/></label>}
-    {inviteNeedsAccount&&!status&&<label>Create password<input type="password" minLength={12} autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)}/></label>}
+    {path==='/reset-password'&&!status&&!missingToken&&<label>New password<div className="authPasswordField"><input type={showPassword?'text':'password'} minLength={12} autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 12 characters"/><button type="button" className="authPasswordToggle" aria-label={showPassword?'Hide password':'Show password'} aria-pressed={showPassword} onClick={()=>setShowPassword(!showPassword)}>{showPassword?<EyeOff/>:<Eye/>}</button></div><small className="authFieldHint">Use at least 12 characters and avoid reusing a previous password.</small></label>}
+    {inviteNeedsAccount&&!status&&<label>Create password<div className="authPasswordField"><input type={showPassword?'text':'password'} minLength={12} autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 12 characters"/><button type="button" className="authPasswordToggle" aria-label={showPassword?'Hide password':'Show password'} aria-pressed={showPassword} onClick={()=>setShowPassword(!showPassword)}>{showPassword?<EyeOff/>:<Eye/>}</button></div><small className="authFieldHint">Use at least 12 characters and keep it unique to this account.</small></label>}
     {path==='/accept-invite'&&inviteInfo?.existing_account&&!status&&<div className="notice"><Users/><p>An account already exists for this email. Accepting adds the invited workspace; your existing password remains unchanged.</p></div>}
     {path!=='/verify-email'&&!status&&!missingToken&&<button className="primary authSubmit" disabled={disabled} onClick={submit}>{busy?'Working…':path==='/accept-invite'?'Accept invitation':'Continue'}</button>}
     <a className="authBack" href="/login">Return to sign in</a>
