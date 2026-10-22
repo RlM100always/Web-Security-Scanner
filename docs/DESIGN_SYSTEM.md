@@ -185,3 +185,32 @@ UI changes are not complete until:
 - auth/workspace isolation tests pass
 - destructive-action tests pass
 - CodeQL completes without introducing blocking security findings
+
+
+## User-first redesign acceptance checklist
+
+Review the interface from the perspective of a first-time analyst, a returning analyst handling an urgent finding, and a workspace owner managing a team. Visual polish is not accepted as a substitute for task clarity.
+
+### Every primary screen
+- State the page purpose in plain language and keep the primary next action visually distinct.
+- Preserve workspace, project and target context during navigation and detail drill-down.
+- Explain unfamiliar security terms inline or through concise help text; do not rely on colour alone.
+- Use loading, empty, partial, offline, permission-denied and error states that tell the user what happened and what to do next.
+- Keep filters, sorting and pagination visible and preserve them when a user returns from a detail view where practical.
+- Never display demo or stale metrics as if they were live production data.
+
+### Core user journeys
+1. **First scan:** explain authorised scope, guide target registration and ownership verification, show the selected scan profile and safety mode before queueing.
+2. **Triage a finding:** put severity, confidence, affected asset, evidence, business impact and remediation steps together; show lifecycle state, owner and due date without forcing a context switch.
+3. **Verify a fix:** explain that verification queues a new assessment, show its progress and record the outcome against the original finding.
+4. **Invite a teammate:** explain each role in terms of what the person can see and change before the invitation is sent.
+5. **Recover from an error:** retain safe form values, show field-level validation, and provide a clear retry or recovery route without claiming an unsuccessful action succeeded.
+6. **Use on mobile:** support one-handed navigation, readable stacked records, 44px-class touch targets, safe-area spacing and full-screen editing for complex tasks.
+
+### Visual and accessibility gates
+- Use one consistent spacing, typography, border, radius and focus system; avoid page-specific decoration that does not communicate meaning.
+- Meet WCAG 2.2 AA contrast targets for body text and essential controls; severity colours must remain distinguishable without colour perception.
+- All interactive flows must work with keyboard only, visible focus, Escape-to-close where appropriate, and screen-reader names for icon-only controls.
+- Honour reduced-motion preferences and browser zoom; no essential content may require horizontal page scrolling at 320px width.
+- Test at minimum 320px mobile, 390px mobile, 768px tablet, 1024px laptop and 1440px desktop.
+- Before merging, run the TypeScript/Vite production build and desktop + Pixel 7 Playwright suites. Add regression coverage for any changed critical journey.
