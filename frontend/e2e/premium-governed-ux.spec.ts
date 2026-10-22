@@ -29,7 +29,7 @@ test('permanent project deletion requires an in-product typed confirmation',asyn
   await page.getByRole('button',{name:'Create project'}).click();
   await expect(page.getByText('Disposable Project')).toBeVisible();
 
-  await page.getByRole('button',{name:'Delete project'}).click();
+  await page.getByRole('button',{name:/Delete project/}).click();
   const dialog=page.getByRole('dialog',{name:/Permanently delete project/i});
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText(/cannot be undone/i)).toBeVisible();
