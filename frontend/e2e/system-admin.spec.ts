@@ -3,12 +3,13 @@ import {test,expect} from '@playwright/test';
 test('system admin can open global control center',async({page},testInfo)=>{
   const email='e2e-admin-'+testInfo.project.name+'@example.com';
   await page.goto('/signup');
-  await page.getByRole('button',{name:'Create account'}).click();
+  await page.getByRole('button',{name:'Create secure workspace'}).click();
   await page.getByLabel('Full name').fill('System Admin');
   await page.getByLabel('Workspace name').fill('Admin Workspace');
   await page.getByLabel('Email address').fill(email);
-  await page.getByLabel('Password').fill('admin-secure-password-123');
-  await page.getByRole('button',{name:'Create account'}).click();
+  await page.getByLabel('Password',{exact:true}).fill('admin-secure-password-123');
+  await page.getByLabel('Confirm password').fill('admin-secure-password-123');
+  await page.getByRole('button',{name:'Create secure workspace'}).click();
   await expect(page.getByRole('heading',{name:'Dashboard'})).toBeVisible();
 
   await page.goto('/admin');
