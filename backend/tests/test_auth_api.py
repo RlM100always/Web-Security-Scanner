@@ -78,6 +78,10 @@ def test_email_verification_and_password_reset(monkeypatch):
         assert app.test_client().get("/api/v1/projects",headers={"Authorization":"Bearer "+raw_key}).status_code==401
         login=client.post("/api/v1/auth/login",json={"email":"owner@example.com","password":"new-secure-password-123"})
         assert login.status_code==200
+        assert "Max-Age=86400" in login.headers.get("Set-Cookie","")
+        remembered=app.test_client().post("/api/v1/auth/login",json={"email":"owner@example.com","password":"new-secure-password-123","remember_me":True})
+        assert remembered.status_code==200
+        assert "Max-Age=2592000" in remembered.headers.get("Set-Cookie","")
 
 def test_mfa_setup_and_login_requirement():
     import pyotp
