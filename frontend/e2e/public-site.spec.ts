@@ -3,7 +3,7 @@ import {test,expect} from '@playwright/test';
 test('public product site explains platform and routes to signup',async({page})=>{
   await page.goto('/');
   await expect(page).toHaveTitle(/SentinelScope — Web Security Assessment Platform/);
-  await expect(page.getByRole('heading',{name:/Turn web-security checks/i})).toBeVisible();
+  await expect(page.getByRole('heading',{name:/See what matters/i})).toBeVisible();
   await expect(page.getByText('OWASP WSTG')).toBeVisible();
   await expect(page.locator('.redesignedHero .heroCtas').getByRole('link',{name:/Start workspace/i})).toBeVisible();
   await expect(page.locator('.redesignedHero .heroVisual')).toBeVisible();
@@ -85,7 +85,7 @@ test('public product site explains platform and routes to signup',async({page})=
   await expect(page.getByText(/All public platform checks operational/i)).toBeVisible();
 
   await page.goto('/signup');
-  await expect(page.getByRole('heading',{name:/Start your security workspace/i})).toBeVisible();
+  await expect(page.getByRole('heading',{name:/Create your SentinelScope workspace/i})).toBeVisible();
 });
 
 test('public navigation remains usable and keyboard accessible on mobile',async({page},testInfo)=>{
@@ -302,5 +302,47 @@ test('authentication photography loads and form typography remains usable',async
       expect(metrics.scroll).toBeLessThanOrEqual(metrics.client+2);
     }
   }
+});
+
+test('modern public shell uses the new hero bento workflow and inner-page stages',async({page})=>{
+  await page.setViewportSize({width:1440,height:1000});
+  await page.goto('/');
+  const hero=page.locator('.redesignedHero');
+  await expect(hero).toBeVisible();
+  await expect(page.locator('.homeModuleGrid .homeModuleCard')).toHaveCount(3);
+  await expect(page.locator('.modernFlowSection')).toBeVisible();
+  await expect(page.locator('.modernOpsSection')).toBeVisible();
+  await expect(page.locator('.modernEvidenceSection')).toBeVisible();
+  const desktop=await page.evaluate(()=> {
+    const hero=document.querySelector('.redesignedHero') as HTMLElement|null;
+    const flow=document.querySelector('.modernFlowSection') as HTMLElement|null;
+    const first=document.querySelector('.homeModuleCard:nth-child(1)') as HTMLElement|null;
+    const second=document.querySelector('.homeModuleCard:nth-child(2)') as HTMLElement|null;
+    return {
+      heroRadius:hero?parseFloat(getComputedStyle(hero).borderRadius):0,
+      flowBg:flow?getComputedStyle(flow).backgroundImage:'',
+      firstWidth:first?.getBoundingClientRect().width||0,
+      secondWidth:second?.getBoundingClientRect().width||0,
+      client:document.documentElement.clientWidth,
+      scroll:document.documentElement.scrollWidth
+    };
+  });
+  expect(desktop.heroRadius).toBeGreaterThanOrEqual(28);
+  expect(desktop.flowBg).not.toBe('none');
+  expect(desktop.firstWidth).toBeGreaterThan(desktop.secondWidth);
+  expect(desktop.scroll).toBeLessThanOrEqual(desktop.client+2);
+
+  await page.goto('/product');
+  await expect(page.locator('.pageHero.pageHeroVisual')).toBeVisible();
+  await expect(page.locator('.pageWorkflowSection')).toBeVisible();
+  const inner=await page.evaluate(()=>({
+    heroRadius:parseFloat(getComputedStyle(document.querySelector('.pageHero.pageHeroVisual') as HTMLElement).borderRadius),
+    workflowBg:getComputedStyle(document.querySelector('.pageWorkflowSection') as HTMLElement).backgroundImage,
+    scroll:document.documentElement.scrollWidth,
+    client:document.documentElement.clientWidth
+  }));
+  expect(inner.heroRadius).toBeGreaterThanOrEqual(24);
+  expect(inner.workflowBg).not.toBe('none');
+  expect(inner.scroll).toBeLessThanOrEqual(inner.client+2);
 });
 
