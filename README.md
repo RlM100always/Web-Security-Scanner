@@ -6,7 +6,9 @@ SentinelScope is a production-oriented Flask + React security assessment platfor
 
 ## Live application
 
-**Deployment status:** A free Render demo configuration is committed, but the live URL has not been assigned yet. The hosting provider requires account authorization before it can create the service. Free hosting is for preview only: the service sleeps when idle and local SQLite data may be lost. Do not store sensitive or important data on the demo.
+**Live demo:** [sentinelscope-web-security-scanner.onrender.com](https://sentinelscope-web-security-scanner.onrender.com)
+
+The site is deployed on Render's Free plan. This is a preview/demo environment: it may sleep when idle, and its local SQLite data may be lost on restart or redeploy. Do not store sensitive or important data on the demo.
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/RlM100always/Web-Security-Scanner)
 
