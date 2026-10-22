@@ -12,8 +12,9 @@ test('enterprise integrations and access certification work',async({page},testIn
   await page.getByLabel('Full name').fill('Enterprise Owner');
   await page.getByLabel('Workspace name').fill('Enterprise Security');
   await page.getByLabel('Email address').fill(email);
-  await page.getByLabel('Password').fill('enterprise-owner-password-123');
-  await page.getByRole('button',{name:'Create account'}).click();
+  await page.getByLabel('Password',{exact:true}).fill('enterprise-owner-password-123');
+  await page.getByLabel('Confirm password').fill('enterprise-owner-password-123');
+  await page.getByRole('button',{name:'Create secure workspace'}).click();
   await expect(page.getByRole('heading',{name:'Dashboard'})).toBeVisible();
 
   await openNav(page,'Integrations');
