@@ -566,3 +566,53 @@
 /* Keep the comparison full-width when embedded inside a constrained detail-page section. */
 .pageDeepDiveSection .workflowCompareSection{padding-left:24px;padding-right:24px}
 @media(max-width:620px){.pageDeepDiveSection .workflowCompareSection{padding-left:17px;padding-right:17px}}
+
+
+/* Mobile layout repair: remove desktop container offsets and prevent hero content drifting off-canvas. */
+html,body,#root{width:100%;max-width:100%;min-width:0;margin:0;padding:0}
+.publicSite{width:100%;max-width:100%;min-width:0;margin:0;overflow-x:clip}
+.publicSite main,.publicSite section,.publicSite footer,.publicSite>header,.publicSite>.publicProofBar{box-sizing:border-box;min-width:0}
+@media(max-width:760px){
+  .publicSite{position:relative;left:auto;right:auto;transform:none}
+  .publicNav{display:flex;width:100%;max-width:none;min-width:0;height:62px;margin:0;padding:0 16px;gap:12px;justify-content:space-between;align-items:center;box-sizing:border-box;left:auto;right:auto;transform:none}
+  .publicNav .publicBrand{flex:0 1 auto;min-width:0;max-width:calc(100% - 58px);margin:0;gap:9px}
+  .publicNav .publicBrand>span{width:40px;height:40px;min-width:40px;flex:0 0 40px}
+  .publicNav .publicBrand>div{min-width:0}
+  .publicNav .publicBrand b{white-space:nowrap;font-size:14px}
+  .publicNav .publicBrand small{display:none}
+  .publicNav nav{display:none;position:fixed;top:62px;left:10px;right:10px;width:auto;max-width:none;margin:0;padding:8px;transform:none}
+  .publicNav nav.open{display:grid}
+  .publicNav .publicActions{display:flex;align-items:center;gap:8px;flex:0 0 auto;min-width:42px;margin:0 0 0 auto}
+  .publicNav .publicActions>.textLink,.publicNav .publicActions>.publicPrimary{display:none}
+  .publicNav .publicMenu{display:grid!important;place-items:center;flex:0 0 42px;width:42px;min-width:42px;height:42px;margin:0}
+  .publicProofBar{position:relative;top:auto!important;left:auto;right:auto;transform:none;display:flex;width:100%;max-width:none;min-width:0;margin:0;padding:0 14px;min-height:38px;gap:13px;overflow-x:auto;overflow-y:hidden;box-sizing:border-box}
+  .publicProofBar span{flex:0 0 auto;margin:0 auto 0 0}
+  .publicProofBar a{flex:0 0 auto}
+  .publicInnerPage{width:100%;max-width:none;min-width:0;margin:0;padding:0;overflow-x:clip}
+  .pageHero.pageHeroVisual{display:grid;width:100%;max-width:none;min-width:0;min-height:0;margin:0;grid-template-columns:minmax(0,1fr)!important;grid-auto-flow:row;gap:22px;padding:40px 16px 34px;justify-items:stretch;align-items:start;box-sizing:border-box;overflow:hidden}
+  .pageHero.pageHeroVisual>.pageHeroCopy,.pageHero.pageHeroVisual>.pageVisual{grid-column:1;position:relative;left:auto;right:auto;width:100%;max-width:100%;min-width:0;margin:0;justify-self:stretch;transform:none;box-sizing:border-box}
+  .pageHero.pageHeroVisual>.pageHeroCopy{padding:0}
+  .pageHero.pageHeroVisual .pageHeroCopy h1{max-width:100%;overflow-wrap:anywhere;font-size:clamp(34px,9vw,46px);line-height:1.04}
+  .pageHero.pageHeroVisual .pageHeroCopy>p{max-width:100%;overflow-wrap:anywhere}
+  .pageHero.pageHeroVisual .pageHeroActions{width:100%;min-width:0;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pageHero.pageHeroVisual .pageHeroActions>a{min-width:0;max-width:100%;white-space:normal}
+  .pageHero.pageHeroVisual .pageHeroProof{grid-template-columns:repeat(2,minmax(0,1fr));min-width:0}
+  .pageHero.pageHeroVisual>.pageVisual{padding:30px 0 24px;overflow:visible}
+  .pageHero.pageHeroVisual .pageVisualWindow{width:100%;max-width:100%;min-width:0;transform:none}
+  .pageHero.pageHeroVisual .pageVisualApp{grid-template-columns:0 minmax(0,1fr);min-width:0}
+  .pageHero.pageHeroVisual .pageVisualMain{min-width:0}
+  .publicSection,.publicSection.tinted,.pageDetailSection,.pageWorkflowSection,.pageDeepDiveSection{width:100%;max-width:none;min-width:0;margin:0;padding-left:16px;padding-right:16px;box-sizing:border-box}
+  .publicFooter{display:grid;width:100%;max-width:none;min-width:0;margin:0;padding:34px 16px 24px;grid-template-columns:minmax(0,1fr);gap:28px;box-sizing:border-box}
+  .publicFooter>div,.publicFooter .footerGrid,.publicFooter .footerNote{min-width:0;max-width:100%}
+  .publicFooter .footerGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 14px}
+  .publicFooter .footerNote{overflow-wrap:anywhere}
+}
+@media(max-width:390px){
+  .publicNav{padding-inline:12px}
+  .publicNav .publicBrand{gap:8px}
+  .publicNav .publicBrand>span{width:36px;height:36px;min-width:36px;flex-basis:36px}
+  .pageHero.pageHeroVisual{padding-inline:14px}
+  .pageHero.pageHeroVisual .pageHeroActions{grid-template-columns:minmax(0,1fr)}
+  .pageHero.pageHeroVisual .pageHeroProof{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .publicFooter{padding-inline:14px}
+}
