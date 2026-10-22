@@ -139,7 +139,7 @@ test('public detail pages use a balanced visual hero instead of an empty side co
     }));
     expect(dimensions.hero).toBeGreaterThan(0);
     expect(dimensions.copy).toBeGreaterThan(0);
-    expect(dimensions.visual).toBeGreaterThan(0);
+    expect(dimensions.visual).toBeGreaterThan(dimensions.hero*0.35);
     expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.client+2);
   }
 });
