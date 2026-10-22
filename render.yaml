@@ -2,7 +2,7 @@ services:
   - type: web
     name: sentinelscope
     runtime: docker
-    plan: starter
+    plan: free
     region: singapore
     branch: main
     dockerfilePath: ./Dockerfile
@@ -10,10 +10,6 @@ services:
     healthCheckPath: /health
     numInstances: 1
     maxShutdownDelaySeconds: 60
-    disk:
-      name: sentinelscope-data
-      mountPath: /data
-      sizeGB: 1
     envVars:
       - key: DATABASE_PATH
         value: /data/scanner.sqlite3
