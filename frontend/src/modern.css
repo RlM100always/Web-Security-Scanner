@@ -565,6 +565,10 @@
 .publicSite .pageVisualCaption{font-size:10px}
 
 .publicSite .publicMobileActions{display:none}
+@media(min-width:681px) and (max-width:980px){
+  .publicSite .pageHero.pageHeroVisual{grid-template-columns:minmax(0,1fr)!important}
+  .publicSite .pageHero.pageHeroVisual>.pageVisual{width:min(100%,820px)!important;justify-self:center!important}
+}
 @media(max-width:680px){
   .publicSite{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
   .publicSite .pageHero.pageHeroVisual{
