@@ -103,3 +103,19 @@ Recommended operational controls:
 SQLite WAL is intentionally retained for the current product requirement and is suitable for a well-managed single-node deployment with bounded worker concurrency.
 
 A future horizontally distributed or multi-region architecture would require replacing the database/queue/storage infrastructure. That is a **future scaling boundary**, not a missing dependency for the current implemented feature set. The API and domain model keep those responsibilities separated so such a migration can happen later without redesigning the user workflow.
+
+
+## Render Blueprint deployment
+
+The repository now includes a one-service Render Blueprint and root Dockerfile. The container serves the React frontend through Nginx, proxies API requests to Gunicorn/Flask, and runs the SQLite scan worker as a supervised process in the same instance. This keeps the worker and API on the same persistent database file.
+
+1. Use the Deploy to Render button in README.md.
+2. Connect the repository and select the main branch.
+3. Confirm the Starter service plan and 1 GB persistent disk.
+4. Set SYSTEM_ADMIN_EMAILS to the email that should have system-admin access before that person creates an account.
+5. Deploy and wait for the /health check.
+6. Copy the actual public HTTPS URL assigned by Render into README.md only after the service is live.
+
+Render's free web-service filesystem is ephemeral and free web services do not support persistent disks. This Blueprint intentionally uses a paid service with a disk so accounts, scans, queue state and backups survive restarts and deployments. The Docker container keeps the API and worker together; keep one instance while SQLite is the database.
+
+Before inviting real users, configure SMTP delivery in the Render service environment. If SMTP is not configured, the app can use development/outbox verification links, which is not appropriate as the normal production email workflow. Keep SCANNER_ALLOW_PRIVATE set to 0 on the public deployment. Review backups, restore, authorization and scan behavior against a controlled target before announcing production readiness.
