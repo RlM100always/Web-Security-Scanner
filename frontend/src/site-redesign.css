@@ -387,3 +387,26 @@
 @media(prefers-reduced-motion:reduce){
   .publicSite *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 }
+
+
+/* Public component aliases and secondary-state coverage */
+.publicSite .publicHero,.publicSite .heroCopy,.publicSite .heroTrust,.publicSite .homeWhatSection,.publicSite .roleSection,.publicSite .evidenceLifecycleSection,.publicSite .pageDetailSection,.publicSite .pageDeepDiveSection,.publicSite .statusHero{min-width:0}
+.publicSite .detailGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.publicSite .modernFinalCta{width:min(1240px,calc(100% - 32px));margin:20px auto 80px;padding:45px 48px;border-radius:24px;background:#0a1728;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:30px}
+.publicSite .pageHeroActions{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+.publicSite .large{min-height:48px;padding-left:18px;padding-right:18px}
+.publicSite .sparkRed i{background:#ef6a77}
+.publicSite .pageEvidenceMockBody{display:grid;gap:12px;margin-top:14px}
+.publicSite .pageEvidenceMockFacts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.publicSite .pageEvidenceMockFacts>div{padding:11px;border:1px solid var(--line);border-radius:10px;background:var(--wash)}
+.publicSite .pageEvidenceMockFacts small{display:block;color:var(--muted);font-size:9px}.publicSite .pageEvidenceMockFacts b{display:block;margin-top:4px;font-size:12px}
+.publicSite .pageEvidenceMockFoot{display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:13px;border-top:1px solid var(--line);color:var(--muted)}
+.publicSite .pageEvidenceMockFoot>svg{width:17px;color:var(--green);flex:none}.publicSite .pageEvidenceMockFoot>span{display:grid;gap:2px;min-width:0}.publicSite .pageEvidenceMockFoot b{font-size:11px;color:var(--ink)}.publicSite .pageEvidenceMockFoot small{font-size:9px}.publicSite .pageEvidenceMockFoot>svg:last-child{margin-left:auto;color:#8695a7}
+.publicSite .pageEvidenceMockSeverity{display:inline-flex;padding:5px 7px;border-radius:999px;background:#ffe7e9;color:#c53c4b;font-size:9px;font-weight:900}
+.publicSite .heroOrbitOne,.publicSite .heroOrbitTwo,.publicSite .pageVisualOrbA,.publicSite .pageVisualOrbB{pointer-events:none}
+@media(max-width:720px){
+  .publicSite .detailGrid{grid-template-columns:1fr}
+  .publicSite .modernFinalCta{width:calc(100% - 16px);margin-bottom:60px;padding:30px 20px;border-radius:20px;display:grid}
+  .publicSite .pageHeroActions{display:grid;grid-template-columns:1fr}
+  .publicSite .pageEvidenceMockFacts{grid-template-columns:1fr}
+}
