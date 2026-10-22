@@ -413,3 +413,36 @@ button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
     transition-duration: .01ms !important;
   }
 }
+
+
+/* Skip navigation is visible only when keyboard users request it. */
+.skipLink {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 10000;
+  transform: translateY(calc(-100% - 14px));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 9px 14px;
+  border: 1px solid var(--ent-border, #dce4ee);
+  border-radius: 10px;
+  background: var(--ent-surface, #fff);
+  color: var(--ent-text, #162238);
+  box-shadow: 0 8px 26px rgba(6, 17, 35, .2);
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: transform .16s ease;
+}
+.skipLink:focus, .skipLink:focus-visible {
+  transform: translateY(0);
+  outline: 3px solid color-mix(in srgb, var(--ux-blue, #255df5) 55%, transparent);
+  outline-offset: 3px;
+}
+#main-content:focus, #workspace-content:focus { outline: none; }
+@media (prefers-reduced-motion: reduce) {
+  .skipLink { transition: none; }
+}
