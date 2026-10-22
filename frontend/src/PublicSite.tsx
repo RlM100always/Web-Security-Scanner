@@ -156,7 +156,7 @@ function PublicFaq({page}:{page:string}){
     product:[
       ['What happens after a scan completes?','Review evidence and severity, open or correlate persistent findings, assign an owner and due date, document the decision, then verify the fix with a fresh assessment.'],
       ['Are scan settings preserved?','Completed scans keep execution and policy provenance so later reviewers can understand the configuration that produced the evidence.'],
-      ['Does the asset inventory discover the entire internet-facing estate?','No. It records assets discovered within the authorised target and the crawler's bounded same-origin scope.'],
+      ['Does the asset inventory discover the entire internet-facing estate?','No. It records assets discovered within the authorised target and the crawler’s bounded same-origin scope.'],
       ['Can I export the evidence?','Available report formats include PDF, HTML and JSON, with scan context and export provenance where supported.']
     ],
     teams:[
