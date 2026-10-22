@@ -616,3 +616,108 @@ html,body,#root{width:100%;max-width:100%;min-width:0;margin:0;padding:0}
   .pageHero.pageHeroVisual .pageHeroProof{grid-template-columns:repeat(2,minmax(0,1fr))}
   .publicFooter{padding-inline:14px}
 }
+
+
+/* Critical shell isolation: global workspace main/header rules must never offset public pages. */
+.publicSite{width:100%;max-width:100%;margin:0!important;padding:0!important;overflow-x:clip}
+.publicSite #main-content{display:block;width:100%;max-width:100%;margin:0!important;padding:0!important}
+.publicSite main,
+.publicSite #main-content>main{
+  width:100%!important;
+  max-width:none!important;
+  min-width:0!important;
+  margin-left:0!important;
+  margin-right:0!important;
+}
+.publicSite header.publicNav{
+  width:100%!important;
+  max-width:none!important;
+  min-width:0!important;
+  margin:0!important;
+  box-sizing:border-box!important;
+  display:grid!important;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  justify-content:normal!important;
+  padding-left:max(18px,calc((100vw - 1480px)/2))!important;
+  padding-right:max(18px,calc((100vw - 1480px)/2))!important;
+}
+.publicSite .publicNav .publicBrand{justify-self:start;min-width:0}
+.publicSite .publicNav nav{justify-self:center;min-width:0}
+.publicSite .publicActions{justify-self:end;min-width:0}
+.publicSite .publicProofBar{
+  width:100%;
+  max-width:none;
+  margin:0!important;
+  box-sizing:border-box;
+  padding-left:max(18px,calc((100vw - 1480px)/2));
+  padding-right:max(18px,calc((100vw - 1480px)/2));
+}
+.publicSite .publicFooter{
+  width:100%;
+  max-width:none!important;
+  margin:0!important;
+  box-sizing:border-box;
+  grid-template-columns:minmax(240px,.72fr) minmax(0,1.28fr);
+  column-gap:clamp(36px,5vw,80px);
+  padding-left:max(24px,calc((100vw - 1360px)/2))!important;
+  padding-right:max(24px,calc((100vw - 1360px)/2))!important;
+}
+.publicSite .publicFooter>div:first-child{min-width:0}
+.publicSite .footerGrid{min-width:0;grid-template-columns:repeat(3,minmax(120px,1fr));gap:30px 24px}
+.publicSite .footerNote{width:100%;min-width:0}
+
+@media(max-width:1040px){
+  .publicSite header.publicNav{padding-left:20px!important;padding-right:20px!important}
+  .publicSite .publicProofBar{padding-left:20px;padding-right:20px}
+  .publicSite .publicFooter{grid-template-columns:1fr;row-gap:32px;padding-left:24px!important;padding-right:24px!important}
+  .publicSite .footerGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .publicSite{overflow-x:hidden}
+  .publicSite header.publicNav{
+    height:62px!important;
+    min-height:62px!important;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:10px;
+    padding:0 14px!important;
+  }
+  .publicSite .publicNav .publicBrand{max-width:calc(100vw - 76px);overflow:hidden}
+  .publicSite .publicNav .publicBrand>span{width:36px;height:36px;flex:none}
+  .publicSite .publicNav .publicBrand>div{min-width:0}
+  .publicSite .publicNav .publicBrand b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .publicSite .publicNav .publicBrand small{display:none!important}
+  .publicSite .publicActions{display:flex;align-items:center;justify-content:flex-end}
+  .publicSite .publicActions>.textLink,
+  .publicSite .publicActions>.publicPrimary{display:none!important}
+  .publicSite .publicMenu{display:grid!important;place-items:center;flex:none}
+  .publicSite .publicNav nav{
+    position:fixed!important;
+    top:62px!important;
+    left:10px!important;
+    right:10px!important;
+    width:auto!important;
+    max-width:none!important;
+    margin:0!important;
+    transform:none!important;
+  }
+  .publicSite .publicProofBar{
+    top:62px!important;
+    min-height:38px;
+    padding:0 14px!important;
+    gap:14px;
+    overflow-x:auto;
+    scrollbar-width:none;
+  }
+  .publicSite .publicProofBar::-webkit-scrollbar{display:none}
+  .publicSite .publicProofBar span{flex:none;white-space:nowrap;margin-right:0}
+  .publicSite .publicProofBar a{flex:none;white-space:nowrap}
+  .publicSite .publicFooter{padding:36px 18px 24px!important}
+  .publicSite .footerGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:25px 18px}
+}
+@media(max-width:430px){
+  .publicSite header.publicNav{padding:0 12px!important}
+  .publicSite .publicProofBar{padding:0 12px!important}
+  .publicSite .publicFooter{padding:32px 16px 22px!important}
+  .publicSite .footerGrid{grid-template-columns:1fr 1fr;gap:22px 14px}
+}
