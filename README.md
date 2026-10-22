@@ -4,6 +4,14 @@
 
 SentinelScope is a production-oriented Flask + React security assessment platform backed entirely by SQLite. It combines safe target validation, a persistent scan worker queue, explainable findings, team access control, reporting, recurring scans, ownership verification and operational tooling in a responsive desktop/mobile PWA.
 
+## Live application
+
+**Deployment status:** The production hosting configuration is ready, but a live URL has not been assigned yet. Render creates the public URL when the Blueprint is deployed; this README will only show it after that deployment has been verified.
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/RlM100always/Web-Security-Scanner)
+
+See [Production deployment instructions](docs/DEPLOYMENT.md) for persistent storage, administrator setup, SMTP configuration and security checks.
+
 ## Product capabilities
 
 ### Identity and account security
