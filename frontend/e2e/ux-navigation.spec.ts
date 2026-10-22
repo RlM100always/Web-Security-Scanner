@@ -32,7 +32,8 @@ test('workspace navigation, command search and mobile layout are user-friendly',
   await expect(page.locator('.settingsGrid .panel').first()).toHaveCSS('background-color',/rgb/);
   await page.locator('.appearanceChoice button').nth(0).click();
   await expect.poll(async()=>page.evaluate(()=>document.documentElement.dataset.theme)).toBe('light');
-  await page.locator('.mobileDock').getByRole('button',{name:'Dashboard',exact:true}).click().catch(async()=>{await page.locator('aside.side').getByRole('button',{name:'Dashboard',exact:true}).click()});
+  if(testInfo.project.name==='mobile-chromium') await page.locator('.mobileDock').getByRole('button',{name:'Dashboard',exact:true}).click();
+  else await page.locator('aside.side').getByRole('button',{name:'Dashboard',exact:true}).click();
 
   const visual=await page.evaluate(()=> {
     const intro=document.querySelector('.dashboardIntro') as HTMLElement|null;
