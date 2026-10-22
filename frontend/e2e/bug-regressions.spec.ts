@@ -7,8 +7,9 @@ async function signUp(page:any){
   await page.getByLabel('Full name').fill('Regression Owner');
   await page.getByLabel('Workspace name').fill('Regression Workspace');
   await page.getByLabel('Email address').fill(email);
-  await page.getByLabel('Password').fill('regression-password-123');
-  await page.getByRole('button',{name:'Create account'}).click();
+  await page.getByLabel('Password',{exact:true}).fill('regression-password-123');
+  await page.getByLabel('Confirm password').fill('regression-password-123');
+  await page.getByRole('button',{name:'Create secure workspace'}).click();
   await expect(page.getByRole('heading',{name:'Dashboard'})).toBeVisible();
 }
 
