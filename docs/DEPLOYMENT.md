@@ -119,3 +119,16 @@ The repository now includes a one-service Render Blueprint and root Dockerfile. 
 Render's free web-service filesystem is ephemeral and free web services do not support persistent disks. This Blueprint intentionally uses a paid service with a disk so accounts, scans, queue state and backups survive restarts and deployments. The Docker container keeps the API and worker together; keep one instance while SQLite is the database.
 
 Before inviting real users, configure SMTP delivery in the Render service environment. If SMTP is not configured, the app can use development/outbox verification links, which is not appropriate as the normal production email workflow. Keep SCANNER_ALLOW_PRIVATE set to 0 on the public deployment. Review backups, restore, authorization and scan behavior against a controlled target before announcing production readiness.
+
+
+## Free public demo mode
+
+The Render Blueprint uses the **Free** web-service plan so a public preview can be attempted without selecting a paid compute plan. This is a demo, not production hosting:
+
+- Render free services sleep after 15 minutes without inbound traffic and may take around a minute to wake up.
+- The filesystem is ephemeral. The SQLite database, queued scans, user accounts and generated backups can be lost whenever the service sleeps, restarts or redeploys. Do not enter sensitive information or rely on this instance to preserve scan history.
+- Free services cannot attach persistent disks, and free Render Postgres databases expire after 30 days. The app's current architecture uses SQLite, so this free configuration intentionally prioritises a public preview over durable user data.
+- Free web services cannot send outbound SMTP traffic on ports 25, 465 or 587. Configure a suitable supported transactional-email provider or treat account-verification/reset flows as not production-ready until email delivery is verified.
+- The single container runs Nginx, Gunicorn and the scanner worker together because the free plan cannot provide the paid persistent-disk topology. Keep the instance count at one.
+
+The repository can prepare the deploy, but the hosting provider still requires an account owner to authorise GitHub and create the service. No deployment URL exists until Render has successfully provisioned it. See Render's [free-service limitations](https://render.com/docs/free).
