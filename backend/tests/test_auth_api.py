@@ -181,3 +181,35 @@ def test_existing_member_cannot_be_reinvited_or_owner_downgraded():
         assert "Owner role cannot be changed" in downgrade.get_json()["error"]
         me=client.get("/api/v1/auth/me").get_json()["user"]
         assert me["role"]=="owner"
+
+
+def test_read_only_demo_login_is_seeded_and_cannot_create_projects():
+    with tempfile.TemporaryDirectory() as d:
+        class DemoConfig(TestConfig):
+            DEMO_LOGIN_ENABLED=True
+            DEMO_LOGIN_EMAIL="demo@sentinelscope.dev"
+            DEMO_LOGIN_PASSWORD="ScopeDemo-2026!ReadOnly"
+
+        DemoConfig.DATABASE_PATH=os.path.join(d,"demo.sqlite3")
+        DemoConfig.BACKUP_DIR=os.path.join(d,"backups")
+        app=create_app(DemoConfig)
+        app.testing=True
+        repo=app.extensions["repo"]
+        demo=repo.get_user_by_email("demo@sentinelscope.dev")
+        assert demo is not None
+        memberships=repo.list_memberships_for_user(demo["id"])
+        assert memberships and memberships[0]["role"]=="viewer"
+        projects=repo.list_projects(memberships[0]["organization_id"])
+        assert any(p["name"]=="Demo security workspace" for p in projects)
+
+        client=app.test_client()
+        login=client.post("/api/v1/auth/login",json={
+            "email":"demo@sentinelscope.dev",
+            "password":"ScopeDemo-2026!ReadOnly"
+        })
+        assert login.status_code==200
+        payload=login.get_json()
+        assert payload["user"]["role"]=="viewer"
+        blocked=client.post("/api/v1/projects",json={"name":"Should be blocked"},
+                            headers={"X-CSRF-Token":payload["csrf_token"]})
+        assert blocked.status_code==403

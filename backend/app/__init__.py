@@ -28,6 +28,48 @@ def create_app(config_object=None):
     repo=Repository(app.config["DATABASE_PATH"])
     repo.init_schema()
     repo.sync_system_admin_emails(app.config.get("SYSTEM_ADMIN_EMAILS",[]))
+
+    # Optional shared demo access is explicitly read-only and isolated in its own workspace.
+    # Never enable it unless a deployment has intentionally configured a demo password.
+    if app.config.get("DEMO_LOGIN_ENABLED"):
+        demo_email=str(app.config.get("DEMO_LOGIN_EMAIL","")).strip().lower()
+        demo_password=str(app.config.get("DEMO_LOGIN_PASSWORD",""))
+        if demo_email and len(demo_password)>=16:
+            from .crypto import hash_password
+            demo_user=repo.get_user_by_email(demo_email)
+            demo_user_id=None
+            demo_org_id=None
+            if not demo_user:
+                created=repo.create_signup(demo_email,"SentinelScope Demo",hash_password(demo_password),"SentinelScope Demo Workspace")
+                demo_user_id=created["user_id"]
+                demo_org_id=created["organization_id"]
+            elif demo_user.get("name")=="SentinelScope Demo":
+                demo_user_id=demo_user["id"]
+                memberships=repo.list_memberships_for_user(demo_user_id)
+                if memberships:
+                    demo_org_id=memberships[0]["organization_id"]
+                with repo.conn() as c:
+                    c.execute("update users set password_hash=?,email_verified=1,active=1 where id=?",(hash_password(demo_password),demo_user_id))
+                    c.execute("update memberships set role='viewer',active=1 where user_id=?",(demo_user_id,))
+            else:
+                app.logger.warning("Read-only demo login was not provisioned because its configured email is already in use.")
+            if demo_user_id and demo_org_id:
+                with repo.conn() as c:
+                    c.execute("update users set email_verified=1,active=1 where id=?",(demo_user_id,))
+                    c.execute("update memberships set role='viewer',active=1 where user_id=?",(demo_user_id,))
+                projects=repo.list_projects(demo_org_id)
+                demo_project=next((p for p in projects if p.get("name")=="Demo security workspace"),None)
+                if not demo_project:
+                    demo_project=repo.create_project(
+                        "Demo security workspace",
+                        "Read-only sample workspace for exploring SentinelScope. The example target is not authorised for scanning.",
+                        demo_org_id,demo_user_id,tags=["demo","read-only"])
+                    repo.create_target(
+                        demo_project["id"],"https://example.com","Example domain (demo only)",
+                        authorized=False,verified=False,created_by=demo_user_id,
+                        environment="test",tags=["demo","read-only"])
+        else:
+            app.logger.warning("Read-only demo login is enabled but the configured email or password is invalid.")
     app.extensions["repo"]=repo
     app.register_blueprint(create_blueprint(), url_prefix="/api/v1")
     app.register_blueprint(create_admin_blueprint(), url_prefix="/api/v1/admin")

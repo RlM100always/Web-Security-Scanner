@@ -53,6 +53,10 @@ export default function PublicSite({path='/'}:{path?:string}){
         <div className="publicFooterBottom"><small className="footerNote">Use only against systems you own or are explicitly authorised to assess. SentinelScope intentionally avoids destructive exploitation, credential attacks and denial-of-service behaviour.</small><div><a href="/login">Sign in</a><a href="/signup">Create workspace <ArrowRight/></a></div></div>
       </div>
     </footer>
+    <nav className="publicMobileActions" aria-label="Quick actions">
+      <a href="/login">Sign in</a>
+      <a href="/signup">Start workspace <ArrowRight/></a>
+    </nav>
   </div>
 }
 

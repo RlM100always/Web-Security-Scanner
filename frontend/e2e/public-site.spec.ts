@@ -304,6 +304,42 @@ test('authentication photography loads and form typography remains usable',async
   }
 });
 
+test('mobile product preview stays readable and public actions remain reachable',async({page})=>{
+  for(const width of [320,360,390,430,680]){
+    await page.setViewportSize({width,height:900});
+    await page.goto('/product');
+    const metrics=await page.evaluate(()=>{
+      const win=document.querySelector('.pageVisualWindow') as HTMLElement|null;
+      const main=document.querySelector('.pageVisualMain') as HTMLElement|null;
+      const title=document.querySelector('.pageVisualMainHead b') as HTMLElement|null;
+      const actions=document.querySelector('.publicMobileActions') as HTMLElement|null;
+      return {
+        viewport:document.documentElement.clientWidth,
+        scroll:document.documentElement.scrollWidth,
+        windowWidth:win?.getBoundingClientRect().width||0,
+        mainWidth:main?.getBoundingClientRect().width||0,
+        titleWidth:title?.getBoundingClientRect().width||0,
+        titleHeight:title?.getBoundingClientRect().height||0,
+        actionsDisplay:actions?getComputedStyle(actions).display:'none'
+      };
+    });
+    expect(metrics.scroll).toBeLessThanOrEqual(metrics.viewport+2);
+    expect(metrics.mainWidth).toBeGreaterThan(220);
+    expect(metrics.titleWidth).toBeGreaterThan(140);
+    expect(metrics.titleHeight).toBeLessThan(70);
+    if(width<=680) expect(metrics.actionsDisplay).not.toBe('none');
+  }
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/login');
+  await expect(page.locator('.demoAccessCard')).toBeVisible();
+  await page.getByRole('button',{name:'Fill demo credentials'}).click();
+  await expect(page.getByLabel('Email address')).toHaveValue('demo@sentinelscope.dev');
+  await expect(page.getByLabel('Password',{exact:true})).toHaveValue('ScopeDemo-2026!ReadOnly');
+  const auth=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,client:document.documentElement.clientWidth,form:document.querySelector('.authCard')?.getBoundingClientRect().width||0}));
+  expect(auth.scroll).toBeLessThanOrEqual(auth.client+2);
+  expect(auth.form).toBeGreaterThan(260);
+});
+
 test('modern public shell uses the new hero bento workflow and inner-page stages',async({page})=>{
   await page.setViewportSize({width:1440,height:1000});
   await page.goto('/');
