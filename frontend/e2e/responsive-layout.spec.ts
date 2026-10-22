@@ -13,6 +13,19 @@ test('public shell has no page-level horizontal overflow',async({page})=>{
   }
 });
 
+test('public layouts remain usable from 320px phones to wide desktops',async({page})=>{
+  for(const width of [320,390,768,1024,1440]){
+    await page.setViewportSize({width,height:900});
+    for(const path of ['/','/enterprise','/vulnerability-management']){
+      await page.goto(path);
+      await page.waitForLoadState('domcontentloaded');
+      await noPageOverflow(page);
+      await expect(page.locator('.publicNav')).toBeVisible();
+      await expect(page.getByRole('link',{name:'Skip to main content'})).toBeAttached();
+    }
+  }
+});
+
 test('authenticated shell switches between desktop and mobile navigation models',async({page},testInfo)=>{
   await page.goto('/');
   await page.getByRole('link',{name:/Create secure workspace|Create workspace|Start workspace/}).first().click();
