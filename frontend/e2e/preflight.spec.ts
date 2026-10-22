@@ -6,8 +6,9 @@ async function signup(page:any){
   await page.getByLabel('Full name').fill('Preflight Owner');
   await page.getByLabel('Workspace name').fill('Preflight Workspace');
   await page.getByLabel('Email address').fill('preflight-'+Date.now()+'@example.com');
-  await page.getByLabel('Password').fill('preflight-secure-password-123');
-  await page.getByRole('button',{name:'Create account'}).click();
+  await page.getByLabel('Password',{exact:true}).fill('preflight-secure-password-123');
+  await page.getByLabel('Confirm password').fill('preflight-secure-password-123');
+  await page.getByRole('button',{name:'Create secure workspace'}).click();
   await expect(page.getByRole('heading',{name:'Dashboard'})).toBeVisible();
 }
 async function openNav(page:any,name:string){const menu=page.locator('button.menu');if(await menu.isVisible())await menu.click();await page.getByRole('button',{name,exact:true}).click()}
