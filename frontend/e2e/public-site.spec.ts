@@ -208,3 +208,38 @@ test('signup password controls, matching validation and trusted-device choice wo
   await remember.check();
   await expect(remember).toBeChecked();
 });
+
+test('public shell never inherits the workspace sidebar offset on phones',async({page})=>{
+  for(const width of [320,390,400,430]){
+    await page.setViewportSize({width,height:900});
+    for(const path of ['/','/product','/features']){
+      await page.goto(path);
+      const box=await page.evaluate(()=> {
+        const main=document.querySelector('#main-content>main')?.getBoundingClientRect();
+        const nav=document.querySelector('.publicNav')?.getBoundingClientRect();
+        const brand=document.querySelector('.publicNav .publicBrand')?.getBoundingClientRect();
+        const footer=document.querySelector('.publicFooter')?.getBoundingClientRect();
+        return {
+          mainLeft:main?.left??-1, mainRight:main?.right??-1,
+          navLeft:nav?.left??-1, navRight:nav?.right??-1,
+          brandLeft:brand?.left??-1,
+          footerLeft:footer?.left??-1, footerRight:footer?.right??-1,
+          client:document.documentElement.clientWidth,
+          scroll:document.documentElement.scrollWidth
+        };
+      });
+      expect(box.mainLeft).toBeGreaterThanOrEqual(-1);
+      expect(box.mainLeft).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.mainRight-box.client)).toBeLessThanOrEqual(2);
+      expect(box.navLeft).toBeGreaterThanOrEqual(-1);
+      expect(box.navLeft).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.navRight-box.client)).toBeLessThanOrEqual(2);
+      expect(box.brandLeft).toBeGreaterThanOrEqual(10);
+      expect(box.brandLeft).toBeLessThanOrEqual(24);
+      expect(box.footerLeft).toBeGreaterThanOrEqual(-1);
+      expect(box.footerLeft).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.footerRight-box.client)).toBeLessThanOrEqual(2);
+      expect(box.scroll).toBeLessThanOrEqual(box.client+2);
+    }
+  }
+});
