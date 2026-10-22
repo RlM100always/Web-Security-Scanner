@@ -87,6 +87,7 @@ function Home(){
       </div>
     </section>
     <section className="logoStrip"><span>BUILT AROUND</span><b>OWASP WSTG</b><b>OWASP ASVS</b><b>Evidence-led findings</b><b>Persistent assessment history</b><b>Mobile-ready workspace</b></section>
+    <RealWorldStory page="home"/>
     <section className="publicSection homeWhatSection">
       <div className="homeWhatHeader"><SectionHead eyebrow="WHAT SENTINELSCOPE DOES" title="A security assessment becomes useful when someone can act on it." text="SentinelScope connects authorised scope, repeatable checks, evidence, accountable ownership and a fresh verification run. It is built to make the work after a scan as clear as the scan itself."/><div className="homeWhatCallout"><span><ShieldCheck/></span><div><b>Built around authorised assessment</b><p>Only assess systems you own or have explicit permission to test. The visual data below is illustrative, not live customer telemetry.</p></div></div></div>
       <div className="homeModuleGrid">
@@ -473,6 +474,7 @@ function StaticPage({page}:{page:string}){
       </div>
       <PageVisual page={page}/>
     </section>
+    <RealWorldStory page={page}/>
     <section className="publicSection pageDetailSection">
       <SectionHead eyebrow="WHAT YOU CAN DO" title={p.sectionTitle||"Turn the capability into an accountable workflow."} text={p.sectionIntro||"Each capability is designed to produce a clear next step, preserve the evidence behind decisions and keep the work connected to its owner."}/>
       <div className="detailGrid pageDetailGrid">{p.sections.map(([t,d,I]:any,i:number)=><article key={t} style={{'--detail-index':i} as any}><div className="detailCardTop"><span>0{i+1}</span><I/></div><h2>{t}</h2><p>{d}</p><div className="detailCardFoot"><span>WORKFLOW CAPABILITY</span><CheckCircle2/></div></article>)}</div>
@@ -485,6 +487,74 @@ function StaticPage({page}:{page:string}){
     <PublicFaq page={page}/>
     <section className="publicCTA pageBottomCta"><div><span>AUTHORISATION FIRST · EVIDENCE ALWAYS</span><h2>Security tooling is useful when findings become verified, accountable work.</h2><p>Start with a target you are authorised to assess. Keep the scope bounded and the evidence reviewable.</p></div><a className="publicPrimary large" href="/signup">Create workspace <ArrowRight/></a></section>
   </main>
+}
+
+
+function RealWorldStory({page}:{page:string}){
+  const groupByPage:any={
+    home:'operations',product:'operations',features:'operations','exposure-management':'operations','asset-inventory':'operations','vulnerability-management':'operations','continuous-monitoring':'operations',reports:'operations',workflow:'operations',
+    developers:'engineering',integrations:'engineering',api:'engineering',architecture:'engineering','scanner-checks':'engineering',research:'engineering',
+    solutions:'team',enterprise:'team',governance:'team',deployment:'team',
+    docs:'workspace','getting-started':'workspace',methodology:'workspace',standards:'workspace',security:'workspace',trust:'workspace','responsible-use':'workspace',about:'workspace','scan-profiles':'workspace'
+  };
+  const group=groupByPage[page]||'operations';
+  const stories:any={
+    operations:{
+      eyebrow:'BUILT FOR REAL SECURITY WORK',
+      title:'Designed for the conversations that happen after a finding is detected.',
+      text:'Security teams rarely struggle because they lack another alert. They struggle when evidence, ownership, engineering context and verification live in different places. SentinelScope is organised around that handoff.',
+      image:'https://images.pexels.com/photos/5380597/pexels-photo-5380597.jpeg?auto=compress&dpr=1&h=900&w=1440',
+      alt:'Cybersecurity professionals working together in a computer operations room',
+      credit:'Tima Miroshnichenko',
+      source:'https://www.pexels.com/photo/people-using-computers-5380597/',
+      points:[['Evidence stays with the issue','Keep the original observation, repeat occurrences and verification result connected.'],['Owners see a next action','Assignment, due date and remediation context sit beside the technical finding.'],['Security keeps the boundary clear','Authorisation, policy and limitations remain visible throughout the workflow.']]
+    },
+    engineering:{
+      eyebrow:'ENGINEERING-FRIENDLY SECURITY',
+      title:'Give developers useful context, not a screenshot of a scanner result.',
+      text:'The best remediation handoff explains where the observation came from, why it matters, what changed and how the fix will be verified—without forcing engineering to reverse-engineer a security tool.',
+      image:'https://images.pexels.com/photos/7988079/pexels-photo-7988079.jpeg?auto=compress&dpr=1&h=900&w=1440',
+      alt:'Software developers programming on large monitors in a modern office',
+      credit:'Mikhail Nilov',
+      source:'https://www.pexels.com/photo/people-using-computers-at-work-7988079/',
+      points:[['Structured technical context','Affected URL, evidence, confidence and remediation guidance are available together.'],['Repeatable automation','Profiles, API access and signed events support approved workflows without bypassing safety controls.'],['Verification is part of done','A fresh bounded assessment records whether the same issue still appears.']]
+    },
+    team:{
+      eyebrow:'CROSS-TEAM OPERATING MODEL',
+      title:'A shared workspace for security, engineering and platform operations.',
+      text:'Different teams need different views of the same risk. SentinelScope keeps the issue record consistent while ownership, governance and operational context remain clear to the people responsible for each step.',
+      image:'https://images.pexels.com/photos/36706460/pexels-photo-36706460.jpeg?auto=compress&dpr=1&h=900&w=1440',
+      alt:'Developer working at a modern workstation with multiple displays',
+      credit:'Zayed Hossain',
+      source:'https://www.pexels.com/photo/developer-working-on-code-in-a-modern-office-36706460/',
+      points:[['Security can prioritise','Use severity, recurrence, criticality and evidence to focus the queue.'],['Engineering can remediate','Keep ownership, investigation notes and due dates on the same record.'],['Governance can review','Role boundaries, decisions, exports and audit history support later review.']]
+    },
+    workspace:{
+      eyebrow:'A CALMER SECURITY WORKSPACE',
+      title:'Clear hierarchy helps teams think before they click.',
+      text:'The interface is intentionally built around readable evidence, explicit scope and visible next actions. Dense operational data is grouped into predictable views instead of competing for attention.',
+      image:'https://images.pexels.com/photos/28907898/pexels-photo-28907898.jpeg?auto=compress&dpr=1&h=900&w=1440',
+      alt:'Modern dual-monitor workspace with a clean desk and blue lighting',
+      credit:'Nafiz Barakah',
+      source:'https://www.pexels.com/photo/modern-workspace-with-dual-monitors-in-dhaka-28907898/',
+      points:[['Readable by default','Typography, spacing and content density are tuned for long review sessions.'],['Context before action','Target, policy and evidence remain visible before important decisions.'],['Responsive without losing structure','Desktop, tablet and mobile layouts preserve the same information hierarchy.']]
+    }
+  };
+  const s=stories[group];
+  return <section className="publicSection realWorldSection">
+    <div className="realWorldMedia">
+      <img src={s.image} alt={s.alt} loading="lazy" decoding="async"/>
+      <div className="realWorldMediaOverlay"><span><ShieldCheck/> Authorised workflows</span><span><Users/> Human handoff</span></div>
+      <a className="realWorldCredit" href={s.source} target="_blank" rel="noreferrer">Photo: {s.credit} / Pexels <ArrowRight/></a>
+    </div>
+    <div className="realWorldCopy">
+      <span className="pageHeroEyebrow"><span className="pageHeroDot"/>{s.eyebrow}</span>
+      <h2>{s.title}</h2>
+      <p>{s.text}</p>
+      <div className="realWorldPoints">{s.points.map(([title,text]:string[],i:number)=><article key={title}><span>0{i+1}</span><div><h3>{title}</h3><p>{text}</p></div></article>)}</div>
+      <div className="realWorldActions"><a className="publicPrimary" href="/product">Explore the product <ArrowRight/></a><a className="publicSecondary" href="/workflow">See the workflow</a></div>
+    </div>
+  </section>
 }
 
 function SectionHead({eyebrow,title,text}:any){return <div className="sectionHead"><span>{eyebrow}</span><h2>{title}</h2><p>{text}</p></div>}
