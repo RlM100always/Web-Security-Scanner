@@ -10,6 +10,7 @@ test('workspace navigation, command search and mobile layout are user-friendly',
   await page.getByRole('button',{name:'Create account'}).click();
 
   await expect(page.getByRole('heading',{name:'Dashboard'})).toBeVisible();
+  await expect(page).toHaveTitle('Dashboard | SentinelScope');
   await expect(page.getByRole('heading',{name:'Know what needs attention.'})).toBeVisible();
   await expect(page.locator('.dashboardIntro')).toBeVisible();
 
